@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P009 · 找到字符串中所有字母异位词 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 9, num: 438, title: '找到字符串中所有字母异位词', diff: '中等', cat: '滑动窗口',
+  method: 'findAnagrams',
+
+  lede: '题目：在 <span class="var r">s</span> 里找出 <span class="var i">p</span> 的所有<b>异位词</b>子串（字母重排版，如 "abc" ↔ "cba"、"bac"），返回它们的起点下标。' +
+        '异位词长度必须等于 <code>m = len(p)</code>，所以窗口<b>定长</b>：右端进一个、左端出一个。' +
+        '动画用一本"差值账" <span class="var r">cnt</span>（窗口比需求多几个 / 少几个，负 = 还欠）加一个计数器 <span class="var v">differ</span>（账没平的字符种类数）——' +
+        '<b>differ 归零的那一刻，整段窗口就是一个异位词</b>。',
+
+  roles: [
+    {c:'orange', code:'r',      text:'右端：每步进一个字符'},
+    {c:'blue',   code:'cnt',    text:'计数差：窗口 − 需求（负 = 还缺）'},
+    {c:'violet', code:'differ', text:'账没平的字符种类数，归零即命中'},
+    {c:'green',  code:'ans',    text:'命中的起点下标'}
+  ],
+
+  codeTitle: '跟着高亮读代码——账本只有"跨过 0"的变化才动 <code>differ</code>；最后的 <code>differ == 0</code> 变<span style="color:var(--green)">绿</span>＝整段窗口是 p 的异位词。',
+
+  legend: [
+    {c:'blue', text:'定长窗口 [r−m+1..r]'},
+    {c:'orange', text:'r 右端'},
+    {c:'violet', text:'命中窗口'},
+    {c:'red', text:'刚滑出的字符'}
+  ],
+
+  idea: '别每次重排再比较——用"计数差"记账：进窗补一笔、滑出退一笔，账本恰好全平（differ = 0）的瞬间，定长窗口就是 p 的异位词。',
+
+  qa: [
+    {q:'为什么 differ 只在差值"跨过 0"时才 ±1？',
+     a:'differ 数的是"没对齐的种类"。cnt[c] 从 −1→0 或 1→0 是"从欠/多变成正好"，种类数减一；从 0→1 或 0→−1 是"从正好变多/欠"，加一。像 2→1 这种没碰零的变化，对齐状态没变，differ 不动。'},
+    {q:'为什么窗口定长，不用像最小覆盖那样伸缩？',
+     a:'异位词长度必须等于 len(p)，候选窗口天然定长。右端进一个、左端出一个，账本只需 O(1) 增量更新，不用每个窗口从头重新数一遍。'},
+    {q:'s 里出现 p 没有的字符怎么办？',
+     a:'照样记账：它进窗时 cnt 从 0 变 1，differ +1——账本上"多出一种不该有的"，窗口立刻不可能对齐；等它滑出时再还回来。'},
+    {q:'复杂度为什么是 O(|s|)？',
+     a:'每个字符进窗、出窗各一次，账本操作全是 O(1)：时间 O(|s| + |p|)，空间 O(字符种类数)。暴力法每个窗口排序再比较，是 O(|s|·m·log m)。'}
+  ],
+
+  complexity: '时间 O(|s| + |p|)　·　空间 O(|Σ|)（账本最多装出现过的字符种类）',
+
+  form: [
+    {key:'s', label:'s', type:'str', def:'cbaebabacd'},
+    {key:'p', label:'p', type:'str', def:'abc'}
+  ],
+  presets: [
+    {label:'cbaebabacd / abc', values:{s:'cbaebabacd', p:'abc'}},
+    {label:'abab / ab（连中三元）', values:{s:'abab', p:'ab'}},
+    {label:'baa / aa（尾部命中）', values:{s:'baa', p:'aa'}},
+    {label:'a / a（最小）', values:{s:'a', p:'a'}}
+  ],
+
+  code: `class Solution:
+    def findAnagrams(self, s, p):
+        m = len(p)
+        cnt = {}                        # 计数差 = 窗口 - 需求 (负 = 还缺)
+        for c in p:
+            cnt[c] = cnt.get(c, 0) - 1  # 先把 p 的账记成欠着
+        differ = len(cnt)               # 账没平的字符种类数
+        ans = []
+        for r, c in enumerate(s):
+            cnt[c] = cnt.get(c, 0) + 1  # 右端进窗, 补一笔
+            if cnt[c] == 0:
+                differ -= 1             # 这笔刚好平了
+            elif cnt[c] == 1:
+                differ += 1             # 反倒多出来了
+            if r >= m:                  # 窗口超长, 左端滑出
+                d = s[r - m]
+                cnt[d] -= 1
+                if cnt[d] == 0:
+                    differ -= 1
+                elif cnt[d] == -1:
+                    differ += 1
+            if r >= m - 1 and differ == 0:
+                ans.append(r - m + 1)   # 账全平 -> 命中一段异位词
+        return ans
+`,
+
+  sol(input){
+    const s = String(input.s), p = String(input.p);
+    const m = p.length;
+    const cnt = {};
+    for(const c of p) cnt[c] = (cnt[c] || 0) - 1;
+    let differ = Object.keys(cnt).length;
+    const ans = [];
+    for(let r = 0; r < s.length; r++){
+      const c = s[r];
+      cnt[c] = (cnt[c] || 0) + 1;
+      if(cnt[c] === 0) differ--;
+      else if(cnt[c] === 1) differ++;
+      if(r >= m){
+        const d = s[r - m];
+        cnt[d]--;
+        if(cnt[d] === 0) differ--;
+        else if(cnt[d] === -1) differ++;
+      }
+      if(r >= m - 1 && differ === 0) ans.push(r - m + 1);
+    }
+    return ans;
+  },
+  expected: [0, 6],
+
+  quiz: [
+    {q:'为什么 differ 只在差值「跨过 0」时才 ±1?比如 cnt[c] 从 −2 变 −1,differ 就不动?',
+     options:['differ 数的是「账没平的字符种类数」:−2 和 −1 都还欠着,对齐状态没变;只有恰好补到 0(或从 0 变出去)时,种类数才真的加减','differ 其实数的是字符总个数,少一个就要减一','这是为了省一次加法运算'],
+     answer:0,
+     explain:'differ 回答的问题是「还有几种字符没对齐」,不是「差几个字符」。−2→−1 只是少欠一笔,这种字符从头到尾没对齐过,种类数不变;只有恰好落到 0(补齐)或恰好离开 0(从正好变多/变欠)的瞬间才动 differ。正因如此,判断必须写 == 0 而不是 >= 0——写成 >= 0 的话,2→1 这种没碰零线的变化也会误动 differ,命中判定全乱。',
+     jumpTo:8},
+    {q:'s = "eidbaooo"、p = "ab",算法返回哪些起点?',
+     options:['[0]','[3]','[1, 3]','[]'],
+     answer:1,
+     explain:'窗口定长 2,逐格滑:"ei" 欠 b、"id" 欠 b、"db" 欠 a——differ 始终不为 0;到 r=4 窗口 "ba":b 补平、a 补平,differ 归零,记下起点 3;之后 "ao" 多出 o、"oo" 连续超编,账再也平不了。所以只有 [3]。"ba" 是 "ab" 的重排,正中异位词的定义。',
+     jumpTo:20},
+    {q:'为什么这道题的窗口是「定长」的、进一个出一个,不像最长无重复子串那样自由伸缩?',
+     options:['异位词长度必须正好等于 len(p),短了长了都不可能是答案;定长滑动让账本每步只做 O(1) 增量更新','因为 s 和 p 一样长','伸缩会算出错误答案'],
+     answer:0,
+     explain:'p 的异位词只是把 p 的字母重排,长度一字不差等于 m = len(p)——候选窗口天然定长。于是右端进一个、左端出一个,账本差值每步只动一行,整体 O(|s|+|p|);要是每个窗口都重新数一遍字母,就退回暴力的 O(|s|·m)。自由伸缩是「最小覆盖子串」那类不定长问题才需要的。',
+     jumpTo:1},
+  ],
+
+  steps(input){
+    const F = [];
+    const s = String(input.s), p = String(input.p);
+    const S = s.split('');
+    const n = S.length;
+    const m = p.length;
+    const cnt = {};
+    const keyOrder = [];
+    for(const ch of p){
+      if(!(ch in cnt)){ cnt[ch] = 0; keyOrder.push(ch); }
+      cnt[ch] -= 1;
+    }
+    let differ = keyOrder.length;
+    const ans = [];
+    const hitRanges = [];
+
+    const ents = () => keyOrder.map(k => [k, cnt[k]]);
+    const marks = (r, withLeft) => {
+      const a = [{name:'r', idx:r, cls:'mi', text:'▲ r'}];
+      if(withLeft) a.push({name:'L', idx:Math.max(0, r - m + 1), cls:'mr', text:'▲ 左端'});
+      return a;
+    };
+    const winSt = (lo, hi, over) => {
+      const st = {};
+      for(let i = Math.max(0, lo); i <= hi; i++) st[i] = 'in';
+      if(over) for(const k in over) st[k] = over[k];
+      return st;
+    };
+    const ansTxt = () => ans.length ? ans.join(',') : '（还没有）';
+    /* ★ 快照原则：o 里的数据全部在 push 那一刻定死 */
+    const draw = (o) => (v) => {
+      v.arr('s', S, {
+        label:'字符串 <code>s</code>　·　窗口定长 <code>m = len(p) = ' + m + '</code>',
+        quotes:true, states:o.states || {}, markers:o.marks || []
+      });
+      v.map('cnt', o.cnt || [], {label:'计数差账本 <code>cnt</code>（窗口 − 需求，负 = 还缺）', hlK:o.hlK});
+      v.vars('vars', o.vars, {label:'变量'});
+      if(o.result !== undefined) v.result(o.result, {label:'命中起点'});
+    };
+
+    F.push({hl:[1,2,3,4], tag:'定长窗口', cls:'t-grey',
+      msg:'异位词和 p 一样长，长度必须等于 <code>m = len(p) = ' + m + '</code>，所以窗口<b>定长</b>：右端进一个、左端出一个，逐格滑动比对。比对工具是一本"差值账" <code>cnt</code>（窗口比需求多几个/少几个，负 = 还缺，下面的账本面板一行就是一种字符）加一个计数器 <code>differ</code>（账没平的字符种类数）。不需要每次重排再比较——账本一平（differ = 0）就是命中，先记住这个判据。',
+      do: draw({states:{}, marks:[], cnt:ents(), hlK:null,
+                vars:{r:'—', c:'—', differ:'…', ans:ansTxt()}})});
+
+    for(const ch of p){
+      F.push({hl:[5,6], tag:'记欠账', cls:'t-grey',
+        msg:'p 里的字符 <code>' + LCesc(ch) + '</code>：账本记 <code>cnt[' + LCesc(ch) + '] = ' + cnt[ch] + '</code>' +
+            (cnt[ch] === -1 ? '（窗口还欠它 1 个）。' : '（这种字符 p 要 ' + (-cnt[ch]) + ' 个，全欠着）。') +
+            '开局为什么全线记负？把需求当"欠条"：窗口还什么都没有，自然每种都欠着；之后 s 里的字符进来一笔笔还账，还到 0 表示这种字符凑齐，变成正数表示多拿了。',
+        do: draw({states:{}, marks:[], cnt:ents(), hlK:ch,
+                  vars:{r:'—', c:ch, differ:'…', ans:ansTxt()}})});
+    }
+
+    F.push({hl:[7,8], tag:'初始化完成', cls:'t-grey',
+      msg:'<code>differ = ' + differ + '</code>：' + differ + ' 种字符的账还没平；<code>ans = []</code> 还空着。接下来每格只做两件事：右端补账、左端退账，账本每次只动一行，全程 O(1) 增量维护。对比暴力法——每个窗口都排序再比较，要 O(|s|·m·log m)——增量记账划算太多，这正是本题的精髓。',
+      do: draw({states:{}, marks:n ? marks(0, false) : [], cnt:ents(), hlK:null,
+                vars:{r:'—', c:'—', differ:differ, ans:ansTxt()}})});
+
+    for(let r = 0; r < n; r++){
+      const c = S[r];
+      const lo = Math.max(0, r - m + 1);
+      const stBefore = () => {
+        const st = {};
+        for(let i = lo; i < r; i++) st[i] = 'in';
+        st[r] = 'active';
+        return st;
+      };
+
+      F.push({hl:[9], tag:'右端进来', cls:'t-ink',
+        msg:'<code>r = ' + r + '</code>，捡到字符 <code>' + LCesc(c) + '</code>（橙色当前格），马上要补账进窗——窗口内容多了一个字符，差额账必须立刻跟着记，否则后面 differ 的判断全建立在旧账上。窗口此时是 [' + lo + '..' + (r - 1) + ']' + (r >= m - 1 ? '（已满长）' : '（还在攒）') + '，▲左端名牌标着满长窗口的左边界。',
+        do: draw({states:stBefore(), marks:marks(r, r >= m - 1), cnt:ents(), hlK:null,
+                  vars:{r:r, c:c, differ:differ, ans:ansTxt()}})});
+
+      const oldv = cnt[c] || 0;
+      if(!(c in cnt)) keyOrder.push(c);
+      cnt[c] = oldv + 1;
+      F.push({hl:[10], tag:'补一笔', cls:'t-blue',
+        msg:'<code>cnt[' + LCesc(c) + ']</code>: ' + oldv + ' → <b>' + cnt[c] + '</b>（窗口比需求' +
+            (cnt[c] > 0 ? '多 ' + cnt[c] : cnt[c] < 0 ? '欠 ' + (-cnt[c]) : '正好') + '）。这一笔要么是"欠账还了一笔"，要么是"多拿了一笔"——账面变了，但 differ 动不动，只看差值有没有<b>跨过 0</b>，下面分三种情况看。',
+        do: draw({states:winSt(lo, r, {[r]:'active'}), marks:marks(r, r >= m - 1), cnt:ents(), hlK:c,
+                  vars:{r:r, c:c, differ:differ, ans:ansTxt()}})});
+
+      const nv = cnt[c];
+      if(nv === 0){
+        differ--;
+        F.push({hl:[11,12], ok:11, tag:'平了一笔', cls:'t-green',
+          msg:'<code>cnt[' + LCesc(c) + '] = 0</code>：这种字符从"欠着"变"正好对齐" → 没平的账少一种，<code>differ-1 → ' + differ + '</code>。踩坑提醒：判断必须写 <code>== 0</code> 而不是 <code>&gt;= 0</code>——像 2→1 这种没碰零线的变化，本来就还欠着，对齐状态根本没变，differ 不该动。',
+          do: draw({states:winSt(lo, r, {[r]:'active'}), marks:marks(r, r >= m - 1), cnt:ents(), hlK:c,
+                    vars:{r:r, c:c, differ:differ, ans:ansTxt()}})});
+      } else if(nv === 1){
+        differ++;
+        F.push({hl:[11,12,13,14], ok:13, tag:'多出来了', cls:'t-red',
+          msg:'<code>cnt[' + LCesc(c) + '] = 1</code>：这种字符从"正好"变"多一个" → <b>多出一种没平的账</b>，<code>differ+1 → ' + differ + '</code>。s 里出现 p 没有的字符也走这条路：本来不欠它的，进来就是白多一笔，窗口立刻不可能对齐——只能等它滑出时再还回来。',
+          do: draw({states:winSt(lo, r, {[r]:'active'}), marks:marks(r, r >= m - 1), cnt:ents(), hlK:c,
+                    vars:{r:r, c:c, differ:differ, ans:ansTxt()}})});
+      } else {
+        F.push({hl:[11,12,13,14], no:11, tag:'没跨过零', cls:'t-grey',
+          msg:'<code>cnt[' + LCesc(c) + '] = ' + nv + '</code>：从 ' + oldv + ' 到 ' + nv + ' 没碰到零线（本来就欠/多着好几笔）→ 对齐状态没变，<code>differ</code> 不动，还是 ' + differ + '。反过来说，只有"恰好落到 0"或"恰好离开 0"两种时刻才动 differ——differ 数的是种类不是个数，这一条让它永远 O(1) 维护。',
+          do: draw({states:winSt(lo, r, {[r]:'active'}), marks:marks(r, r >= m - 1), cnt:ents(), hlK:c,
+                    vars:{r:r, c:c, differ:differ, ans:ansTxt()}})});
+      }
+
+      if(r >= m){
+        const d = S[r - m];
+        const oldd = cnt[d];
+        cnt[d] = oldd - 1;
+        F.push({hl:[15,16,17], tag:'左端滑出', cls:'t-orange',
+          msg:'窗口要超过 <code>m = ' + m + '</code> 个了 → 左端 s[' + (r - m) + ']=<code>' + LCesc(d) + '</code> 滑出（画面变灰），<code>cnt[' + LCesc(d) + ']: ' + oldd + ' → ' + cnt[d] + '</code>，账面退一笔。定长窗口的"进一个出一个"全靠这句 <code>if r &gt;= m</code> 卡时机——提前滑窗口不满长，滞后滑窗口又超长，都不行。',
+          do: draw({states:winSt(lo, r, {[r - m]:'stale'}), marks:marks(r, true), cnt:ents(), hlK:d,
+                    vars:{r:r, c:c, differ:differ, ans:ansTxt()}})});
+        if(cnt[d] === 0){
+          differ--;
+          F.push({hl:[18,19], ok:18, tag:'退账平了', cls:'t-green',
+            msg:'<code>cnt[' + LCesc(d) + '] = 0</code>：这笔退账正好退到零线 → 没平的账少一种，<code>differ-1 → ' + differ + '</code>。退账和补账是镜像操作，判断条件一模一样：只认零线，跨过才动 differ。',
+            do: draw({states:winSt(lo, r, {}), marks:marks(r, true), cnt:ents(), hlK:d,
+                      vars:{r:r, c:c, differ:differ, ans:ansTxt()}})});
+        } else if(cnt[d] === -1){
+          differ++;
+          F.push({hl:[18,19,20,21], ok:20, tag:'又欠起来', cls:'t-red',
+            msg:'<code>cnt[' + LCesc(d) + '] = -1</code>：把"正好"退成了"欠一个" → 又多一种没平的账，<code>differ+1 → ' + differ + '</code>。注意触发条件是从 0 跌到 −1 这一瞬——从 1 跌到 0 是上面"平账"分支管的事，两条路互不重叠，differ 才不会多加或少加。',
+            do: draw({states:winSt(lo, r, {}), marks:marks(r, true), cnt:ents(), hlK:d,
+                      vars:{r:r, c:c, differ:differ, ans:ansTxt()}})});
+        } else {
+          F.push({hl:[18,19,20,21], no:18, tag:'没跨过零', cls:'t-grey',
+            msg:'<code>cnt[' + LCesc(d) + '] = ' + cnt[d] + '</code>：退账没碰零线（' + oldd + ' → ' + cnt[d] + '，本来就欠/多着好几笔）→ <code>differ</code> 不变，还是 ' + differ + '。多数滑出都是这种"无声退账"——对齐状态没变，账本记一笔就走。',
+            do: draw({states:winSt(lo, r, {}), marks:marks(r, true), cnt:ents(), hlK:d,
+                      vars:{r:r, c:c, differ:differ, ans:ansTxt()}})});
+        }
+      } else {
+        F.push({hl:[15], no:15, tag:'还不用滑', cls:'t-grey',
+          msg:'窗口里只有 ' + (r + 1) + ' 个字符，还没到 <code>m = ' + m + '</code> 个 → 不用滑出，继续攒。前 m−1 步都处于"攒窗口"阶段：只进不出；攒满后才开始进一个、出一个的匀速滑动。',
+          do: draw({states:winSt(lo, r, {}), marks:marks(r, false), cnt:ents(), hlK:null,
+                    vars:{r:r, c:c, differ:differ, ans:ansTxt()}})});
+      }
+
+      const full = r >= m - 1;
+      if(full && differ === 0){
+        ans.push(r - m + 1);
+        hitRanges.push([lo, r]);
+        F.push({hl:[22,23], ok:22, tag:'命中异位词！', cls:'t-green',
+          msg:'窗口满长且 <code>differ = 0</code> → 账全平！<code>s[' + lo + '..' + r + '] = "' + LCesc(s.slice(lo, r + 1)) + '"</code> 每种字母不多不少，正好是 p 的重排，记下起点 <b>' + lo + '</b>。为什么账平就等于异位词？长度已是 m、每种字符的差额都是 0，字母组成必然和 p 完全一致——不用排序、不用逐格比较，O(1) 判定命中。',
+          do: draw({states:winSt(lo, r, {}), marks:marks(r, true), cnt:ents(), hlK:null,
+                    vars:{r:r, c:c, differ:differ, ans:ansTxt()}})});
+      } else if(full){
+        F.push({hl:[22], no:22, tag:'不对齐', cls:'t-grey',
+          msg:'窗口满长，但 <code>differ = ' + differ + '</code> ≠ 0 → 还有 ' + differ + ' 种字符的账没平，不是异位词，继续滑。反例感受一下：哪怕只多一个字母（多个 b 少个 a），字母组成就和 p 对不上——异位词要求每种字符的个数分毫不差，differ 把这种细差全记着。',
+          do: draw({states:winSt(lo, r, {}), marks:marks(r, true), cnt:ents(), hlK:null,
+                    vars:{r:r, c:c, differ:differ, ans:ansTxt()}})});
+      } else {
+        F.push({hl:[22], no:22, tag:'攒窗口', cls:'t-grey',
+          msg:'窗口只有 ' + (r + 1) + ' 个字符，还没攒满 <code>m = ' + m + '</code> 个 → 先不比对。踩坑提醒：就算这时 differ = 0 也不能记——短于 m 的串长度就不对，绝不可能是异位词；判断里的 <code>r &gt;= m − 1</code> 就是这道闸，把没攒满的窗口全挡在外面。',
+          do: draw({states:winSt(lo, r, {}), marks:marks(r, false), cnt:ents(), hlK:null,
+                    vars:{r:r, c:c, differ:differ, ans:ansTxt()}})});
+      }
+    }
+
+    const stFinal = {};
+    hitRanges.forEach(([a, b]) => { for(let i = a; i <= b; i++) stFinal[i] = 'target'; });
+    F.push({hl:[24], tag:'返回', cls:'t-dark',
+      msg:ans.length
+        ? '扫完整个 s，找到 <b>' + ans.length + '</b> 处异位词，起点分别是第 ' + ans.join('、') + ' 格（画面紫色窗口全是命中段）🎉 复盘：每个字符进窗、出窗各一次，账本操作全是 O(1)，总复杂度 O(|s| + |p|)；核心技巧是"只动跨零的账"，differ 才能增量维护。'
+        : '扫完整个 s，一个异位词都没找到 → 返回空列表。differ 自始至终没归过零，说明没有任何满长窗口和 p 对上账。',
+      do: draw({states:stFinal, marks:n ? marks(n - 1, true) : [], cnt:ents(), hlK:null,
+                vars:{r:n - 1, c:'—', differ:differ, ans:ans.length ? ans.join(',') : '（无）'},
+                result:ans})});
+    return F;
+  }
+});
+</script>
+</body>
+</html>

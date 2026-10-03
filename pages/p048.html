@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P048 · 二叉树的最近公共祖先 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 48, num: 236, title: '二叉树的最近公共祖先', diff: '中等', cat: '二叉树',
+  method: 'lowestCommonAncestor',
+
+  lede: '题目：在二叉树里找节点 p 和节点 q 的<b>最近公共祖先</b>（LCA）——离 p、q 都最近的那个公共长辈。' +
+        '思路：后序<span class="var o">递归</span>整棵树，每棵子树汇报"在我这儿找到了几个目标（0 / 1 / 2）"；' +
+        '<b>第一个凑齐 2 个的节点，就是最近公共祖先</b>——再往上报时答案已经锁定，不会变。' +
+        '动画里 p、q 用节点值标记在树上（LeetCode 原题传的是节点对象，换成比较节点即可，思路完全一样），' +
+        '函数名较长，下面把递归函数简称 dfs。',
+
+  roles: [
+    {c:'blue',   code:'p / q',  text:'要找的两个目标（树上的名牌）'},
+    {c:'orange', code:'active', text:'当前递归到的节点'},
+    {c:'green',  code:'done',   text:'已统计完的子树 / 绿箭头 = 数量往上汇'},
+    {c:'violet', code:'target', text:'最近公共祖先（第一个凑齐 2 个的节点）'}
+  ],
+
+  codeTitle: '跟着高亮读代码——第 5 行变<span style="color:var(--green)">绿</span>＝踩到了 p/q（或空位）；' +
+             '第 10 行变绿＝凑齐 2 个，当前节点就是答案。',
+
+  idea: '每棵子树汇报"找到几个目标"；第一个从左右凑齐 2 个的节点，就是 p、q 的最近公共祖先。',
+
+  qa: [
+    {q:'为什么"第一个凑齐 2 个"的节点就是最近的？',
+     a:'递归是自底向上的：目标只会在叶子附近被发现，数量沿着路径往上汇。' +
+       'p 和 q 的公共祖先有很多层，但"两边刚好各出一个"这件事<b>最早发生在最深处</b>——' +
+       '那就是最近的公共祖先。所以用 <code>ans is None</code> 锁定第一次，后面不再改。'},
+    {q:'如果 p 就是 q 的祖先呢（比如 p=5，q 在 5 下面）？',
+     a:'也稳。q 的"1 个"会先在下面被数出来，顺着递归一路汇到 p；p 再把自己这 1 个加上，' +
+       '<code>cnt = 1 + 1 = 2</code>，<b>第一个凑齐 2 的正好是 p 自己</b>——它就是答案。' +
+       '用 preset 3（p=5, q=7）跑一遍能看到这个过程。'},
+    {q:'为什么每个节点都要把整棵子树算完（不提前停）？',
+     a:'这是"统计型"递归：父亲需要孩子返回<b>准确的个数</b>才能算自己的个数。' +
+       '代价是多看了些节点，但换来了代码极短、绝对不会漏——比如目标一个都不存在时，ans 保持 None。'},
+    {q:'复杂度？',
+     a:'每个节点访问一次，时间 O(n)；递归栈深度 = 树高，空间 O(h)，最坏一条链时 O(n)。'}
+  ],
+
+  complexity: '时间 O(n)（每个节点访问一次）　·　空间 O(h)（递归栈，h 为树高）',
+
+  form: [
+    {key:'root', label:'root', type:'tree', def:[3,5,1,6,2,0,8,null,null,7,4]},
+    {key:'p', label:'p 的值', type:'num', def:5},
+    {key:'q', label:'q 的值', type:'num', def:1}
+  ],
+  presets: [
+    {label:'经典例 p=5, q=1 → 3', values:{root:[3,5,1,6,2,0,8,null,null,7,4], p:5, q:1}},
+    {label:'深处找 p=7, q=4 → 2', values:{root:[3,5,1,6,2,0,8,null,null,7,4], p:7, q:4}},
+    {label:'p 是 q 的祖先 p=5, q=7', values:{root:[3,5,1,6,2,0,8,null,null,7,4], p:5, q:7}},
+    {label:'两个节点 p=2, q=1', values:{root:[2,1], p:2, q:1}}
+  ],
+
+  code: `class Solution:
+    def lowestCommonAncestor(self, root, p, q):
+        self.ans = None
+        def dfs(node):                    # 返回: 这棵子树里找到几个目标
+            if not node:
+                return 0                  # 空位: 0 个
+            cnt = dfs(node.left) + dfs(node.right)   # 左右各找到几个
+            if node.val in (p, q):
+                cnt += 1                  # 自己也是一个目标
+            if cnt == 2 and self.ans is None:
+                self.ans = node.val       # 第一个凑齐 2 个的 = 最近公共祖先
+            return cnt
+        dfs(root)
+        return self.ans
+`,
+
+  sol(input){
+    const T = Viz.parseTree(input.root || []);
+    const byKey = {}; T.nodes.forEach(n => byKey[n.key] = n);
+    let ans = null;
+    function dfs(k){
+      if(k == null) return 0;
+      const nd = byKey[k];
+      let cnt = dfs(nd.left) + dfs(nd.right);
+      if(nd.val === input.p || nd.val === input.q) cnt++;
+      if(cnt === 2 && ans == null) ans = nd.val;
+      return cnt;
+    }
+    dfs(T.root);
+    return ans;
+  },
+  expected: 3,
+
+  quiz: [
+    {q:'p、q 的公共祖先有一整摞,为什么「第一个凑齐 2 个」的恰好是「最近」的那个?',
+     options:['因为递归从根往下走,第一个碰到的就是最上面的,也就是最近的','因为递归自底向上汇数:凑齐 2 个必然最早发生在最深的公共祖先,更浅的祖先虽然后来也凑得齐,但被 ans is None 锁定挡在门外','因为"最近"是随机出现的,只是大概率是深的那个'],
+     answer:1,
+     explain:'目标总在叶子附近先被发现,"1 个"沿着路径一层层往上报。两位目标各自的汇报线迟早要在某个祖先处合并成 2——这条合并线最早闭合的位置,正是它们共享的最深长辈。所以代码用 <code>cnt == 2 and ans is None</code> 只认第一次:第一次 = 最深处 = 最近公共祖先,之后谁也改不了。',
+     jumpTo:83},
+    {q:'把 p、q 换成 p=7、q=4(同一棵默认树),最近公共祖先是哪个节点?',
+     options:['3','2','5'],
+     answer:1,
+     explain:'7 和 4 都是节点 2 的左右孩子。递归分别在 7、4 处数到 1 个,两个"1"沿路径上汇到 2:cnt = 1 + 1 = 2,第一个凑齐的就是 2 → 答案 2。节点 5 最后也凑齐 2(整棵左子树都罩住),3 更是如此——但它们是更浅的公共祖先,第一次锁定机制保证头衔归最深的 2。',
+     jumpTo:84},
+    {q:'如果 p 本身就是 q 的祖先(比如 p=5、q 是 5 的孩子),这套算法要额外处理吗?',
+     options:['要,得先用父指针表把两条祖先链都存下来','要,这种情况要单独写一个分支从 p 往下搜','不用——q 的"1 个"先在下面数出来、一路汇到 5;5 自己也是目标再 +1,cnt = 1+1 = 2,第一个凑齐的恰好是 5 自己'],
+     answer:2,
+     explain:'"自己是目标"那一步(+1)天然覆盖了祖先情形:后代的发现顺着递归汇上来,祖先本人在自己的层数 +1,凑齐时刻正好发生在祖先身上——它确实是这种情况下的 LCA。这正是"统计型后序递归"的省心之处:一个通用规则,边界情形自动落进同一套逻辑。',
+     jumpTo:48},
+  ],
+
+  steps(input){
+    const F = [];
+    const T = Viz.parseTree(input.root || []);
+    const t = Viz.treeLayout(input.root || []);
+    const byKey = {}; T.nodes.forEach(n => byKey[n.key] = n);
+    const pv = input.p, qv = input.q;
+    let callSeq = 0;
+    let ans = null;                      // 全局答案（生成期变量, push 时读快照）
+    const cntMap = new Map();            // key -> 该子树找到的目标数
+    const vName = k => k == null ? 'null' : LCesc(String(byKey[k].val));
+    const snapTags = () => {
+      const o = {};
+      cntMap.forEach((c, k) => { if(c > 0) o[k] = {text:'找到 ' + c + ' 个', cls:'mg'}; });
+      return o;
+    };
+
+    const draw = (o) => (v) => {
+      const states = {};
+      (o.path || []).forEach(k => { states[k] = 'in'; });
+      if(o.cur != null) states[o.cur] = 'active';
+      if(o.lca != null) states[o.lca] = 'target';
+      const tags = {};
+      Object.keys(o.tags || {}).forEach(k => { tags[k] = o.tags[k]; });
+      v.tree('T', t, {label:'二叉树　·　名牌 = 要找的 p / q，绿标签 = 子树找到的目标数',
+                      states, tags, edgeStates:o.edgeStates || {}});
+      const stack = o.stack || [];
+      v.stack('S', stack, {
+        label:'递归调用栈　·　越往下越新',
+        states: stack.length ? {[stack[stack.length - 1].key]:'active'} : {},
+        topTag:'栈顶'
+      });
+      if(o.vars) v.vars('vars', o.vars, {label:'当前函数的变量'});
+      if(o.result != null) v.result(o.result, {label:'最近公共祖先'});
+    };
+
+    /* ★ 快照原则：所有动态状态（stack/path/vars/tags/edgeStates）都在 F.push 那一刻
+       拼进对象字面量，do() 执行时只读 o，绝不读外层可变变量 */
+    function visit(k, frames, path){
+      const id = 'c' + (++callSeq);
+      const stack = frames.concat([{key:id, val:'dfs(' + vName(k) + ')'}]);
+      if(k == null){
+        F.push({hl:[5,6], ok:5, tag:'空子树', cls:'t-grey',
+          msg:'调用 <code>dfs(null)</code> → <b>return 0</b>：空子树里连节点都没有，更不可能藏着 p(' + pv + ') 或 q(' + qv + ')。这就是"一边是空位，目标就一定不在那边"的底气——空位的汇报永远是 0，父亲拿到 0 就死心，把希望放到另一侧或自己身上。',
+          do: draw({stack, path, tags: snapTags()})});
+        return 0;
+      }
+      F.push({hl:[5], no:5, tag:'进入函数', cls:'t-blue',
+        msg:'进入 <b>dfs(节点 ' + vName(k) + ')</b>：节点存在 → 先派两路侦察去问左右子树"找到几个目标"。它自己先不下结论——汇总和判定都要等数字回来。画面：调用栈压入新的一层，橙色焦点移到当前节点。',
+        do: draw({stack, cur:k, path: path.concat(k), tags: snapTags()})});
+
+      const ck = byKey[k];
+      F.push({hl:[7], tag:'问左边', cls:'t-blue',
+        msg:'第 7 行：递归统计左子树' + (ck.left != null ? '（根是 节点 ' + vName(ck.left) + '）' : '——是空的，待会它只会汇报 0（空位藏不住目标）') + '。这一问会一路扎到最深的叶子才回头：橙焦点跟着往下走，绿标签要等子树统计完才挂。',
+        do: draw({stack, cur:k, path: path.concat(k), tags: snapTags()})});
+      const l = visit(ck.left, stack, path.concat(k));
+      F.push({hl:[7], tag:'左边返回', cls:'t-green',
+        msg:'左子树返回 <b>' + l + '</b> 个' + (l > 0 ? '——找到目标了！绿箭头就是数字上汇的路。' : '——左边一无所获，但 0 也是重要情报：它证明目标不在左边，父亲可以放心查右边或指望自己。'),
+        do: draw({stack, cur:k, path: path.concat(k), tags: snapTags(),
+                  edgeStates: {[k + '-' + ck.left]:'e-done'},
+                  vars:{左:l + ' 个', 右:'…', cnt:'…', ans: ans == null ? 'None' : ans}})});
+
+      F.push({hl:[7], tag:'问右边', cls:'t-blue',
+        msg:'第 7 行：递归统计右子树' + (ck.right != null ? '（根是 节点 ' + vName(ck.right) + '）' : '——空的，将汇报 0') + '。左边的 ' + l + ' 个先记在账上，右边的数字一回来就汇总。',
+        do: draw({stack, cur:k, path: path.concat(k), tags: snapTags(),
+                  edgeStates: {[k + '-' + ck.left]:'e-done'},
+                  vars:{左:l + ' 个', 右:'…', cnt:'…', ans: ans == null ? 'None' : ans}})});
+      const r = visit(ck.right, stack, path.concat(k));
+      const cnt = l + r;
+      cntMap.set(k, cnt);
+      F.push({hl:[7], tag:'左右汇总', cls:'t-green',
+        msg:'<code>cnt = ' + l + ' + ' + r + ' = ' + cnt + '</code>：左右情报到齐。此刻 cnt 的含义："以节点 ' + vName(k) + ' 为根的子树里，一共找到 ' + cnt + ' 个目标"。全场只有 p、q 两个目标，所以任何一层汇报都落在 0/1/2 之间。',
+        do: draw({stack, cur:k, path: path.concat(k), tags: snapTags(),
+                  edgeStates: {[k + '-' + ck.left]:'e-done', [k + '-' + ck.right]:'e-done'},
+                  vars:{左:l + ' 个', 右:r + ' 个', cnt:cnt, ans: ans == null ? 'None' : ans}})});
+
+      const isHit = ck.val === pv || ck.val === qv;
+      let c2 = cnt;
+      if(isHit){
+        c2 = cnt + 1;
+        F.push({hl:[8,9], ok:8, tag:'自己是目标', cls:'t-green',
+          msg:'节点 ' + vName(k) + ' 正是 <b>' + (ck.val === pv && ck.val === qv ? 'p 和 q' : (ck.val === pv ? 'p' : 'q')) +
+              '</b>！它自己也是一个目标，<code>cnt = ' + cnt + ' + 1 = ' + c2 + '</code>。这一步顺带覆盖了"p 就是 q 的祖先"的情况：下面找到的目标顺着递归汇上来，祖先本人再 +1，凑齐 2 的正是它。',
+          do: draw({stack, cur:k, path: path.concat(k), tags: snapTags(),
+                    edgeStates: {[k + '-' + ck.left]:'e-done', [k + '-' + ck.right]:'e-done'},
+                    vars:{左:l + ' 个', 右:r + ' 个', cnt:c2, ans: ans == null ? 'None' : ans}})});
+      } else {
+        F.push({hl:[8], no:8, tag:'不是目标', cls:'t-ink',
+          msg:'节点 ' + vName(k) + ' 不是 p(' + pv + ') 也不是 q(' + qv + ')，cnt 保持 <b>' + cnt + '</b>——它只是个中转站，负责把下面的数字原样抄送上去，自己不掺和。',
+          do: draw({stack, cur:k, path: path.concat(k), tags: snapTags(),
+                    edgeStates: {[k + '-' + ck.left]:'e-done', [k + '-' + ck.right]:'e-done'},
+                    vars:{左:l + ' 个', 右:r + ' 个', cnt:cnt, ans: ans == null ? 'None' : ans}})});
+      }
+
+      const first = c2 === 2 && ans == null;
+      if(first) ans = byKey[k].val;
+      F.push({hl:[10], ok: first ? 10 : undefined, no: first ? undefined : 10,
+        tag:'凑齐 2 个了吗', cls: first ? 't-violet' : 't-red',
+        msg: first
+          ? '<code>cnt = 2</code> 且 ans 还空着 → <b>条件成立！</b>就在节点 ' + vName(k) + ' 这里锁定答案。为什么第一个凑齐的就是"最近"？数字自底向上汇，凑齐一定先发生在<b>最深的</b>公共祖先——比它浅的祖先虽然最后也凑得齐 2，但只能排在后面。'
+          : (c2 === 2
+            ? 'cnt = 2，但 <code>ans 已经是 ' + ans + '</code> → 不覆盖。这位也是公共祖先（罩得住两个目标），只是站得更浅；"最近"的头衔已被更深处那位先拿走，锁定机制就是防止后来者篡位。'
+            : 'cnt = ' + c2 + ' ≠ 2 → 还没凑齐：' + (c2 === 0 ? '这棵子树里什么都没有。' : '目前只找到 1 个目标，另一个还在别处。') + '如实把 ' + c2 + ' 往上交——父亲要靠准确的数字判断凑齐时刻。'),
+        do: draw({stack, cur:k, path: path.concat(k), tags: snapTags(),
+                  edgeStates: {[k + '-' + ck.left]:'e-done', [k + '-' + ck.right]:'e-done'},
+                  vars:{左:l + ' 个', 右:r + ' 个', cnt:c2, ans: ans == null ? 'None' : ans}})});
+
+      if(first){
+        F.push({hl:[11], tag:'锁定答案', cls:'t-violet',
+          msg:'🎉 <code>ans = ' + vName(k) + '</code>：节点 ' + vName(k) + ' 是<b>第一个</b>同时罩住 p(' + pv +
+              ') 和 q(' + qv + ') 的节点——最近公共祖先，画面变紫。此后即使更浅的祖先也凑齐 2 个，<code>ans is None</code> 不再成立，谁也改不了它。',
+          do: draw({stack, cur:k, path: path.concat(k), lca:k, tags: snapTags(),
+                    edgeStates: {[k + '-' + ck.left]:'e-done', [k + '-' + ck.right]:'e-done'},
+                    vars:{左:l + ' 个', 右:r + ' 个', cnt:c2, ans: ans}})});
+      }
+
+      F.push({hl:[12], tag:'上报', cls:'t-orange',
+        msg:'<code>return ' + c2 + '</code>：节点 ' + vName(k) + ' 的统计出栈，交给上一层。后序节奏保证：父亲开始汇总时，左右两个数字一定已经到齐——这是整套递归不出错的地基。',
+        do: draw({stack: frames, path, tags: snapTags(),
+                  edgeStates: {[k + '-' + ck.left]:'e-done', [k + '-' + ck.right]:'e-done'}})});
+      return c2;
+    }
+
+    F.push({hl:[1,2,3,4], tag:'初始化', cls:'t-grey',
+      msg:'规则一句话：<b>每棵子树向上汇报"在我这儿找到几个目标（0/1/2）"，第一个凑齐 2 个的节点就是最近公共祖先</b>。为什么敢这么定？递归是自底向上的：目标总在深处先被发现，数字沿绿箭头一层层上汇——公共祖先有一摞，但"凑齐 2 个"必然<b>最早发生在最深的那个</b>，所以用 <code>ans is None</code> 锁定第一次，之后谁也不许改。盯住调用栈和绿箭头（数量上汇的路）。',
+      do: draw({stack:[], tags:{}, vars:{ans:'None'}})});
+
+    F.push({hl:[13], tag:'开始递归', cls:'t-blue',
+      msg:'第 13 行：<code>dfs(根节点 ' + vName(T.root) + ')</code>。这是<b>后序</b>递归：每个节点先把左右两棵子树都问完、数字收齐，才轮到自己汇总——因为自己的 cnt = 左 + 右（+自己），孩子的数字不到齐就算不了。',
+      do: draw({stack:[], vars:{ans:'None'}})});
+
+    if(T.root != null) visit(T.root, [], []);
+
+    F.push({hl:[14], tag:'返回答案', cls:'t-dark',
+      msg:'🎉 整棵树统计完，<code>return ans = ' + ans + '</code>。紫色节点就是 p(' + pv + ') 和 q(' + qv +
+          ') 的最近公共祖先——第一个凑齐 2 个目标的地方。复盘：每个节点只访问一次 → 时间 O(n)、空间 O(h)；"锁定第一次"的策略还顺带处理了 p 是 q 祖先的边界情况。',
+      do: draw({stack:[], tags: snapTags(), lca: (T.nodes.find(n => n.val === ans) || {}).key,
+                result: ans})});
+
+    return F;
+  }
+});
+</script>
+</body>
+</html>

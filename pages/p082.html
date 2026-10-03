@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P082 · 打家劫舍 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+<style>
+  /* 本页专用状态：偷当前家让 dp 上涨 → 金色 */
+  .st-gold{background:#fbf1d2!important;border-color:#d9a520!important;color:#8a6407!important;box-shadow:0 0 0 3px #f3e2a0}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 82, num: 198, title: '打家劫舍', diff: '中等', cat: '动态规划',
+  method: 'rob',
+
+  lede: '题目：一排人家，每家有钱 <span class="var i">nums[i]</span>，<b>相邻两家不能都偷</b>，求能偷到的最高金额。' +
+        '每到一家只有两个选择：<b>不偷</b>（继承上家成果 prev1）或<b>偷</b>（上上家成果 prev2 + 这家的钱），取大者。' +
+        '全程只滚 <span class="var o">prev2</span>、<span class="var b">prev1</span> 两个变量——dp 数组都省了。金色 = 偷这家让收益上涨，灰色 = 不偷更划算。',
+
+  roles: [
+    {c:'orange', code:'prev2', text:'f(i−2)：前前家为止的最优'},
+    {c:'blue',   code:'prev1', text:'f(i−1)：上一家为止的最优'},
+    {c:'violet', code:'cur',   text:'f(i) = max(prev1, prev2 + num)'},
+    {c:'green',  code:'柱子',  text:'dp：只看前 k 家的最优，逐家生长'}
+  ],
+
+  codeTitle: '跟着高亮读代码——决策行 <code>max</code> 里见分晓：偷赢→金框、不偷赢→灰框；后面两行就是把窗口往右滚一格。',
+
+  legend: [
+    {c:'orange', text:'prev2：偷它依赖的"上上家"'},
+    {c:'blue',   text:'prev1：不偷时继承的"上一家"'},
+    {swatch:'#fbf1d2', text:'金色 = 偷这家更赚（dp 上涨）'},
+    {swatch:'var(--green-soft)', text:'灰虚框 = 刚算出、还没落位的 cur'}
+  ],
+
+  idea: '每家二选一：不偷继承 prev1，偷则 prev2 + num，取大滚向前——f(i) 只依赖前两个 f，两个滚动变量走完全程，O(n) 时间 O(1) 空间。',
+
+  qa: [
+    {q:'为什么只需要 prev1 和 prev2，不用整个 dp 数组？',
+     a:'写全了是 dp[i] = max(dp[i−1], dp[i−2] + nums[i])。算 dp[i] 时只读 dp[i−1]、dp[i−2] 两格，更早的永远用不到——所以拿 prev1、prev2 两个变量当"滑动窗口"就够了，空间从 O(n) 压到 O(1)。'},
+    {q:'"偷当前家"为什么是 prev2 + num 而不是 prev1 + num？',
+     a:'偷了这家，<b>紧邻的上一家就必须空着</b>——所以能接上来的是"前前家为止"的最优 prev2。若写成 prev1 + num 就可能把相邻两家一起偷了。动画里橙箭头 prev2 和当前家中间永远隔着一根蓝柱 prev1。'},
+    {q:'每家的"最优"只管前缀，合起来还是全局最优吗？',
+     a:'是。dp[i] 的定义就是"只考虑前 i+1 家"的最优。归纳一下：dp[i] 由 dp[i−1]、dp[i−2] 这两个"更短前缀的最优"推来，而全局答案恰好是"全部家的前缀"——dp[n−1]。这就是 DP 的最优子结构：局部最优拼出全局最优。'},
+    {q:'金色的家就是最后被偷的那几家吗？',
+     a:'不一定。金色表示"只看到这家为止，偷它更划算"（dp 涨了）；后面来了更有钱的家，全局最优可能把它舍掉。结尾一帧会用 dp 反推真正的最优方案——你可以对照看看哪些金色家被"后期优化"掉了。'}
+  ],
+
+  complexity: '时间 O(n)（每家决策一次）　·　空间 O(1)（滚动变量 prev2、prev1）',
+
+  form: [
+    {key:'nums', label:'nums', type:'arr', def:[2,7,9,3,1]}
+  ],
+  presets: [
+    {label:'[2,7,9,3,1] → 12', values:{nums:[2,7,9,3,1]}},
+    {label:'[1,2,3,1] → 4', values:{nums:[1,2,3,1]}},
+    {label:'[2,1,1,2] → 4（别贪中间）', values:{nums:[2,1,1,2]}},
+    {label:'[5] → 5（单家边界）', values:{nums:[5]}}
+  ],
+
+  code: `class Solution:
+    def rob(self, nums):
+        prev2 = 0                  # f(i-2): 前前家为止的最优
+        prev1 = 0                  # f(i-1): 上一家为止的最优
+        for num in nums:           # 轮到这家, 做决策
+            cur = max(prev1, prev2 + num)   # 不偷 or 偷, 取大
+            prev2 = prev1          # 窗口右滚
+            prev1 = cur
+        return prev1               # 最后一家为止的最优
+`,
+
+  sol(input){
+    const nums = input.nums || [];
+    let prev2 = 0, prev1 = 0;
+    for(const num of nums){
+      const cur = Math.max(prev1, prev2 + num);
+      prev2 = prev1; prev1 = cur;
+    }
+    return prev1;
+  },
+  expected: 12,
+
+  quiz: [
+    {q:'"偷当前家"为什么写成 prev2 + num,而不是 prev1 + num?',
+     options:['因为 prev1 可能是负数,加上去会变小','偷了这家,紧邻的上一家必须空着——能接上来的只有"到上上家为止"的最优 prev2;写 prev1 + num 等于把相邻两家一起偷了','两者数值永远相等,只是变量名不同'],
+     answer:1,
+     explain:'约束是"相邻不能都偷":偷第 i 家,第 i−1 家必空,所以接的是 f(i−2) 的成果 prev2,再补上 nums[i]。若误写 prev1 + num,DP 转移自己就违反了题目约束,答案会虚高。画面上橙箭头 prev2 与当前家之间永远隔着一根蓝柱 prev1——那根"空着"的上家正是约束的具象。',
+     jumpTo:11},
+    {q:'nums = [3,1,2,5,4,3],能偷到的最高金额是?',
+     options:['11','10','9'],
+     answer:0,
+     explain:'逐家滚 dp:偷3→3;1 不偷更赚→3;偷2=3+2=5→5;偷5=3+5=8→8;偷4=5+4=9→9;偷3=8+3=11→11。最优方案:第 0、3、5 家,3+5+3=11。选 10 的是把第 2、3 家(2 和 5)一起偷了——相邻违规;选 9 的是 3+2+4,合法但被"见钱就偷"带偏,舍不得在第 1 家空窗。DP 每家都算了偷与不偷两种,总账不会亏。',
+     jumpTo:19},
+    {q:'贪心"哪家钱多偷哪家"为什么在这题会翻车?dp 的"前缀最优"凭什么能拼出全局最优?',
+     options:['因为贪心跑得太快,考虑不周;慢一点的算法天然更准','贪心只顾眼前大钱,堵死了空窗;dp[i] 的定义是"只看前 i+1 家的最优",它由更短前缀的最优推来——最优子结构保证局部拼出全局','因为贪心不能处理相邻相等的钱数'],
+     answer:1,
+     explain:'反例 [5,6,5,1]:见钱就偷先拿 6(第 1 家),两侧全被封死,后面最多再蹭个 1,总账 7;而 dp 算出舍掉 6、偷两个 5(第 0、2 家)= 10。dp 强在每家都并排算"偷与不偷"两种未来,任何前缀的最优随身携带——dp[i] 由 dp[i−1]、dp[i−2] 这两个更短前缀的最优推出,归纳到最后一格 prev1 就是全局答案。翻车根源不在快慢,而在贪心没把"堵窗的代价"算进当下。',
+     jumpTo:23},
+  ],
+
+  steps(input){
+    const F = [];
+    const nums = (input.nums || []).slice();
+    const n = nums.length;
+    // 预跑一遍 dp：只为柱状图定刻度 + 末帧还原最优方案
+    const dpFull = [];
+    let p2 = 0, p1 = 0;
+    for(const num of nums){ const c = Math.max(p1, p2 + num); p2 = p1; p1 = c; dpFull.push(c); }
+    const scale = Math.max(1, dpFull[n - 1] || 1);
+    // 还原一组真正的最优方案（dp[i] > dp[i-1] 时必偷第 i 家）
+    const robbed = [];
+    let bi = n - 1;
+    while(bi >= 0){
+      if(bi === 0){ robbed.unshift(0); break; }
+      if(dpFull[bi] === dpFull[bi - 1]){ bi--; continue; }
+      robbed.unshift(bi); bi -= 2;
+    }
+
+    let prev2 = 0, prev1 = 0;
+    const dpVals = [];          // 已落位的 dp 柱
+    const houseSt = {};         // 每家的状态：gold / muted
+    const houseLb = {};         // 每家下方的 dp 小注
+
+    /* ---- 快照绘制（铁律 5） ---- */
+    const draw = (o) => (v) => {
+      v.arr('nums', nums, {
+        label:'一排人家　·　格子里的钱 = <code>nums[i]</code>',
+        states:o.hst, markers:o.hmk, labels:o.hlb
+      });
+      v.bars('dp', o.dp, {
+        label:'<code>dp</code>：只看前 k 家能偷到的最多钱',
+        max:scale, chartH:130, cw:46,
+        states:o.dst || {}, markers:o.dmk || [], labels:o.dlb || {}
+      });
+      v.vars('vars', o.vars, {label:'变量', hl:o.hl || []});
+      if(o.res !== undefined) v.result(o.res, {label:'能偷到的最高金额'});
+    };
+    const dLabels = (len) => { const o = {}; for(let t = 0; t < len; t++) o[t] = 'dp[' + t + ']'; return o; };
+    const snap = (extra) => Object.assign({
+      hst:Object.assign({}, houseSt), hmk:[], hlb:Object.assign({}, houseLb),
+      dp:dpVals.slice(), dst:{}, dmk:[], dlb:dLabels(dpVals.length),
+      vars:{}, hl:[], res:undefined
+    }, extra);
+
+    F.push({hl:[1,2,3,4], tag:'初始化', cls:'t-grey',
+      msg:'规矩：<b>相邻两家不能都偷</b>。于是每到一家只有两个选择——<b>不偷</b>，直接继承"到上家为止"的最优 prev1；<b>偷</b>，上家必须空着，只能接"到上上家为止"的最优 prev2 再加上这家的钱。任何方案里这家要么偷、要么不偷，二选一<b>不漏不重</b>，取 max 就是全部情形的最优。开算前一家都没偷过，prev2 = prev1 = 0；全程只滚这两个变量，dp 数组都省了。',
+      do: draw(snap({vars:{prev2:prev2, prev1:prev1}}))});
+
+    for(let t = 0; t < n; t++){
+      const num = nums[t];
+      F.push({hl:[5], tag:'第 ' + t + ' 家', cls:'t-ink',
+        msg:'轮到第 <b>' + t + '</b> 家（钱 = ' + num + '）。此刻手里：prev2 = ' + prev2 + (t >= 2 ? '（到第 ' + (t - 2) + ' 家为止的最优）' : '（还没有"上上家"，按 0 算）') + '、prev1 = ' + prev1 + (t >= 1 ? '（到第 ' + (t - 1) + ' 家为止的最优）' : '（还没有"上家"，按 0 算）') + '。二选一：<b>不偷</b> → 直接继承 prev1；<b>偷</b> → 紧邻上家必须空着，只能接 prev2 + 这家的钱。',
+        do: draw(snap({hst:Object.assign({}, houseSt, {[t]:'active'}),
+                       hmk:[{name:'i', idx:t, cls:'mi', text:'▲ i'}],
+                       dmk:[{name:'prev2', idx:t - 2, cls:'mi', text:'▲ prev2'},
+                            {name:'prev1', idx:t - 1, cls:'mr', text:'▲ prev1'}],
+                       vars:{num:num, prev2:prev2, prev1:prev1, cur:'…'}}))});
+
+      const stealV = prev2 + num, stayV = prev1;
+      const cur = Math.max(stayV, stealV);
+      const stealWin = stealV > stayV, tie = stealV === stayV;
+      F.push({hl:[6], tag:'偷 or 不偷', cls: stealWin ? 't-green' : (tie ? 't-grey' : 't-red'),
+        msg: stealWin
+          ? '算账：偷 = prev2 + num = ' + prev2 + ' + ' + num + ' = <b>' + stealV + '</b> ＞ 不偷 = prev1 = ' + stayV +
+            ' → <code>cur = ' + cur + '</code>，<b>这家的钱值得拿</b>（金框，dp 上涨）。为什么"偷"接的是 prev2 而不是 prev1？偷了它，紧邻的上家必须空着，能接的只有上上家为止的成果——写错成 prev1 + num 就等于把相邻两家一起偷了。'
+          : (tie
+             ? '算账：偷 = prev2 + num = ' + prev2 + ' + ' + num + ' = ' + stealV + '，不偷 = prev1 = ' + stayV + '，两边<b>打平</b> → <code>cur = ' + cur + '</code>（灰框）。最优值一样，画成"不偷"更省事——dp 看的是钱数，方案怎么选都不亏。'
+             : '算账：偷 = prev2 + num = ' + prev2 + ' + ' + num + ' = ' + stealV + ' ＜ 不偷 = prev1 = ' + stayV +
+               ' → <code>cur = ' + cur + '</code>。偷它还得搭上"上家空着"的代价，<b>不划算</b>（灰框），dp 不涨——这种"舍小保大"的总账正是 DP 比见钱就偷的贪心稳的地方。'),
+        do: draw(snap({hst:Object.assign({}, houseSt, {[t]: stealWin ? 'gold' : 'muted'}),
+                       hmk:[{name:'i', idx:t, cls:'mi', text:'▲ i'}],
+                       dp:dpVals.concat([cur]), dlb:dLabels(dpVals.length + 1),
+                       dst:{[dpVals.length]:'peek'},
+                       vars:{num:num, prev2:prev2, prev1:prev1, cur:cur}, hl:['cur']}))});
+
+      prev2 = prev1;
+      F.push({hl:[7], tag:'prev2 右滚', cls:'t-orange',
+        msg:'<code>prev2 = prev1 = ' + prev2 + '</code>：窗口往右滚一格。下一家（第 ' + (t + 1) + ' 家）若要偷，它能接的"上上家最优"正好是刚滚到位的 prev2——两行滚动连起来，f(i) 永远只依赖前两个 f，这就是空间 O(1) 的全部秘密。',
+        do: draw(snap({hst:Object.assign({}, houseSt, {[t]: stealWin ? 'gold' : 'muted'}),
+                       hmk:[{name:'i', idx:t, cls:'mi', text:'▲ i'}],
+                       dp:dpVals.concat([cur]), dlb:dLabels(dpVals.length + 1),
+                       dst:{[dpVals.length]:'peek'},
+                       dmk:[{name:'prev2', idx:t - 1, cls:'mi', text:'▲ prev2'},
+                            {name:'prev1', idx:t - 1, cls:'mr', text:'▲ prev1'}],
+                       vars:{num:num, prev2:prev2, prev1:prev1, cur:cur}, hl:['prev2']}))});
+
+      prev1 = cur;
+      dpVals.push(cur);
+      houseSt[t] = stealWin ? 'gold' : 'muted';
+      houseLb[t] = 'dp=' + cur;
+      F.push({hl:[8], tag:'prev1 更新', cls:'t-blue',
+        msg:'<code>prev1 = cur = ' + cur + '</code>：dp[' + t + '] = ' + cur + ' 正式落位（新柱子长出）。"只看前 ' + (t + 1) + ' 家最多偷多少"这个问题到此有了确定答案，两个滚动变量又备齐，走向第 ' + (t + 1) + ' 家。',
+        do: draw(snap({dst:{[dpVals.length - 1]:'just'},
+                       vars:{num:num, prev2:prev2, prev1:prev1, cur:cur}, hl:['prev1']}))});
+    }
+
+    F.push({hl:[5], no:5, tag:'决策完毕', cls:'t-red',
+      msg:n + ' 家全部决策完。复盘：每家只做一次二选一，两个候选（不偷 = prev1、偷 = prev2 + num）恰好覆盖"这家偷或不偷"的全部情形，max 出来的 dp 不会漏任何方案。dp 柱一路长到 <b>' + prev1 + '</b>。',
+      do: draw(snap({dst:{[dpVals.length - 1]:'done'},
+                     vars:{prev2:prev2, prev1:prev1}}))});
+
+    const robbedTxt = robbed.length ? ('第 ' + robbed.join('、') + ' 家：' + robbed.map(t => nums[t]).join(' + ') + ' = ' + prev1) : '没人家可偷';
+    F.push({hl:[9], tag:'返回', cls:'t-dark',
+      msg:'<code>return prev1 = ' + prev1 + '</code> 🎉 最优方案：' + robbedTxt + '（紫框）。注意金色家 ≠ 最终被偷的家：金色只说明"看到这家为止，偷它更赚"，后面的决策完全可能把它舍掉——dp 每一步都站在"全局视角"上重新取舍，这正是它比贪心聪明的地方。',
+      do: draw(snap({hst:(function(){ const o = {}; const rs = {}; robbed.forEach(t => rs[t] = 1);
+                          for(let t = 0; t < n; t++) o[t] = rs[t] ? 'target' : 'muted'; return o; })(),
+                     vars:{prev2:prev2, prev1:prev1}, res:prev1}))});
+
+    return F;
+  }
+});
+</script>
+</body>
+</html>

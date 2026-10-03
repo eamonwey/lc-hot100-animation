@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P031 · K 个一组翻转链表 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 31, num: 25, title: 'K 个一组翻转链表', diff: '困难', cat: '链表',
+  method: 'reverseKGroup',
+
+  lede: '题目：每 <span class="var r">k</span> 个节点一组翻转链表，不满 k 个的尾巴原样保留——1→2→3→4→5、k=3 变成 3→2→1→4→5。' +
+        '困难题拆开其实是三件小事：① <span class="var v">end</span> 先往后<b>数够 k 个</b>（数不够直接收工）；② 组内箭头逐个<b>掉头</b>（和反转链表一模一样）；' +
+        '③ <span class="var o">prev</span> 把前一段接到新组头上。看箭头怎么一段段翻，困难就不难了。',
+
+  roles: [
+    {c:'green',  code:'prev', text:'上一组的尾巴：下一组挂在它后面'},
+    {c:'violet', code:'end',  text:'探路针：从 prev 往后数 k 个'},
+    {c:'orange', code:'cur',  text:'组内反转的当前节点'},
+    {c:'blue',   code:'pre',  text:'箭头掉头的目标（先从下一组开头起）'}
+  ],
+
+  codeTitle: '跟着高亮读代码——数人头阶段 <code>if not end</code> 变<span style="color:var(--red)">红</span>＝end 还在走、变<span style="color:var(--green)">绿</span>＝数空了（不足 k 个，原样返回）；反转阶段每轮把 cur 的箭头改指 pre。',
+
+  legend: [
+    {c:'green', text:'prev 已接好的前段'},
+    {c:'violet', text:'end 探路针'},
+    {c:'orange', text:'cur 组内当前'},
+    {c:'blue', text:'pre 掉头目标 / 下一组边界'}
+  ],
+
+  idea: '先数后翻，不翻断链：end 从 prev 数够 k 个才动手；组内反转时 pre 从"下一组开头"出发，第一根箭头自然跨到下一组；翻完 prev.next 接新组头、prev 跳到原组尾，进入下一组。',
+
+  qa: [
+    {q:'为什么要先数够 k 个再反转？',
+     a:'如果先斩后奏、翻到一半才发现不够 k 个，箭头已经改乱了，接回去非常狼狈。先用 <code>end</code> 数人头：数得够才动手，数不够 <code>return dummy.next</code>，剩下的原样保留——这也是这题唯一的"边界判断"。'},
+    {q:'组内反转和 206 反转链表是一回事吗？',
+     a:'一模一样，只差循环终点：206 走到 None 停，这里走到 <code>stop</code>（下一组开头）停。把 pre 初始化成 stop，第一根箭头（原组头 → 下一组开头）在反转第一轮就顺便接好了，省掉事后补线的麻烦。'},
+    {q:'反转结束后 prev 为什么跳到 old（原组头）？',
+     a:'组内反转后，原组头变成了本组的<b>组尾</b>。下一组要挂在组尾后面，所以 prev 得站过去——它就是"上一组的尾巴"这个角色的下一任。'},
+    {q:'k=1 或 k=链表长度会怎样？',
+     a:'k=1 时"翻转一组"等于不翻，结果原样；k=链长时整条链是一组，退化为一次完整的反转链表。两种极端代码都自然覆盖，不用特判。'}
+  ],
+
+  complexity: '时间 O(N)（每个节点被数一次、被翻一次）　·　空间 O(1)',
+
+  form: [
+    {key:'head', label:'head', type:'list', def:[1,2,3,4,5]},
+    {key:'k', label:'k', type:'num', def:3}
+  ],
+  presets: [
+    {label:'1→2→3→4→5, k=3', values:{head:[1,2,3,4,5], k:3}},
+    {label:'k=2（多组整除）', values:{head:[1,2,3,4,5], k:2}},
+    {label:'k=5（整条反转）', values:{head:[1,2,3,4,5], k:5}},
+    {label:'1→2, k=3（不足一组）', values:{head:[1,2], k:3}}
+  ],
+
+  code: `class Solution:
+    def reverseKGroup(self, head, k):
+        dummy = ListNode(0, head)
+        prev = dummy                      # 上一组的尾巴
+        while True:
+            end = prev
+            for _ in range(k):            # 探路: 从 prev 数 k 个
+                end = end.next
+                if not end:               # 数空了: 不够 k 个
+                    return dummy.next     # 剩下的原样保留
+            old = prev.next               # 本组原头(反转后当组尾)
+            stop = end.next               # 下一组开头(反转的边界)
+            cur, pre = old, stop
+            while cur != stop:            # 组内箭头逐个掉头(同 206)
+                nxt = cur.next
+                cur.next = pre
+                pre, cur = cur, nxt
+            prev.next = pre               # 前段接上本组新头
+            prev = old                    # 原头变组尾, 接着处理下一组
+`,
+
+  sol(input){
+    const a = (input.head || []).filter(x => x != null);
+    const k = Math.max(1, Math.round(Number(input.k) || 1));
+    const out = [];
+    for(let i = 0; i < a.length; i += k){
+      if(a.length - i < k){ out.push(...a.slice(i)); break; }
+      for(let j = i + k - 1; j >= i; j--) out.push(a[j]);
+    }
+    return out;
+  },
+  expected: [3,2,1,4,5],
+
+  quiz: [
+    {q:'为什么要先用 end 数够 k 个才动手翻转？先翻、翻完发现不够再接回去不行吗？',
+     options:['不行——先斩后奏的话，翻到一半才发现人数不够，箭头已经改乱、想完好地接回去非常狼狈；先数齐再翻，永远立于不败','可以，只要最后接回去就行，先翻更快','数人头是为了顺便统计链表长度'],
+     answer:0,
+     explain:'组内反转是逐个把箭头掉头，做到一半停下来时，这一段的 next 已经面目全非：组内顺序乱了、组头也不再指向下一组，要恢复原样得把刚才每一步反向重做。「不满 k 个的尾巴原样保留」是题目硬性要求，唯一的稳妥办法就是先数后翻：end 数得够才动手，数不够一个箭头都不碰，原样返回。这也是本题唯一的边界判断。',
+     jumpTo:1},
+    {q:'链表 1→2→3→4→5→6→7、k = 3，翻转后的结果是？',
+     options:['3→2→1→6→5→4→7：前两组各翻，最后 1 个不足一组原样保留','3→2→1→7→6→5→4：剩下的尾巴也要翻转','1→2→3→4→5→6→7：k 不整除链长就整条不动'],
+     answer:0,
+     explain:'第 1 组 [1,2,3] 数够 3 个，翻成 3→2→1；prev 跳到原组头 1（它现在是组尾），从它后面数出 [4,5,6] 正好 3 个，翻成 6→5→4；再往后数只剩节点 7 一个，凑不满 3 个 → 原样保留。结果 3→2→1→6→5→4→7。误选第二个忘了「不满 k 个的尾巴原样保留」这条铁律；误选第三个没看懂规则——能不能翻只看「后面还够不够 k 个」，与整除与否无关。',
+     jumpTo:19},
+    {q:'组内反转时，pre 为什么特意从 stop（下一组开头）出发，而不是从 null 出发？',
+     options:['一石二鸟：反转到 stop 为止，不会把下一组的节点卷进来翻；而且第一根掉头的箭头自动跨到下一组开头，组与组之间的缝当场接好，不用事后补线','pre 的初始值无所谓，反正马上会变','因为 null 不能赋值给指针变量'],
+     answer:0,
+     explain:'206 反转链表的循环终点是 None，这里的终点是 stop——pre = stop 一举两得：①循环条件 cur != stop 天然把翻转范围锁在本组内；②第一轮 cur.next = pre 正好是「原组头 → 下一组开头」这根线，组间连接顺手就接好了。如果 pre 从 null 起步，原组头会指向 null，下一组从此没人认领，链表就断成两截。',
+     jumpTo:6},
+  ],
+
+  steps(input){
+    const F = [];
+    const vals = (input.head || []).filter(x => x != null);
+    const N = vals.length;
+    const k = Math.max(1, Math.min(100, Math.round(Number(input.k) || 1)));
+    const nodes = vals.map((v, i) => ({key:'a' + i, val:v}));
+
+    // 用 next 映射模拟链表，展示用箭头每帧由它现算（天然快照）
+    const nx = {};
+    for(let i = 0; i < N - 1; i++) nx['a' + i] = 'a' + (i + 1);
+    nx['a' + (N - 1)] = null;
+    let dnext = N ? 'a0' : null;
+    const nextOf = key => key === '__dummy' ? dnext : nx[key];
+    const setNext = (fromKey, toKey) => { if(fromKey === '__dummy') dnext = toKey; else nx[fromKey] = toKey; };
+    const edgesFrom = () => {
+      const e = [];
+      if(dnext) e.push(['__dummy', dnext]);
+      for(let i = 0; i < N; i++){ const t = nx['a' + i]; if(t) e.push(['a' + i, t]); }
+      return e;
+    };
+
+    const keyOf = i => i < 0 ? '__dummy' : 'a' + i;
+    const nameOf = key => key == null ? 'null'
+      : (key === '__dummy' ? 'dummy' : '节点 ' + vals[+key.slice(1)]);
+
+    /* ★ 快照原则：pointers/edges/vars 都在 F.push 那一刻求值 */
+    const ptr = (key, text, cls) => ({key:key, text:text, cls:cls});
+    const draw = (o) => (v) => {
+      v.list('L', nodes, {label:'链表　·　<code>k = ' + k + '</code>，每 ' + k + ' 个一组翻转',
+        dummy:true, states:o.states || {}, pointers:o.ptrs || [],
+        edges:o.edges, headTag:o.headTag || {key:'a0', text:'head', cls:'mq'}});
+      v.vars('V', o.vars, {label:'变量'});
+      if(o.result) v.result(o.result, {label:'返回结果'});
+    };
+    const varOf = extra => Object.assign({k:k}, extra);
+
+    if(!N){
+      F.push({hl:[1,2,3,4], tag:'空链表', cls:'t-grey',
+        msg:'链表是空的：end 从 dummy 往后迈第一步就是 null，连 1 个都数不出来，更别说 ' + k + ' 个 → 直接 <code>return dummy.next</code>，返回空链表。主流程不加任何特判，自然兜住这种边界。',
+        do: (v) => { v.list('L', [], {label:'链表', dummy:true}); }});
+      F.push({hl:[10], tag:'返回', cls:'t-dark',
+        msg:'<code>return dummy.next</code> → 空链表 [] 🎉 什么都没翻、也没什么可翻。',
+        do: (v) => { v.list('L', [], {label:'链表', dummy:true}); v.result([], {label:'返回结果'}); }});
+      return F;
+    }
+
+    let prevI = -1;                     // prev 的下标，-1 = dummy
+
+    F.push({hl:[1,2,3,4], tag:'初始化', cls:'t-grey',
+      msg:'每 ' + k + ' 个一组翻转，规矩是<b>先数后翻</b>：探路针 end 要从 prev 往后数够 ' + k + ' 个才准动手，数不够直接收工。' +
+          '为什么这么谨慎？先斩后奏的话，翻到一半才发现人数不够，箭头已经改乱、想接回去就狼狈了——先数齐再翻，永远立于不败。' +
+          '此刻 prev（绿▼）站在 dummy 上：dummy 是个不存值的哨兵，让"第一组"和后面的组待遇一样——都挂在"上一组尾巴"后面，不用对真正的头做特判。',
+      do: draw({edges: edgesFrom(), ptrs:[ptr('__dummy','▼ prev','mg')], vars: varOf({prev:'dummy', end:'—'})})});
+
+    while(true){
+      F.push({hl:[5,6], tag:'新一轮', cls:'t-ink',
+        msg:'prev（绿▼）站在' + (prevI < 0 ? ' dummy 上——一组都还没翻，整条链还是原始顺序' : '节点 <b>' + LCesc(vals[prevI]) + '</b> 上——第 ' + (prevI / k + 1) + ' 组刚翻完，原组头沉成本组组尾，已经稳稳接进前段') +
+            '。新一轮开工：end 从 prev 出发沿 next 往后数，看后面够不够 ' + k + ' 个——数得够才配叫"一组"，数不够整段原样保留。',
+        do: draw({edges: edgesFrom(), ptrs:[ptr(keyOf(prevI),'▼ prev','mg')],
+                  states: prevI >= 0 ? {['a' + prevI]:'done'} : {},
+                  vars: varOf({prev:nameOf(keyOf(prevI)), end:'—'})})});
+
+      let endK = keyOf(prevI), dead = false;
+      for(let j = 1; j <= k; j++){
+        endK = nextOf(endK);
+        const alive = endK != null;
+        F.push({hl:[7,8,9], ok: alive ? undefined : 9, no: alive ? 9 : undefined,
+          tag:'探路数数', cls: alive ? 't-blue' : 't-red',
+          msg:'end 第 ' + j + ' / ' + k + ' 步：' + (alive
+            ? '沿 next 走到<b>' + nameOf(endK) + '</b>（紫▼名牌），已数到第 ' + j + ' 个，还不够 ' + k + ' 个。人数没数齐之前一个箭头都不能碰——翻了才发现不够，就再也没法完好地接回去了，继续探路。'
+            : '走到 null——<b>数空了！</b>从 prev 往后只剩 ' + (j - 1) + ' 个，凑不满 ' + k + ' 个一组。这段就是题目说的"不满 k 个的尾巴"，规矩是原样保留，一个箭头都不动。'),
+          do: draw({edges: edgesFrom(), ptrs:[ptr(keyOf(prevI),'▼ prev','mg')].concat(alive ? [ptr(endK,'▼ end','mv')] : []),
+                    states: alive ? Object.assign(prevI >= 0 ? {['a' + prevI]:'done'} : {}, {[endK]:'in'}) : {},
+                    vars: varOf({prev:nameOf(keyOf(prevI)), end: alive ? nameOf(endK) : 'null', '已数': j})})});
+        if(!alive){ dead = true; break; }
+      }
+      if(dead){
+        const res = [];
+        let w = dnext;
+        while(w){ res.push(vals[+w.slice(1)]); w = nextOf(w); }
+        F.push({hl:[10], tag:'不足一组', cls:'t-dark',
+          msg:'<code>return dummy.next</code> 🎉 从 prev 往后数出这 ' + res.length + ' 个（' + res.join('→') + '），不满 ' + k + ' 个，<b>原样保留</b>——正因为一直是先数后翻，这几个节点的 next 从头到尾没被碰过，才能完好无损地直接返回。' +
+              'dummy.next 永远指着整条链当前的第一个节点，返回它就等于返回整条新链。只翻整组、不碰零头，规矩守住了。',
+          do: draw({edges: edgesFrom(), ptrs:[ptr(keyOf(prevI),'▼ prev','mg')],
+                    states:{}, headTag:{key:dnext, text:'新head', cls:'mg'}, result: res,
+                    vars: varOf({prev:nameOf(keyOf(prevI)), end:'null'})})});
+        return F;
+      }
+
+      const oldK = nextOf(keyOf(prevI));
+      const stopK = nextOf(endK);
+      const oldI = +oldK.slice(1), endI = +endK.slice(1);
+      const groupStr = vals.slice(oldI, endI + 1).join('→');
+
+      F.push({hl:[11,12,13], tag:'就位', cls:'t-violet',
+        msg:'数够了 ' + k + ' 个，本组锁定为 <b>' + groupStr + '</b>。先记下三个关键位置：<code>old</code> = 本组原头 ' + LCesc(vals[oldI]) +
+            '（翻转后它沉到组尾，等下一组来挂），<code>stop</code> = 下一组开头' + (stopK ? ' ' + nameOf(stopK) : ' null（后面没有节点了）') +
+            '，然后 <code>cur = old</code>、<code>pre = stop</code> 各就各位。pre 特意从 stop 出发是一石二鸟：组内反转到 stop 为止，不会把下一组的节点卷进来翻；而且第一根掉头的箭头自动跨到下一组开头，组与组之间的缝当场接好，不用事后补线。',
+        do: draw({edges: edgesFrom(),
+                  ptrs:[ptr(keyOf(prevI),'▼ prev','mg'), ptr(endK,'▼ end','mv'),
+                        ptr(oldK,'▼ cur','mi'), stopK ? ptr(stopK,'▼ pre','mr') : ptr('__x','▼ pre','mr')],
+                  states:{[oldK]:'active', [endK]:'in'},
+                  vars: varOf({prev:nameOf(keyOf(prevI)), '本组':groupStr, old:nameOf(oldK), stop:stopK ? nameOf(stopK) : 'null'})})});
+
+      let curK = oldK, preK = stopK;
+      while(curK !== stopK){
+        const nxtK = nextOf(curK);
+        setNext(curK, preK);
+        F.push({hl:[14,15,16], tag:'箭头掉头', cls:'t-orange',
+          msg:'<code>cur = ' + nameOf(curK) + '</code> 的箭头掉头：next 改指 <b>' + nameOf(preK) + '</b>——画面上新增的那根往回指的箭头就是它' +
+              (curK === oldK ? '。这是本组第一根：pre 正站在 stop（下一组开头）上，所以它直接跨过组边界，本组和下一组的连接一条线接好。' : '。') +
+              '动手前先把 <code>nxt = ' + (nxtK ? nameOf(nxtK) : 'null') + '</code> 存进变量——cur.next 一改指 pre，它原来后面的节点就再也摸不到了，不先存就是当场断链。',
+          do: draw({edges: edgesFrom(),
+                    ptrs:[ptr(keyOf(prevI),'▼ prev','mg'), ptr(endK,'▼ end','mv'),
+                          ptr(curK,'▼ cur','mi'), preK ? ptr(preK,'▼ pre','mr') : ptr('__x','▼ pre','mr')],
+                    states:{[curK]:'active', [preK || '__x']:'peek'},
+                    vars: varOf({cur:nameOf(curK), pre:nameOf(preK), nxt:nxtK ? nameOf(nxtK) : 'null'})})});
+
+        preK = curK; curK = nxtK;
+        F.push({hl:[17], tag:'pre/cur 右移', cls:'t-ink',
+          msg:'<code>pre, cur = cur, nxt</code>：pre 站到' + nameOf(preK) + '（它手里始终攥着"已翻好部分的新头"），cur 站到' + nameOf(curK) +
+              (curK === stopK ? '——cur 撞到 stop，本组 ' + k + ' 根箭头全部掉头，<b>反转完成</b>，该把前段接回来了。' : '，继续翻下一根。'),
+          do: draw({edges: edgesFrom(),
+                    ptrs:[ptr(keyOf(prevI),'▼ prev','mg'), ptr(endK,'▼ end','mv'),
+                          curK ? ptr(curK,'▼ cur','mi') : ptr('__x','▼ cur','mi'), preK ? ptr(preK,'▼ pre','mr') : ptr('__x','▼ pre','mr')],
+                    states:{[preK || '__x']:'active'},
+                    vars: varOf({cur:nameOf(curK), pre:nameOf(preK)})})});
+      }
+
+      setNext(keyOf(prevI), preK);
+      const doneStates = {};
+      for(let i = oldI; i <= endI; i++) doneStates['a' + i] = 'done';
+      F.push({hl:[18], tag:'接回主链', cls:'t-green',
+        msg:'<code>prev.next = pre</code>：' + (prevI < 0 ? 'dummy' : '节点 ' + LCesc(vals[prevI])) +
+            ' 的箭头改指 <b>' + nameOf(preK) + '</b>——前一段正式接上本组新头。为什么是 pre？组内循环结束时 cur 已走到 stop，pre 停在最后一根翻掉的箭头起点上，那正是<b>本组原组尾、现在的新组头</b>。本组 ' + vals.slice(oldI, endI + 1).reverse().join('→') + ' 翻好标绿。',
+        do: draw({edges: edgesFrom(),
+                  ptrs:[ptr(keyOf(prevI),'▼ prev','mg'), ptr(preK,'▼ pre','mr')],
+                  states: doneStates,
+                  vars: varOf({prev:nameOf(keyOf(prevI)), '新组头':nameOf(preK)})})});
+
+      prevI = oldI;
+      F.push({hl:[19], tag:'prev 跳到组尾', cls:'t-ink',
+        msg:'<code>prev = old</code>：' + LCesc(vals[oldI]) + ' 原来是本组头，翻转讲究头尾互换，它沉到了<b>组尾</b>。prev 的职责是"上一组的尾巴"，所以必须跳到新组尾上——下一组的 ' + k + ' 个人要从它后面数起。至此本组"翻转 + 接线"全套手续办完，回到循环开头处理下一组。',
+        do: draw({edges: edgesFrom(),
+                  ptrs:[ptr(keyOf(prevI),'▼ prev','mg')],
+                  states: doneStates,
+                  vars: varOf({prev:nameOf(keyOf(prevI))})})});
+    }
+  }
+});
+</script>
+</body>
+</html>

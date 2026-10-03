@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P098 · 下一个排列 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 98, num: 31, title: '下一个排列', diff: '中等', cat: '技巧',
+  method: 'nextPermutation',
+
+  lede: '题目：把 <code>nums</code> <b>原地</b>重排成字典序"刚好大一号"的排列：[1,5,8,4,7,6,5,3,1] → [1,5,8,5,1,3,4,6,7]；若已是最大（整体降序），就绕回最小（升序）。' +
+        '硬枚举会爆炸，其实只要三步：<b>①从右找第一个"上坡"</b>（nums[<span class="var r">i</span>] &lt; nums[i+1]，它的尾巴已是最大）；' +
+        '<b>②从右找第一个比 nums[i] 大的数和它交换</b>（涨得刚好）；<b>③把 i 身后的降序尾巴反转成升序</b>（变成这段的最小排法）。' +
+        '动画里盯住 <span class="var r">i</span>、<span class="var o">j</span> 和反转的双手 <span class="var i">l</span>、<span class="var v">r</span>。',
+
+  roles: [
+    {c:'blue',   code:'i', text:'上坡的"脚"：从右数第一个比身后小的数'},
+    {c:'orange', code:'j', text:'从右数第一个比 nums[i] 大的数'},
+    {c:'green',  code:'l', text:'反转尾巴的左手'},
+    {c:'violet', code:'r', text:'反转尾巴的右手'}
+  ],
+
+  codeTitle: '跟着高亮读代码——第 5 行找上坡、第 9 行找大数、第 13~15 行反转尾巴；每次交换的两格都会闪橙。',
+
+  legend: [
+    {c:'blue', text:'i 上坡脚'},
+    {c:'orange', text:'j 第一个更大数'},
+    {c:'green', text:'l 已翻好的左端'},
+    {c:'violet', text:'r 已翻好的右端'}
+  ],
+
+  idea: '下一个排列：右找上坡脚 i → 右找第一个比 nums[i] 大的 j 交换 → 把 i 身后的降序尾巴反转成最小。',
+
+  qa: [
+    {q:'为什么要从右往左找"上坡"？',
+     a:'从右看，尾部的降序段（如 7,6,5,3,1）已经是"这段能排出的最大值"，怎么折腾都不会变大。' +
+       '第一个破坏降序的位置 i（nums[i] &lt; nums[i+1]）才留有变大的余地——动它前面的数只会更大或更小过头。'},
+    {q:'交换后为什么还要反转尾巴？',
+     a:'交换只保证"变大了一点"，但 i+1 之后仍是降序（这段的最大排法）。要成为"下一个"——也就是所有变大方案里最小的那个——' +
+       '必须把尾巴翻成升序（最小排法）。两步合起来才是"刚好大一号"。'},
+    {q:'j 为什么取"从右数第一个大于 nums[i]"的就行？',
+     a:'尾巴是降序的，从右往左第一个大于 nums[i] 的数，就是尾巴里"最小的那个比它大的"——涨幅最小，且交换后尾巴依然降序，反转不会出错。' +
+       '（注意判断必须是 &gt;：尾巴里可能有和 nums[i] 相等的数，换它们不涨。）'},
+    {q:'整个数组都是降序怎么办？',
+     a:'i 会一路退到 -1：说明整个数组已是最大排列，按定义回到最小排列——直接反转整个数组即可，阶段②整体跳过。'}
+  ],
+
+  complexity: '时间 O(n)（最多扫三遍）　·　空间 O(1)（原地交换，不开新数组）',
+
+  form: [
+    {key:'nums', label:'nums', type:'arr', def:[1,5,8,4,7,6,5,3,1]}
+  ],
+  presets: [
+    {label:'[1,5,8,4,7,6,5,3,1] 默认', values:{nums:[1,5,8,4,7,6,5,3,1]}},
+    {label:'[3,2,1] 全降序→回最小', values:{nums:[3,2,1]}},
+    {label:'[1,2,3] 全升序', values:{nums:[1,2,3]}},
+    {label:'[1,1,5] 有重复', values:{nums:[1,1,5]}},
+    {label:'[2,3,1] 常规', values:{nums:[2,3,1]}}
+  ],
+
+  code: `class Solution:
+    def nextPermutation(self, nums):
+        n = len(nums)
+        i = n - 2
+        while i >= 0 and nums[i] >= nums[i + 1]:  # 1) 从右找第一个"上坡"
+            i -= 1
+        if i >= 0:                                # 找到上坡脚 nums[i]
+            j = n - 1
+            while nums[j] <= nums[i]:             # 2) 从右找第一个比它大的
+                j -= 1
+            nums[i], nums[j] = nums[j], nums[i]   #    交换, 只涨一点点
+        l, r = i + 1, n - 1                       # 3) 后缀反转: 最大变最小
+        while l < r:
+            nums[l], nums[r] = nums[r], nums[l]
+            l += 1; r -= 1
+`,
+
+  sol(input){
+    const nums = input.nums.slice();
+    const n = nums.length;
+    // 与 Python 逐行同逻辑的三阶段（原地修改）
+    let i = n - 2;
+    while(i >= 0 && nums[i] >= nums[i + 1]) i--;
+    if(i >= 0){
+      let j = n - 1;
+      while(nums[j] <= nums[i]) j--;
+      const t = nums[i]; nums[i] = nums[j]; nums[j] = t;
+    }
+    let l = i + 1, r = n - 1;
+    while(l < r){ const t = nums[l]; nums[l] = nums[r]; nums[r] = t; l++; r--; }
+    // 排序对拍：结果必须是原数组的一个排列，且要么是"刚好大一号"（原非最大），要么是最小排列（原为最大）
+    const asc = input.nums.slice().sort((a, b) => a - b);
+    const desc = asc.slice().reverse();
+    const cnt = (arr, v) => arr.filter(x => x === v).length;
+    for(const v of new Set(input.nums))
+      if(cnt(nums, v) !== cnt(input.nums, v)) throw new Error('结果不是原数组的排列');
+    const lex = (a, b) => { for(let q = 0; q < a.length; q++) if(a[q] !== b[q]) return a[q] - b[q]; return 0; };
+    const isMax = input.nums.every((v, q) => v === desc[q]);
+    if(isMax){
+      if(JSON.stringify(nums) !== JSON.stringify(asc)) throw new Error('已是最大排列, 应回到最小排列 ' + JSON.stringify(asc));
+    }else if(lex(nums, input.nums) <= 0) throw new Error('结果没有比原排列大');
+    return null;   // 原地修改, 无返回值（SPEC 114 条款）
+  },
+  expected: null,
+
+  quiz: [
+    {q:'nums = [1,3,2]:只做前两步(上坡脚 i=0,和从右数第一个比 1 大的 2 交换)得到 [2,3,1]。它为什么不合格?',
+     options:['它比原排列大,但不是"大得最少":尾巴 3,1 仍是降序(这段的最大排法),1 和 3 之间还夹着更近的 [2,1,3];把尾巴反转成升序得 [2,1,3],才是"刚好大一号"','它根本没变大:2 换过去还是原来的数','它排过头了,[2,3,1] 已经是全局最大排列'],
+     answer:0,
+     explain:'交换只保证"变大了一点",i 身后的尾巴仍是降序 = 这段的最大排法。[2,3,1] 与 [2,1,3] 都以 2 开头、都比 [1,3,2] 大,但 [2,1,3] 更小——字典序上它恰好夹在 [1,3,2] 和 [2,3,1] 中间,所以"下一个"是 [2,1,3]。把降序尾巴整个反转成升序(这段的最小排法),和"涨得刚好的交换"两步合起来才是"刚好大一号",这正是阶段③存在的全部理由。',
+     jumpTo:19},
+    {q:'nums = [4,3,2,1](整体降序):阶段①的 i 会退到哪?最终数组变成什么?',
+     options:['i 退到 −1:每一对都是"左 ≥ 右",整串已是最大排列,阶段②整体跳过,直接反转全数组 → [1,2,3,4]','i 停在 0:把 4 和 1 交换 → [1,3,2,4]','i 退到 −1,但数组保持 [4,3,2,1] 不变——没有下一个排列就原地不动'],
+     answer:0,
+     explain:'从右往左全是"不升",上坡无处可寻,i 一路退到 −1——这本身就是一个明确信号:当前已是全局最大排列,"下一个"按题目定义绕回最小排列。降序数组整体反转恰好就是升序 = 最小排法,所以阶段③的 l、r 这回翻的是整个数组,阶段②没有脚可换、整个跳过。代码里 if(i >= 0) 只包住阶段②、阶段③放在外头共用,就是这个原因。',
+     jumpTo:27},
+    {q:'阶段②凭什么保证:和"从右数第一个 > nums[i]"的 j 交换后,尾巴依然是降序、阶段③可以放心反转?',
+     options:['j 右边的数全都 ≤ nums[i](否则 j 就轮不到"第一个"),换过去的原 nums[i] 卡在 j 位上不破序;j 左边的数都 ≥ 原 nums[j],新来的 nums[j] 也接得上——降序链一环没断','因为交换前后数组都排过序','保证不了,阶段③反转前还得再排一次序兜底'],
+     answer:0,
+     explain:'设脚上原值为 x、j 处原值为 y(从右第一个 > x)。尾巴降序 ⇒ j 右侧每个数 ≤ x,交换后 j 位换成 x:它与右邻满足 x ≥ 右邻,与左邻满足 左邻 ≥ y > x——两头都接得上,降序保持。这份"依然降序"是"取第一个够大者"白送的:换成更靠左的够大者反而可能顶破 j 右边的某格。顺带一提比较必须是严格 >:尾巴里若有和 nums[i] 相等的数,换它们不涨,白换一场。',
+     jumpTo:17},
+  ],
+
+  steps(input){
+    const F = [];
+    const nums = input.nums.slice();
+    const n = nums.length;
+    if(!n){
+      F.push({hl:[1,2,3], tag:'空数组', cls:'t-grey',
+        msg:'数组是空的，谈不上"下一个排列"，原样结束。',
+        do:() => {}});
+      return F;
+    }
+
+    /* ★ 快照原则：数组内容/状态/名牌全在 F.push 那一刻求值定死 */
+    const snap = () => nums.slice();
+    const mk = (p) => {
+      const m = [];
+      if(p.i != null && p.i >= 0) m.push({name:'i', idx:p.i, cls:'mi', text:'▲ i'});
+      if(p.j != null && p.j >= 0) m.push({name:'j', idx:p.j, cls:'mr', text:'▲ j'});
+      if(p.l != null && p.l >= 0) m.push({name:'l', idx:p.l, cls:'mg', text:'▲ l'});
+      if(p.r != null && p.r >= 0) m.push({name:'r', idx:p.r, cls:'mv', text:'▲ r'});
+      return m;
+    };
+    const done = new Set();                       // 已翻好的下标（阶段③用）
+    const doneSt = (extra) => {
+      const s = {};
+      done.forEach(k => { s[k] = 'done'; });
+      return Object.assign(s, extra || {});
+    };
+    const vv = (o) => ({n:n, i:o.i != null ? o.i : '—', j:o.j != null ? o.j : '—',
+                        l:o.l != null ? o.l : '—', r:o.r != null ? o.r : '—'});
+    const draw = (o) => (v) => {
+      v.arr('nums', o.arr, {label:'数组 <code>nums</code>（原地修改）', states:o.states || {}, markers:o.marks || []});
+      v.vars('vars', vv(o.vars || {}), {label:'变量', hl:o.vhl || []});
+      if(o.result !== undefined) v.result(o.result, {label:'下一个排列'});
+    };
+
+    let i = n - 2;
+    F.push({hl:[1,2,3,4], tag:'初始化', cls:'t-grey',
+      msg:'把 [' + LCesc(nums.join(', ')) + '] 当成一个多位数：下一个排列 = <b>比它大、又大得最少的排法</b>（里程表进位的味道）。计划三步：①从右找第一个"上坡"——上坡右边整段降序、已是这段的最大排法，怎么折腾都不涨，所以<b>必须下手的位置就是上坡脚</b>；②在脚的右边找一个"涨得刚好"的数交换；③把降序尾巴反转成升序（这段的最小排法）。i 从 ' + (n - 2) + '（倒数第二格）出发往左找。',
+      do: draw({arr:snap(), marks:mk({i}), vars:{i:i}})});
+
+    /* ---------- 阶段①：从右找第一个上坡 ---------- */
+    while(i >= 0 && nums[i] >= nums[i + 1]){
+      F.push({hl:[5], ok:5, tag:'阶段① · 找上坡', cls:'t-blue',
+        msg:'<code>nums[' + i + '] = ' + nums[i] + ' ≥ nums[' + (i + 1) + '] = ' + nums[i + 1] + '</code>：从右往左看数字不升（≥），这一格还属于<b>降序尾巴</b>——尾巴自己已是最大排法，指望它变大没戏。上坡没找到，<code>i</code> 继续左移（橙名牌 ▲i 和它右边的蓝格正在两两比大小）。',
+        do: draw({arr:snap(), states:(function(){ const s = {}; s[i] = 'active'; s[i + 1] = 'peek'; return s; })(),
+                  marks:mk({i}), vars:{i:i}})});
+      i -= 1;
+      F.push({hl:[6], tag:'阶段① · 左移', cls:'t-ink',
+        msg:'<code>i -= 1</code> → i = ' + i + (i >= 0 ? '，下一对待比的是 nums[' + i + '] 和 nums[' + (i + 1) + ']。' : '——一路退到头都没有上坡，说明<b>整个数组纯降序、已是最大排列</b>，按定义要绕回最小排列（反转全数组即可）。'),
+        do: draw({arr:snap(), states:(function(){ const s = {}; if(i >= 0) s[i] = 'active'; s[i + 1] = 'peek'; return s; })(),
+                  marks:mk({i}), vars:{i:i}})});
+    }
+    if(i >= 0){
+      F.push({hl:[5], no:5, tag:'阶段① · 找到上坡', cls:'t-green',
+        msg:'<code>nums[' + i + '] = ' + nums[i] + ' &lt; nums[' + (i + 1) + '] = ' + nums[i + 1] + '</code>——<b>上坡出现了！</b>（i 格染成紫色基准）。它的含义：i 身后 ' + (n - 1 - i) + ' 格是纯降序 = 这段的最大排法，后面怎么折腾都不会变大；想让整体变大，<b>唯一能下手的就是 nums[' + i + '] 这只"脚"</b>——把它换成更大的数。',
+        do: draw({arr:snap(), states:(function(){ const s = {}; s[i] = 'pivot'; s[i + 1] = 'in'; return s; })(),
+                  marks:mk({i}), vars:{i:i}})});
+    }else{
+      F.push({hl:[5], no:5, tag:'阶段① · 没有上坡', cls:'t-red',
+        msg:'i 一路退到 -1 也没找到上坡：每一对都是"左 ≥ 右"，整个数组纯降序 = <b>全局最大排列</b>，已经没有"下一个"。按题目定义绕回<b>最小排列</b>——把降序整个反转成升序就是最小，阶段②整个跳过。',
+        do: draw({arr:snap(), states:{}, marks:[], vars:{i:'-1'}})});
+    }
+
+    /* ---------- 阶段②：从右找第一个比 nums[i] 大的数并交换 ---------- */
+    if(i >= 0){
+      F.push({hl:[7], ok:7, tag:'阶段② · 找大数', cls:'t-orange',
+        msg:'i = ' + i + ' ≥ 0，有上坡脚 <code>nums[' + i + '] = ' + nums[i] + '</code>。目标：把它换成<b>比它大的数里最小的那个</b>——换太大就"涨过头"（把 4 换成 9 不如换成 5），那就不是"下一个"而是"下好几个"。尾巴是降序的，所以从右往左扫，<b>第一个 &gt; ' + nums[i] + ' 的数恰好就是"最小的够大者"</b>。',
+        do: draw({arr:snap(), states:(function(){ const s = {}; s[i] = 'pivot'; return s; })(),
+                  marks:mk({i}), vars:{i:i}})});
+      let j = n - 1;
+      F.push({hl:[8], tag:'阶段② · j 起步', cls:'t-orange',
+        msg:'<code>j</code> 从最右端 ' + j + ' 出发往左扫（▲j 名牌移动、紫色基准格 ▲i 原地待换）：要找第一个 <code>&gt; nums[' + i + '] = ' + nums[i] + '</code> 的数。',
+        do: draw({arr:snap(), states:(function(){ const s = {}; s[i] = 'pivot'; s[j] = 'active'; return s; })(),
+                  marks:mk({i, j}), vars:{i:i, j:j}})});
+      while(nums[j] <= nums[i]){
+        F.push({hl:[9], ok:9, tag:'阶段② · 还不够大', cls:'t-blue',
+          msg:'<code>nums[' + j + '] = ' + nums[j] + ' ≤ nums[' + i + '] = ' + nums[i] + '</code>：拿它换，i 处不涨反平/降，白换一场 → 淘汰，<code>j</code> 左移继续找够大的。',
+          do: draw({arr:snap(), states:(function(){ const s = {}; s[i] = 'pivot'; s[j] = 'active'; return s; })(),
+                    marks:mk({i, j}), vars:{i:i, j:j}})});
+        j -= 1;
+        F.push({hl:[10], tag:'阶段② · 左移', cls:'t-ink',
+          msg:'<code>j -= 1</code> → j = ' + j + '，继续往左找。这趟扫描不会空手：上坡 nums[' + i + '] &lt; nums[' + (i + 1) + '] 保证尾巴里至少有一个数比 nums[' + i + '] 大。',
+          do: draw({arr:snap(), states:(function(){ const s = {}; s[i] = 'pivot'; s[j] = 'active'; return s; })(),
+                    marks:mk({i, j}), vars:{i:i, j:j}})});
+      }
+      F.push({hl:[9], no:9, tag:'阶段② · 找到大数', cls:'t-green',
+        msg:'<code>nums[' + j + '] = ' + nums[j] + ' &gt; nums[' + i + '] = ' + nums[i] + '</code>——就是它！从右数第一个够大的 = 尾巴里<b>最小的够大者</b>，换它涨幅最小。附带的好处：j 右边的数都 ≤ nums[i]、j 左边的数都 ≥ 原 nums[j]，交换后尾巴<b>依然是降序</b>，下一阶段才敢放心反转。',
+        do: draw({arr:snap(), states:(function(){ const s = {}; s[i] = 'pivot'; s[j] = 'in'; return s; })(),
+                  marks:mk({i, j}), vars:{i:i, j:j}})});
+      const t = nums[i]; nums[i] = nums[j]; nums[j] = t;
+      F.push({hl:[11], tag:'阶段② · 交换', cls:'t-orange',
+        msg:'交换！nums[' + i + '] 的 <b>' + t + '</b> ↔ nums[' + j + '] 的 <b>' + nums[i] + '</b>，数组变成 [' + LCesc(nums.join(', ')) + ']。此刻它已经比原排列大了——但只完成"变大"，还没做到"大得最少"：i 身后的尾巴仍是降序（最大排法），最后一步要把它翻成升序。',
+        do: draw({arr:snap(), states:(function(){ const s = {}; s[i] = 'just'; s[j] = 'just'; return s; })(),
+                  marks:mk({i, j}), vars:{i:i, j:j}})});
+    }else{
+      F.push({hl:[7], no:7, tag:'跳过交换', cls:'t-grey',
+        msg:'i = -1，没有上坡脚可换，阶段②整体跳过。直接进阶段③反转——这次 <code>l</code>、<code>r</code> 翻的是<b>整个数组</b>：最大排列倒过来正好就是最小排列。',
+        do: draw({arr:snap(), states:{}, marks:[], vars:{i:'-1'}})});
+    }
+
+    /* ---------- 阶段③：反转 i 之后的后缀 ---------- */
+    let l = i + 1, r = n - 1;
+    F.push({hl:[12], tag:'阶段③ · 反转尾巴', cls:'t-violet',
+      msg:'阶段③收尾：下标 ' + l + ' ~ ' + r + ' 这段仍是降序 = 这段的<b>最大</b>排法，而"下一个"要求它变成<b>最小</b>排法——降序段的最小排法就是整个反转成升序。双手 <code>l</code>（绿名牌）、<code>r</code>（紫名牌）从两端往中间挤、两两交换，原地完成。前两步已保证：前缀不动、i 处涨得刚好，尾巴再取最小——三块拼起来才是"刚好大一号"。',
+      do: draw({arr:snap(), states:(function(){ const s = {}; if(i >= 0) s[i] = 'pivot'; s[l] = 'peek'; s[r] = 'peek'; return s; })(),
+                marks:mk({l, r}), vars:{i:i, l:l, r:r}})});
+
+    while(l < r){
+      F.push({hl:[13], ok:13, tag:'阶段③ · 还没相遇', cls:'t-violet',
+        msg:'<code>l = ' + l + ' &lt; r = ' + r + '</code>：双手还没相遇，把最外层这一对（l 格、r 格）对调——降序尾巴两头一换，就朝升序逼近一步。',
+        do: draw({arr:snap(), states:doneSt((function(){ const s = {}; s[l] = 'active'; s[r] = 'active'; return s; })()),
+                  marks:mk({l, r}), vars:{i:i, l:l, r:r}})});
+      const t = nums[l]; nums[l] = nums[r]; nums[r] = t;
+      done.add(l); done.add(r);
+      F.push({hl:[14], tag:'阶段③ · 交换', cls:'t-orange',
+        msg:'交换 nums[' + l + '] ↔ nums[' + r + ']：<b>' + t + ' ↔ ' + nums[l] + '</b>，两端各归其位（染绿锁定），这一对不用再管。',
+        do: draw({arr:snap(), states:doneSt((function(){ const s = {}; s[l] = 'just'; s[r] = 'just'; return s; })()),
+                  marks:mk({l, r}), vars:{i:i, l:l, r:r}})});
+      l += 1; r -= 1;
+      F.push({hl:[15], tag:'阶段③ · 向中间挤', cls:'t-ink',
+        msg:'<code>l += 1; r -= 1</code> → l = ' + l + '、r = ' + r + '：待翻区间从两端各缩一格，剩下的继续翻。',
+        do: draw({arr:snap(), states:doneSt({}), marks:mk({l: l < r ? l : null, r: r > l ? r : null}),
+                  vars:{i:i, l:l, r:r}})});
+    }
+    F.push({hl:[13], no:13, tag:'阶段③ · 尾巴翻正', cls:'t-green',
+      msg:'双手在第 ' + l + ' 格相遇（中间那格自己和自己换与否都一样），尾巴全部翻成升序。数组现在是 [' + LCesc(nums.join(', ')) + ']——三块拼图凑齐。',
+      do: draw({arr:snap(), states:doneSt({}), marks:[], vars:{i:i, l:l, r:r}})});
+
+    const res = nums.slice();
+    F.push({hl:[15], tag:'完成 · 下一个排列', cls:'t-dark',
+      msg:'🎉 下一个排列 = <b>[' + LCesc(nums.join(', ')) + ']</b>' + (i >= 0
+        ? '。口诀复盘：右找上坡定脚 i = ' + i + ' → 右找第一个大数交换（涨得刚好）→ 尾巴反转变最小（大得最少），三步合出"刚好大一号"。'
+        : '。原数组纯降序已是最大排列，反转全数组绕回最小排列。') + '最多扫三遍、全程原地交换，时间 O(n)、空间 O(1)。',
+      do: draw({arr:res, states:(function(){ const s = {}; for(let q = 0; q < n; q++) s[q] = 'target'; return s; })(),
+                marks:[], vars:{i:i, l:l, r:r}, result:res})});
+    return F;
+  }
+});
+</script>
+</body>
+</html>

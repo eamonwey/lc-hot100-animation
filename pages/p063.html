@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P063 · 搜索二维矩阵 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 63, num: 74, title: '搜索二维矩阵', diff: '中等', cat: '二分查找',
+  method: 'searchMatrix',
+
+  lede: '题目：矩阵每行内部升序，而且<b>下一行开头 &gt; 上一行末尾</b>——把它按行拉直，就是一条严格递增的一维数列！' +
+        '所以整个矩阵可以<b>拉直成数组做标准二分</b>：<span class="var o">mid</span> 是一维下标，' +
+        '用 <code>mid//n</code> 求行、<code>mid%n</code> 求列换算回矩阵。' +
+        '动画上方是一维视图、下方是原矩阵，<b>两个视图同步高亮</b>，换算口诀每轮都现场演一遍。',
+
+  roles: [
+    {c:'blue',   code:'left',  text:'一维区间左端'},
+    {c:'orange', code:'mid',   text:'本轮中点（一维下标）'},
+    {c:'violet', code:'right', text:'一维区间右端'},
+    {c:'green',  code:'(r,c)', text:'mid 换算出的矩阵格子：r = mid//n，c = mid%n'}
+  ],
+
+  codeTitle: '跟着高亮读代码——第 7 行是灵魂：一维下标 → 行列的换算。' +
+             '第 8 行变<span style="color:var(--green)">绿</span>＝命中返回 True；第 10 行绿＝太小去右半、第 12 行绿＝太大去左半。',
+
+  idea: '行末 < 下一行行首 ⇒ 拉直即有序：把 m×n 矩阵当长度 m·n 的有序数组二分，mid//n 是行、mid%n 是列。',
+
+  qa: [
+    {q:'凭什么敢把矩阵拉直？',
+     a:'题目保证两件事：行内升序 + 后一行的开头 &gt; 前一行的结尾。两条合起来，按行拼接后整条严格递增——一维二分的前提"有序"成立。注意 LC 240"搜索二维矩阵 II"（只有每行每列各自升序）不满足第二条，就不能这么拉直。'},
+    {q:'mid//n 和 mid%n 怎么理解？',
+     a:'每行摆 n 个数：mid ÷ n 的<b>商</b> = 走完了几整行（行号 r），<b>余数</b> = 在当前行走到第几个（列号 c）。例如 mid=5、n=4：5//4=1 行、5%4=1 列 → matrix[1][1]。反过来也成立：格子 (i,j) 拉直后是第 i×n+j 个。'},
+    {q:'和"逐行二分"比呢？',
+     a:'逐行二分是 O(m·log n)：先扫每行判断在不在范围，再行内二分。拉直二分一次 O(log(mn)) ≈ O(log m + log n)，代码还更短。两者都远好于 O(mn) 暴力扫描。'},
+    {q:'复杂度？',
+     a:'时间 O(log(mn))：候选每轮减半；空间 O(1)：只有左右中点三个下标。注意拉直是"逻辑上"的——代码里从没真的复制数组，全靠下标换算。'}
+  ],
+
+  complexity: '时间 O(log(mn))　·　空间 O(1)',
+
+  form: [
+    {key:'matrix', label:'matrix（每行一行）', type:'grid', def:[[1,3,5,7],[10,11,16,20],[23,30,34,60]]},
+    {key:'target', label:'target', type:'num', def:3}
+  ],
+  presets: [
+    {label:'target=3（默认 → true）', values:{matrix:[[1,3,5,7],[10,11,16,20],[23,30,34,60]], target:3}},
+    {label:'target=16 → true', values:{matrix:[[1,3,5,7],[10,11,16,20],[23,30,34,60]], target:16}},
+    {label:'target=60 → true（最后一个）', values:{matrix:[[1,3,5,7],[10,11,16,20],[23,30,34,60]], target:60}},
+    {label:'target=4 → false（不存在）', values:{matrix:[[1,3,5,7],[10,11,16,20],[23,30,34,60]], target:4}}
+  ],
+
+  code: `class Solution:
+    def searchMatrix(self, matrix, target):
+        m, n = len(matrix), len(matrix[0])
+        left, right = 0, m * n - 1      # 拉直后的一维下标
+        while left <= right:
+            mid = (left + right) // 2
+            val = matrix[mid // n][mid % n]   # 一维 → 行列
+            if val == target:
+                return True
+            if val < target:            # 中点太小 → 去右半
+                left = mid + 1
+            else:                       # 中点太大 → 去左半
+                right = mid - 1
+        return False
+`,
+
+  sol(input){
+    const matrix = (input.matrix || []).map(r => (r || []).map(Number));
+    const target = Number(input.target);
+    const m = matrix.length, n = m ? matrix[0].length : 0;
+    if(!m || !n) return false;
+    let left = 0, right = m * n - 1;
+    while(left <= right){
+      const mid = (left + right) >> 1;
+      const val = matrix[Math.floor(mid / n)][mid % n];
+      if(val === target) return true;
+      if(val < target) left = mid + 1;
+      else right = mid - 1;
+    }
+    return false;
+  },
+  expected: true,
+
+  quiz: [
+    {q:'什么前提下,才敢把整个矩阵拉直成一条有序数组做二分?',
+     options:['只要每行内部升序就够了','行内升序 + 下一行开头 > 上一行末尾,两条合起来按行拉直才是严格递增;LC 240 那种只有行、列各自升序的矩阵就不满足','矩阵必须每行长度相同且是方阵'],
+     answer:1,
+     explain:'二分的前提是"一维有序"。行内升序只保证行内不乱;若上一行末尾 7 下一行开头却可能比它小,拉直后就有"凹坑",砍一半的依据失效。LC 74 的第二条保证(行末 < 下行行首)把所有行无缝焊成一条递增链,才敢整体二分。240(搜索二维矩阵 II)只有行列各自升序,得用"右上角 elimination"那套 O(m+n) 走法,两题别混。',
+     jumpTo:1},
+    {q:'代入算一算:默认矩阵(3 行 4 列)不变,target = 30。第一轮 mid = (0+11)//2,取到的数是多少?',
+     options:['16——位于矩阵正中间附近','11——mid=5,换算 (1,1)','20——mid=7','23——第 2 行开头'],
+     answer:1,
+     explain:'mid = (0+11)//2 = 5(整除,不是四舍五入的 6)。换算:行 = 5//4 = 1,列 = 5%4 = 1 → matrix[1][1] = <b>11</b>。11 < 30 → left = 6,去右半。这个取值只跟矩阵尺寸有关,跟 target 是几无关——换成 target=60 第一轮取到的也是 11。选 16 的人把 (0+11)/2 当成 5.5 进位了;向下取整配合 mid±1,谁都不会漏。',
+     jumpTo:4},
+    {q:'「拉直」需要先把 m×n 个数复制进一个一维数组吗?',
+     options:['需要,不然下标对不上矩阵','不需要:代码里没有任何复制,mid//n、mid%n 两个除法现场换算,额外空间 O(1)','看语言而定,Java 要复制 Python 不用'],
+     answer:1,
+     explain:'left/right/mid 全程都是一维下标,只有"取值那一瞬间"才用 mid//n、mid%n 换算回行列去碰 matrix——反方向换算也成立:格子 (i,j) 就是拉直后的第 i×n+j 格。所以"拉直"只是一种<b>逻辑视图</b>,零复制、零额外空间;把它真复制出来虽然也能对,但空间凭空涨到 O(mn),面试里属于白丢分。',
+     jumpTo:21},
+  ],
+
+  steps(input){
+    const F = [];
+    let matrix = (input.matrix || []).map(r => (r || []).map(Number));
+    const notes = [];
+    if(matrix.length > 4){ matrix = matrix.slice(0, 4); notes.push('行数限 4'); }
+    const m = matrix.length;
+    let n = m ? matrix[0].length : 0;
+    if(n > 4){ n = 4; notes.push('列数限 4'); }
+    matrix = matrix.map(r => { const rr = r.slice(0, n); while(rr.length < n) rr.push(null); return rr; });
+    const target = Number(input.target);
+    const flat = [];
+    matrix.forEach(r => r.forEach(v => flat.push(v)));
+    const total = m * n;
+
+    const draw = (o) => (v) => {
+      const L = o.L, R = o.R, mid = o.mid;
+      const st1 = {}, stG = {};
+      for(let x = 0; x < flat.length; x++){
+        const inW = x >= L && x <= R;
+        st1[x] = inW ? 'in' : 'muted';
+        const r = Math.floor(x / n), c = x % n;
+        stG[r + ',' + c] = inW ? 'in' : 'muted';
+      }
+      if(mid != null){
+        st1[mid] = 'active';
+        stG[Math.floor(mid / n) + ',' + (mid % n)] = 'active';
+      }
+      if(o.found != null){
+        st1[o.found] = 'target';
+        stG[Math.floor(o.found / n) + ',' + (o.found % n)] = 'target';
+      }
+      const mk = [];
+      if(L >= 0 && L < flat.length) mk.push({name:'left', idx:L, cls:'mr', text:'▲ left'});
+      if(mid != null) mk.push({name:'mid', idx:mid, cls:'mi', text:'▲ mid'});
+      if(R >= 0 && R < flat.length) mk.push({name:'right', idx:R, cls:'mv', text:'▲ right'});
+      v.arr('F1', flat, {label:'拉直后的一维视图　·　<code>target = ' + o.tgt + '</code>' + (o.pfx ? '（' + o.pfx + '）' : ''), states:st1, markers:mk, cw:34});
+      v.grid('M', matrix, {label:'原矩阵　·　第 i 行 j 列 ⇔ 拉直后第 i×' + n + '+j 格　·　蓝 = 现在的候选区间', states:stG, cw:40});
+      v.vars('V', o.vars, {label:'变量'});
+      if(o.res !== undefined) v.result(o.res, {label:'返回值'});
+    };
+    const vv = (L, R, mid, val) => {
+      const o = {left:L, right:R, mid:mid, target:target};
+      if(mid != null) o['mid→(r,c)'] = Math.floor(mid / n) + ',' + (mid % n);
+      if(val !== undefined) o['取到的 val'] = val;
+      return o;
+    };
+
+    function trace(t, pfx, main){
+      let L = 0, R = total - 1;
+      while(L <= R){
+        F.push({hl:[5], ok:5, tag:pfx + 'while 检查', cls:'t-blue',
+          msg:pfx + '<code>left=' + L + ' ≤ right=' + R + '</code> → 一维区间还剩 <b>' + (R - L + 1) + '</b> 个候选，继续二分。画面导览：上排是拉直视图（亮格 = 候选），下方矩阵把同一段候选拼成蓝色区域——已淘汰的部分两块视图同步变灰，它们始终是同一批数的两种摆法。',
+          do: draw({tgt:t, pfx:pfx, L:L, R:R, mid:null, vars:vv(L, R, null)})});
+        const mid = (L + R) >> 1;
+        const r = Math.floor(mid / n), c = mid % n;
+        F.push({hl:[6,7], tag:pfx + '取中点·换算', cls:'t-orange',
+          msg:pfx + '<code>mid = (' + L + '+' + R + ')//2 = ' + mid + '</code> → 换算上矩阵：<b>行 = ' + mid + '//' + n + ' = ' + r + '</b>（前 ' + r + ' 整行共占 ' + (r * n) + ' 格），<b>列 = ' + mid + '%' + n + ' = ' + c + '</b>（在本行第 ' + (c + 1) + ' 个）→ 一维第 ' + mid + ' 格就是 <code>matrix[' + r + '][' + c + ']</code>。画面：橙牌在上下两块视图里落的是同一个数——只是坐标换了套衣服。',
+          do: draw({tgt:t, pfx:pfx, L:L, R:R, mid:mid, vars:vv(L, R, mid)})});
+        const val = matrix[r][c];
+        if(val === t){
+          F.push({hl:[8], ok:8, tag:pfx + '命中！', cls:'t-green',
+            msg:pfx + '<code>matrix[' + r + '][' + c + '] = ' + val + '</code>，正是 target=' + t + ' → 中点直接命中！两块视图同时标金：一维第 ' + mid + ' 格和矩阵第 ' + r + ' 行第 ' + c + ' 列，本来就是同一个数。',
+            do: draw({tgt:t, pfx:pfx, L:L, R:R, mid:mid, found:mid, vars:vv(L, R, mid, val)})});
+          if(main) F.push({hl:[9], tag:pfx + '返回', cls:'t-dark',
+            msg:pfx + '<code>return True</code> ✅ target=' + t + ' 住在第 ' + r + ' 行第 ' + c + ' 列——拉直后第 ' + mid + ' 格。复盘一个易被忽略的点：代码里从没真的复制过数组，"拉直"只活在 <code>mid//n</code>、<code>mid%n</code> 这两个换算里，额外空间 O(1)。',
+            do: draw({tgt:t, pfx:pfx, L:L, R:R, mid:mid, found:mid, vars:vv(L, R, mid, val), res:true})});
+          return true;
+        }
+        F.push({hl:[8], no:8, tag:pfx + '比对', cls:'t-ink',
+          msg:pfx + '取到的数是 <b>' + val + '</b> ≠ ' + t + '，中点不是答案。别被二维外表唬住——拉直后它就是递增数列的第 ' + mid + ' 个，' + (val < t ? '比 target 小，它和它前面的全体出局' : '比 target 大，它和它后面的全体出局') + '，照样敢砍一半。',
+          do: draw({tgt:t, pfx:pfx, L:L, R:R, mid:mid, vars:vv(L, R, mid, val)})});
+        const oL = L, oR = R, small = val < t;
+        if(small){
+          F.push({hl:[10,11], ok:10, tag:pfx + '中点太小', cls:'t-orange',
+            msg:pfx + val + ' &lt; ' + t + '：拉直数列里它前面的（含它）全都 &lt; target → 答案只可能在<b>右半</b>。<code>left = mid + 1 = ' + (mid + 1) + '</code>。注意 left/right 始终是一维下标，只有取值那一刻才换算回行列——这正是本解法的分工。',
+            do: draw({tgt:t, pfx:pfx, L:mid + 1, R:R, mid:mid, vars:vv(mid + 1, R, mid, val)})});
+          L = mid + 1;
+        } else {
+          F.push({hl:[12,13], ok:12, tag:pfx + '中点太大', cls:'t-orange',
+            msg:pfx + val + ' &gt; ' + t + '：它后面的（含它）全都 &gt; target → 答案只可能在<b>左半</b>。<code>right = mid − 1 = ' + (mid - 1) + '</code>。被砍掉的格子两块视图立刻同步变灰。',
+            do: draw({tgt:t, pfx:pfx, L:L, R:mid - 1, mid:mid, vars:vv(L, mid - 1, mid, val)})});
+          R = mid - 1;
+        }
+        F.push({hl:[small ? 11 : 13], tag:pfx + '砍掉一半', cls:'t-violet',
+          msg:pfx + '候选从 [' + oL + ', ' + oR + '] 缩到 [' + L + ', ' + R + ']：' + (oR - oL + 1) + ' 个变 ' + Math.max(0, R - L + 1) + ' 个，每轮砍掉近一半——' + total + ' 个格子最多 ⌈log₂' + Math.max(total, 2) + '⌉ ≈ ' + Math.ceil(Math.log2(Math.max(total, 2))) + ' 轮，这就是 O(log(mn)) 的来历。',
+          do: draw({tgt:t, pfx:pfx, L:L, R:R, mid:null, vars:vv(L, R, null)})});
+      }
+      F.push({hl:[5], no:5, tag:pfx + '区间空了', cls:'t-red',
+        msg:pfx + '<code>left=' + L + ' &gt; right=' + R + '</code> → 候选缩空，全部 ' + total + ' 个格子扫完也没见到 ' + t + '。拉直数列里没有它，矩阵里自然也没有——两个视图本来就是同一批数的两种摆法。',
+        do: draw({tgt:t, pfx:pfx, L:L, R:R, mid:null, vars:vv(L, R, null)})});
+      if(main) F.push({hl:[14], tag:pfx + '返回', cls:'t-dark',
+        msg:pfx + '<code>return False</code> —— 一维数列里没有 ' + t + '，矩阵里自然也没有。整场查找没复制过数组、没多开一格空间：所谓"拉直"，全部实现就是 <code>mid//n</code> 与 <code>mid%n</code> 两次除法。',
+        do: draw({tgt:t, pfx:pfx, L:L, R:R, mid:null, vars:vv(L, R, null), res:false})});
+      return false;
+    }
+
+    F.push({hl:[1,2,3,4], tag:'初始化', cls:'t-grey',
+      msg:total + ' 个格子按行拉直：[' + flat.map(x => x == null ? '∅' : x).join(', ') + ']。为什么敢拉直？题目保证<b>行内升序 + 下一行开头 &gt; 上一行末尾</b>' + (m >= 2 && n >= 1 && flat[n - 1] != null && flat[n] != null ? '（本例第 0 行末尾 ' + flat[n - 1] + ' &lt; 第 1 行开头 ' + flat[n] + '）' : '') + '——两条合起来，整条数列严格递增，一维二分的前提"有序"成立。区间 [0, ' + (total - 1) + '] 全场待命，下面就是标准一维二分。' + (notes.length ? '（' + notes.join('；') + '）' : ''),
+      do: draw({tgt:target, L:0, R:total - 1, mid:null, vars:vv(0, total - 1, null)})});
+    F.push({hl:[7], tag:'换算口诀', cls:'t-grey',
+      msg:'唯一的新知识是<b>下标换算</b>：矩阵每行摆 <code>' + n + '</code> 个数，一维下标 mid 除以 n——<b>商 = 行号</b>（走完了几整行），<b>余数 = 列号</b>（在本行走到第几个）。' + (n > 0 && m > 1 ? '例如 mid=' + (n + 1) + '：' + (n + 1) + '//' + n + '=' + Math.floor((n + 1) / n) + ' 行、' + (n + 1) + '%' + n + '=' + ((n + 1) % n) + ' 列 → matrix[1][1]，正是拉直后的第 ' + (n + 1) + ' 格。' : '') + '等下每轮取中点都现场演一遍换算，上下两块视图同步高亮。',
+      do: draw({tgt:target, L:0, R:total - 1, mid:null, vars:vv(0, total - 1, null)})});
+
+    const found = trace(target, '', true);
+
+    F.push({hl:[9,14], ok: found ? 9 : undefined, no: found ? undefined : 14,
+      tag:'总结', cls:'t-dark',
+      msg:(found
+        ? '第 9 行 <code>return True</code> 收工。套路复盘三步：<b>①确认拉直后有序（行内升序 + 行末 &lt; 下行行首）→ ②标准一维二分 → ③取值时用 mid//n、mid%n 换算回行列</b>。要是 target 不在矩阵里（预设 target=4 可看全过程），区间会一路缩空 → 第 14 行 <code>return False</code>。'
+        : '区间缩空也没找到 → 第 14 行 <code>return False</code>。套路复盘三步：<b>①确认拉直后有序 → ②标准一维二分 → ③mid//n、mid%n 换算回行列取值</b>。注意 LC 240（只有行、列各自升序）不满足"行末 &lt; 下行行首"，就不能这么拉直。') +
+        ' 一维二分 + 一行换算公式，就把整个矩阵收进 O(log(mn))。',
+      do: (function(){
+        return (v) => {
+          v.arr('F1', flat, {label:'拉直后的一维视图　·　<code>target = ' + target + '</code>', states:(function(){ const st = {}; for(let x = 0; x < flat.length; x++) st[x] = 'muted'; return st; })(), cw:34});
+          v.grid('M', matrix, {label:'原矩阵　·　第 i 行 j 列 ⇔ 拉直后第 i×' + n + '+j 格', states:(function(){ const st = {}; for(let r = 0; r < m; r++) for(let c = 0; c < n; c++) st[r + ',' + c] = 'muted'; return st; })(), cw:40});
+          v.result(found, {label:'返回值'});
+        };
+      })()});
+
+    return F;
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P056 · 电话号码的字母组合 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 56, num: 17, title: '电话号码的字母组合', diff: '中等', cat: '回溯',
+  method: 'letterCombinations',
+
+  lede: '题目：老手机键盘上每个数字对应几个字母（2→abc，3→def…），给一串数字，返回所有能打出的字母组合。' +
+        '思路就是<b>逐位递归</b>：dfs(i) 专门给第 i 个数字选字母——它给几个字母就分几岔；每一位都填完，<span class="var r">path</span> 就拼成一个组合。' +
+        '左上角常驻 <span class="var b">数字→字母映射表</span>，当前用到的数字会高亮。',
+
+  roles: [
+    {c:'orange', code:'i',    text:'正在填的数字位'},
+    {c:'blue',   code:'path', text:'前面几位已选的字母'},
+    {c:'violet', code:'撤销', text:'弹出字母，换下一个再试'},
+    {c:'green',  code:'ans',  text:'收集到的组合'}
+  ],
+
+  codeTitle: '跟着高亮读代码——<code>if i == len(digits)</code> 变<span style="color:var(--green)">绿</span>＝每一位都有字母了（收集组合），变<span style="color:var(--red)">红</span>＝还没填完，继续给当前数字挑字母。',
+
+  legend: [
+    {c:'orange', text:'当前数字位 i'},
+    {c:'blue',   text:'已填好的位'},
+    {c:'violet', text:'撤销换字母'},
+    {swatch:'var(--blue-soft)', text:'映射表高亮行 = 当前数字'}
+  ],
+
+  idea: '逐位递归：第 i 位数字给几个字母就分几岔；每一位都填完，path 拼起来就是一个组合。组合总数 = 各位字母数的乘积。',
+
+  qa: [
+    {q:'为什么这题必须回溯，不能几层 for 循环？',
+     a:'数字串长度不定，for 循环要写几层事先不知道；回溯（递归）把"每一位一层循环"变成递归调用，位数 = 递归深度，写一次就适用任意长度。本质上是"动态层数的多重循环"。'},
+    {q:'digits 是空串为什么要特判返回 []？',
+     a:'如果不特判，dfs(0) 会立刻走到"填完了"的分支，把空串 "" 当成一个组合收进去——但"没按任何键"不该算组合，题目要求返回空列表。'},
+    {q:'复杂度是多少？',
+     a:'每位最多 4 个字母（7、9），组合最多 4<sup>n</sup> 个（3 和 4 的混合按乘积算），每个拼串 O(n)，时间 O(n·4<sup>n</sup>)；递归栈和 path 占 O(n)。'}
+  ],
+
+  complexity: '时间 O(n·4^n)（最坏每位 4 个字母）　·　空间 O(n)（递归栈 + path，不计返回值）',
+
+  form: [
+    {key:'digits', label:'digits', type:'str', def:'23'}
+  ],
+  presets: [
+    {label:'23（默认，9 个组合）', values:{digits:'23'}},
+    {label:'7（一位，4 个字母）', values:{digits:'7'}},
+    {label:'29（12 个组合）', values:{digits:'29'}},
+    {label:"''（空串，边界）", values:{digits:''}}
+  ],
+
+  code: `class Solution:
+    def letterCombinations(self, digits):
+        if not digits: return []          # 空字符串: 一个组合都没有
+        phone = {'2':'abc', '3':'def', '4':'ghi', '5':'jkl',
+                 '6':'mno', '7':'pqrs', '8':'tuv', '9':'wxyz'}
+        ans, path = [], []
+
+        def dfs(i):                       # 正在为第 i 个数字选字母
+            if i == len(digits):          # 每个数字都配上了字母
+                ans.append(''.join(path)) # path 拼成一个组合
+                return
+            for ch in phone[digits[i]]:   # 依次试这个数字的每个字母
+                path.append(ch)           # 选它
+                dfs(i + 1)                # 去填下一个数字
+                path.pop()                # 撤销, 换下一个字母
+
+        dfs(0)
+        return ans
+`,
+
+  sol(input){
+    const digits = String(input.digits == null ? '' : input.digits).replace(/[^2-9]/g, '');
+    if(!digits) return [];
+    const phone = {'2':'abc','3':'def','4':'ghi','5':'jkl','6':'mno','7':'pqrs','8':'tuv','9':'wxyz'};
+    const ans = [], path = [];
+    (function dfs(i){
+      if(i === digits.length){ ans.push(path.join('')); return; }
+      for(const ch of phone[digits[i]]){
+        path.push(ch); dfs(i + 1); path.pop();
+      }
+    })(0);
+    return ans;
+  },
+  expected: ['ad','ae','af','bd','be','bf','cd','ce','cf'],
+
+  quiz: [
+    {q:'数字串长度不定,为什么这题用「逐位递归」而不是写几层 for 循环?',
+     options:['递归比循环跑得快','位数事先不知道,for 要写几层没法写死;dfs(i) 把「每一位一层循环」变成递归,位数 = 递归深度,写一次适配任意长度','因为 for 循环不能遍历字符串'],
+     answer:1,
+     explain:'digits 2 位就是两层循环、3 位三层——写死层数的代码撑不住任意输入。dfs(i) 专职给第 i 个数字挑字母,它给几个字母就分几岔,递归深度自动等于位数:本质是「层数动态确定的多重循环」。这也是所有"组合型回溯"的通用骨架:循环层数不定时,用递归把循环摞起来。',
+     jumpTo:2},
+    {q:'代入算一算:digits = "79" 一共能打出多少种组合?',
+     options:['8 种','9 种','16 种','64 种'],
+     answer:2,
+     explain:'乘法原理:7 → "pqrs" 4 个字母,9 → "wxyz" 4 个字母,总数 = 4 × 4 = <b>16</b>。对照默认例子 "23":3 × 3 = 9。选 9 的人按"每键 3 字母"惯性算了;选 64 的人把乘法做成了 4 的立方——位数只有 2,每位独立选择,各乘各的,不出现幂。',
+     jumpTo:39},
+    {q:'代入算一算:digits = "24" 时,按动画 dfs 顺序收集的第 5 个组合是?',
+     options:['"ag"','"ah"','"bh"','"cg"'],
+     answer:2,
+     explain:'第 0 位按 2→abc 的顺序先固定 a,把下一位的全部可能走完:ag、ah、ai;再固定 b:bg、<b>bh</b>、bi;最后 c:cg、ch、ci。第 5 个(1 起数)就是 <b>bh</b>。深度优先的次序 = 第一位字母一个个换、每换一个就把第二位吃干榨净,所以答案按第一位分组、第二位轮转,而不是整表按字典序混排。',
+     jumpTo:39},
+  ],
+
+  steps(input){
+    const F = [];
+    let digits = String(input.digits == null ? '' : input.digits).replace(/[^2-9]/g, '');
+    let truncated = false;
+    if(digits.length > 2){ digits = digits.slice(0, 2); truncated = true; }
+    const n = digits.length;
+    const phone = {'2':'abc','3':'def','4':'ghi','5':'jkl','6':'mno','7':'pqrs','8':'tuv','9':'wxyz'};
+    const PHONE_ROWS = Object.keys(phone).map(k => [k, phone[k]]);
+    const dchars = digits.split('');
+    const path = [];
+    const ans = [];
+    const chips = [];
+    let fid = 0;
+    const stack = [];
+
+    const mkI = i => [{name:'i', idx:i, cls:'mi', text:'▲ i'}];
+    const nst = (cur, state) => {
+      const st = {};
+      for(let j = 0; j < n; j++) if(j < cur) st[j] = 'in';
+      if(cur != null && cur >= 0 && cur < n) st[cur] = state || 'active';
+      return st;
+    };
+    const pathHtml = (flash) => '<code>path</code> = [' +
+      path.map((x, j) => '<span class="' + (flash && j === path.length - 1 ? 'mk-a' : 'mk-b') + '">' + LCesc(x) + '</span>').join(', ') + ']' +
+      (path.length === n ? '　<span class="mk-g">拼成 "' + LCesc(path.join('')) + '"</span>' : '');
+
+    const draw = (o) => (v) => {
+      v.map('phone', PHONE_ROWS, {label:'数字 → 字母映射 <code>phone</code>', hlK:o.hlK});
+      v.arr('digits', dchars, {label:'数字串 <code>digits</code>　·　蓝 = 已填好字母', quotes:true, states:o.nst, markers:o.mk || []});
+      v.text('path', o.pHtml, {label:'当前路径', html:true});
+      v.stack('S', o.stk, {label:'递归调用栈', topTag:'栈顶'});
+      v.set('ans', o.chips, {label:'ans 已收集的组合（' + o.chips.length + ' 个）', color:'g'});
+      if(o.res !== undefined) v.result(o.res, {label:'返回结果'});
+    };
+
+    function dfs(i){
+      stack.push({key:'f' + (++fid), val:'dfs(' + i + ') ' + (path.join('') || '∅')});
+      if(i === n){
+        const s = path.join('');
+        ans.push(s);
+        chips.push(s);
+        F.push({hl:[8,9,10,11], ok:9, tag:'收集组合！', cls:'t-green',
+          msg:'i=' + i + '：' + n + ' 个数字都配上了字母。path=[' + path.join(', ') + '] 拼成 <b>"' + LCesc(s) + '"</b>，收进 <code>ans</code>（第 ' + ans.length + ' 个）——每种"每位各挑一个字母"的方案，都是这棵字母树的一片叶子。',
+          do: draw({hlK:null, nst:nst(i), mk:[], pHtml:pathHtml(true), stk:stack.slice(),
+                    chips:chips.slice()})});
+        stack.pop();
+        return;
+      }
+      const letters = phone[digits[i]];
+      F.push({hl:[8,9], no:9, tag:'进入 dfs', cls:'t-blue',
+        msg:'进入 dfs(' + i + ')：此刻 path=[' + path.join(', ') + ']（前 ' + i + ' 位已填好、上方蓝色）。本层任务：给数字 <b>' + digits[i] + '</b> 挑一个字母——映射表高亮行给出 "' + letters + '" 共 ' + letters.length + ' 个候选，等会逐个都试一遍。',
+        do: draw({hlK:digits[i], nst:nst(i), mk:mkI(i), pHtml:pathHtml(false),
+                  stk:stack.slice(), chips:chips.slice()})});
+      for(let k = 0; k < letters.length; k++){
+        const ch = letters[k];
+        path.push(ch);
+        F.push({hl:[12,13,14], tag:'选字母 ' + ch, cls:'t-orange',
+          msg:'数字 ' + digits[i] + ' 的第 ' + (k + 1) + ' 个字母 <b>' + ch + '</b>：path 追加它 → [' + path.join(', ') + ']，递归 dfs(' + (i + 1) + ') 去填下一位。先把本位固定成 ' + ch + '，下一位的所有可能都在它之下展开——深度优先，一路探到叶子再回头换字母。',
+          do: draw({hlK:digits[i], nst:nst(i + 1), mk:[], pHtml:pathHtml(true),
+                    stk:stack.slice(), chips:chips.slice()})});
+        dfs(i + 1);
+        path.pop();
+        F.push({hl:[15], tag: k + 1 < letters.length ? '撤销·换字母' : '撤销·本层结束',
+          cls: k + 1 < letters.length ? 't-violet' : 't-grey',
+          msg: k + 1 < letters.length
+            ? '本位固定为 ' + ch + ' 的所有组合都收完了，弹出 ' + ch + '、换下一个候选 <b>' + letters[k + 1] + '</b> 再试——换之前必须清空本位：不 pop 的话 path 越叠越长，后面的字母全接错位。'
+            : '弹出 ' + ch + ' —— 数字 ' + digits[i] + ' 的字母全试完了，path 复原，dfs(' + i + ') 返回上一层。上层同样接着弹、接着换：一层层撤干净，每个字母才轮得到自己的"下一位全家福"。',
+          do: draw({hlK:digits[i], nst:nst(i), mk:[], pHtml:pathHtml(false),
+                    stk:stack.slice(), chips:chips.slice()})});
+      }
+      stack.pop();
+    }
+
+    if(n === 0){
+      F.push({hl:[1,2,3,4,5,6,17], tag:'初始化', cls:'t-grey',
+        msg:'数字串是空的——一个键都没按。ans、path 已备好，但马上会撞上第 3 行的特判，看下一步。',
+        do: draw({hlK:null, nst:nst(-1), mk:[], pHtml:'<code>path</code> = []', stk:[], chips:[]})});
+      F.push({hl:[3], ok:3, tag:'空串特判', cls:'t-grey',
+        msg:'<code>digits</code> 为空：一个数字都没有，拼不出任何组合 → 直接 <b>return []</b>。不特判的话，dfs(0) 会立刻满足"每位都填完了"的条件，把空串 "" 误当成一个组合收进 ans——这是本题唯一容易踩的坑。',
+        do: draw({hlK:null, nst:nst(-1), mk:[], pHtml:'<code>path</code> = []', stk:[], chips:[], res:[]})});
+      return F;
+    }
+
+    const total = dchars.reduce((acc, d) => acc * phone[d].length, 1);
+    F.push({hl:[1,2,3,4,5,6,17], tag:'初始化', cls:'t-grey',
+      msg:'映射表：' + dchars.map(d => d + '→' + phone[d]).join('，') + '。组合总数 = 各位字母数相乘 = ' +
+          dchars.map(d => phone[d].length).join('×') + ' = <b>' + total + '</b> 个。打法是<b>逐位递归</b>：dfs(i) 专职给第 i 个数字挑字母，它给几个字母就分几岔——数字串长度不定，用递归把"每一位一层循环"动态摞起来，比写死几层 for 灵活得多。' +
+          (truncated ? '（输入超过 2 位，动画只演示前 2 位）' : ''),
+      do: draw({hlK:null, nst:nst(-1), mk:[], pHtml:'<code>path</code> = []', stk:[], chips:[]})});
+
+    dfs(0);
+
+    F.push({hl:[18], tag:'递归结束', cls:'t-dark',
+      msg:'所有岔路走完，<code>ans</code> 收齐 ' + ans.length + ' 个组合：' + chips.join('、') +
+          '。回看结构：这就是一棵"字母树"——第 i 层按 digits[i] 的字母数分岔，叶子就是答案，所以总数恰好是各位字母数的乘积。选字母 → 递归 → 弹出换下一个，三拍循环到每一位都试完为止。',
+      do: draw({hlK:null, nst:nst(-1), mk:[], pHtml:pathHtml(false), stk:[], chips:chips.slice(), res:ans.slice()})});
+
+    return F;
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P070 · 字符串解码 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 70, num: 394, title: '字符串解码', diff: '中等', cat: '栈',
+  method: 'decodeString',
+
+  lede: '题目：把 <b>3[a2[c]]</b> 这类编码串还原成 <b>accaccacc</b>——k[...] 表示中括号里的内容重复 k 遍，而且<b>括号能套括号</b>。' +
+        '一个串不够用，就上<span class="var o">双栈</span>：<span class="var r">数字栈 nums</span> 记重复次数，<span class="var o">字符串栈 strs</span> 记"["之前的旧串；' +
+        '遇 <span class="var v">[</span> 就保存现场从头攒，遇 <span class="var i">]</span> 就弹栈结算 k 遍。动画从左到右逐字符推进，<span class="var i">i</span> 指着正在读的字符。',
+
+  roles: [
+    {c:'orange', code:'i / ch', text:'正在读的字符'},
+    {c:'blue',   code:'nums',   text:'数字栈：攒好的重复次数'},
+    {c:'green',  code:'strs',   text:'字符串栈：[ 之前的旧串'},
+    {c:'violet', code:'cur',    text:'当前正在攒的串'},
+    {c:'red',    code:']',      text:'结算：弹两栈、拼 k 遍'}
+  ],
+
+  codeTitle: '跟着高亮读代码——命中哪个分支哪行变<span style="color:var(--green)">绿</span>：数字、[、]、字母四选一。最内层的 ] 最先结算——栈的后进先出正好匹配括号嵌套。',
+
+  legend: [
+    {c:'blue',   text:'数字栈 nums（次数）'},
+    {c:'green',  text:'字符串栈 strs（旧串）'},
+    {c:'violet', text:'cur 当前攒的串'},
+    {c:'red',    text:'] 结算时刻'}
+  ],
+
+  idea: '遇到 [ 就把"次数"和"旧串"分别压进两个栈、清零从头攒；遇到 ] 就弹栈：旧串 + 新串×k。嵌套多深都不怕——栈天生就是管嵌套的。',
+
+  qa: [
+    {q:'为什么必须用两个栈，一个不够吗？',
+     a:'进入 [ 时有两样东西要"存档"：<b>重复次数</b>和 <b>[ 之前的旧串</b>。它们是一对，出 ] 时要一起取用，但一个栈里没法把数字和串混着存还保证配对。两个栈同进同出，第 i 对括号永远对上第 i 组记录。'},
+    {q:'嵌套括号为什么不会乱？',
+     a:'栈是<b>后进先出</b>：最内层的 ] 最先出现，弹到的正是最内层的次数和旧串；结算完的 cur 成为外层的"新串"，外层 ] 再来时拿它继续拼——和括号从内到外消掉的顺序一模一样。'},
+    {q:'num = num*10 + int(ch) 是在干嘛？',
+     a:'次数可能是<b>多位数</b>（如 12[ab]）。数字是逐字符来的：读到 1 时 num=1，再读到 2 时 num = 1×10 + 2 = 12。不攒位数就只能处理个位数。'},
+    {q:'复杂度是多少？',
+     a:'设输出串长 M：每产生一个输出字符都要经过栈拼接，时间 O(M)；数字栈、字符串栈和 cur 最坏也就 O(M) 的量级。n 是输入长度，通常 M ≥ n。'}
+  ],
+
+  complexity: '时间 O(M + n)（M = 输出串长）　·　空间 O(M)（两个栈 + 当前串）',
+
+  form: [
+    {key:'s', label:'s', type:'str', def:'3[a2[c]]'}
+  ],
+  presets: [
+    {label:'3[a2[c]] 嵌套', values:{s:'3[a2[c]]'}},
+    {label:'2[abc]3[cd]ef 混排', values:{s:'2[abc]3[cd]ef'}},
+    {label:'12[a] 多位数', values:{s:'12[a]'}},
+    {label:'abc 没括号（边界）', values:{s:'abc'}}
+  ],
+
+  code: `class Solution:
+    def decodeString(self, s):
+        num, cur = 0, ''              # num: 正在攒的次数 / cur: 当前串
+        nums, strs = [], []           # 数字栈 / 字符串栈
+        for ch in s:
+            if ch.isdigit():
+                num = num * 10 + int(ch)   # 多位数: 1 -> 12
+            elif ch == '[':
+                nums.append(num)           # 次数进数字栈
+                strs.append(cur)           # [ 前的旧串进字符串栈
+                num, cur = 0, ''           # 清零, 从头攒 [ 里的新串
+            elif ch == ']':
+                k = nums.pop()             # 弹出重复次数
+                prev = strs.pop()          # 弹出 [ 前的旧串
+                cur = prev + cur * k       # 旧串接上 k 遍新串
+            else:
+                cur += ch                  # 普通字母直接接上
+        return cur
+`,
+
+  sol(input){
+    const s = String(input.s == null ? '' : input.s);
+    let num = 0, cur = '';
+    const nums = [], strs = [];
+    for(const ch of s){
+      if(ch >= '0' && ch <= '9'){
+        num = num * 10 + (ch.charCodeAt(0) - 48);
+      } else if(ch === '['){
+        nums.push(num); strs.push(cur);
+        num = 0; cur = '';
+      } else if(ch === ']'){
+        const k = nums.pop();
+        const prev = strs.pop();
+        cur = prev + cur.repeat(k);
+      } else {
+        cur += ch;
+      }
+    }
+    return cur;
+  },
+  expected: 'accaccacc',
+
+  quiz: [
+    {q:'遇到 [ 时,为什么要先把当前的 cur 存进字符串栈再清零?',
+     options:['为了省内存,清零后重新攒串更快','[ 后面是嵌套里的新串,攒完要 k 倍复制接回旧串;不把旧串存档,一清零就丢了','因为数字也要进栈,两个栈必须同步进'],
+     answer:1,
+     explain:'[ 一出现,语法上就进入了"里层":接下来的字母属于要重复的新串,cur 必须腾空从头攒。而 [ 前面已经攒好的 cur(外层旧串)还没写完,要等里层重复完再接回来——所以先 strs.append(cur) 存档。数字栈和字符串栈是一对:遇到 ] 一起弹,prev + cur*k 就是"旧串接上 k 遍新串"。',
+     jumpTo:6},
+    {q:'s = "3[a]2[bc]" 解码结果是?',
+     options:['aaabcbc','aabbcc','abcabc'],
+     answer:0,
+     explain:'第一段 3[a]:读到 ] 弹出次数 3、旧串 "",cur = "" + "a"×3 = "aaa";第二段 2[bc]:进 [ 时存档的旧串正是 "aaa",弹出时 cur = "aaa" + "bc"×2 = "aaabcbc"。注意 "aaa" 是作为旧串存档再接回来的,不是丢掉重来——这正是字符串栈存在的意义。',
+     jumpTo:19},
+    {q:'s = "12[a]" 时,读第二个数字 2 之前 num = 1,代码怎么把它变成 12?',
+     options:['num = num*10 + 2——多位数逐位滚,和读十进制数一个套路','把字符 "1" 和 "2" 拼成字符串 "12" 再整体转数字','num = num + 2,凑成 3 也够用'],
+     answer:0,
+     explain:'次数不一定只有一位:12[a] 的重复次数是 12。逐字符扫时先攒到 1,再见 2 就 num = 1×10 + 2 = 12——每读一个数字位都这么滚一遍,几位数都吃得下。清零时机也关键:num 只在遇到 [ 时清零,所以紧挨着 [ 的连续数字位都属于同一个次数。',
+     jumpTo:10},
+  ],
+
+  steps(input){
+    const F = [];
+    const s = String(input.s == null ? '' : input.s);
+    const chars = s.split('');
+    const nums = [];   // 数字栈 items {key, val}
+    const strs = [];   // 字符串栈 items {key, val}
+    let num = 0, cur = '';
+    let seq = 0;
+
+    /* ---- 快照绘制（铁律 5：o 里全是帧生成那一刻的值） ---- */
+    const draw = (o) => (v) => {
+      v.arr('s', chars, {
+        label:'字符串 <code>s</code>　·　逐字符读入',
+        quotes:true, states:o.sst || {}, markers:o.mk || []
+      });
+      v.stack('N', o.nums, {label:'数字栈 <code>nums</code>　·　重复次数',
+        states:o.nst || {}, topTag:o.nums.length ? '栈顶' : null});
+      v.stack('P', o.strs, {label:'字符串栈 <code>strs</code>　·　[ 前的旧串',
+        states:o.pst || {}, topTag:o.strs.length ? '栈顶' : null});
+      v.vars('vars', {ch:o.ch, num:o.num, cur:o.cur, k:o.k, prev:o.prev},
+        {label:'当前状态', hl:o.hlv || []});
+      if(o.res !== undefined) v.result(o.res, {label:'解码结果'});
+    };
+    const snap = (i, extra) => Object.assign({
+      sst: i == null ? {} : {[i]:'active'},
+      mk: i == null ? [] : [{name:'i', idx:i, cls:'mi', text:'▲ i'}],
+      nums:nums.slice(), strs:strs.slice(), nst:{}, pst:{},
+      ch: i == null ? '—' : chars[i], num:num, cur:cur,
+      k:'—', prev:'—', hlv:[]
+    }, extra);
+
+    F.push({hl:[1,2,3,4], tag:'开始', cls:'t-grey',
+      msg:'k[...] 表示内容重复 k 遍，还会<b>套娃</b>——比如 3[a2[c]] 里，内层 2[c] 得先变成 cc，外层 3[...] 才好拿去重复。分工先说清：<b>数字栈 nums 只管次数</b>（每对 [ ] 各用哪个 k），<b>字符串栈 strs 只管 [ 之前的旧串</b>（结算时要垫在新段前面）；num 攒"正在读的次数"、cur 攒"当前层的串"。遇到 [ 就存档、遇到 ] 就结算，一段一段来。',
+      do: draw(snap(null))});
+
+    for(let i = 0; i < chars.length; i++){
+      const ch = chars[i];
+
+      if(ch >= '0' && ch <= '9'){
+        F.push({hl:[5,6], ok:6, tag:'读数字', cls:'t-blue',
+          msg:'读到字符 <b>' + LCesc(ch) + '</b>：是数字 → 它是下一段 [ 的重复次数的一部分。次数可能不止一位，先别急着入栈，攒进 num 等读全。',
+          do: draw(snap(i))});
+        num = num * 10 + (ch.charCodeAt(0) - 48);
+        F.push({hl:[7], tag:'攒次数', cls:'t-ink',
+          msg:'<code>num = num × 10 + ' + ch + '</code> → <b>num = ' + num + '</b>。这就是十进制拼位：像 12[a]（预设专门演示），读 1 时 num = 1，再读 2 就 1×10 + 2 = 12——没有这行，多位数次数就读不全。',
+          do: draw(snap(i, {hlv:['num']}))});
+
+      } else if(ch === '['){
+        F.push({hl:[5,8], ok:8, tag:'读 [', cls:'t-violet',
+          msg:'读到 <b>[</b> → <b>存档时刻</b>。为什么必须先存档？[ 之前的两样现场马上要被覆盖：num 是这对括号的重复次数、cur 是 [ 之前的旧串（解码后要垫在新段前面）——不存就永久丢失。存档动作：分别压进数字栈和字符串栈，一对配好，等对应的 ] 来取。',
+          do: draw(snap(i))});
+
+        nums.push({key:'n' + (++seq), val:num});
+        F.push({hl:[9], tag:'次数进栈', cls:'t-blue',
+          msg:'<code>nums.append(' + num + ')</code>：攒好的次数 ' + num + ' 压进<b>数字栈</b>（中栏亮格）。这个栈只管一件事：每对 [ ] 各用哪个 k；嵌套时各层的 k 依次叠上去，后进先出——和括号从内到外消掉的顺序严丝合缝。',
+          do: draw(snap(i, {nst:{[nums[nums.length - 1].key]:'just'}, hlv:['num']}))});
+
+        strs.push({key:'s' + (++seq), val:cur});
+        const oldCur = cur;
+        num = 0; cur = '';
+        F.push({hl:[10,11], tag:'存档旧串', cls:'t-green',
+          msg:'<code>strs.append("' + LCesc(oldCur) + '")</code>：[ 之前的旧串压进<b>字符串栈</b>（右栏亮格）——它和刚压的次数是同一场存档，永远成对进、成对出。然后 num、cur <b>清零</b>：[ 里的内容要从零从头攒，不清空的话旧串会混进新段，重复 k 遍时连旧串一起被重复，全盘皆错。',
+          do: draw(snap(i, {pst:{[strs[strs.length - 1].key]:'just'}, hlv:['num','cur']}))});
+
+      } else if(ch === ']'){
+        F.push({hl:[5,12], ok:12, tag:'读 ]', cls:'t-red',
+          msg:'读到 <b>]</b> → <b>结算时刻</b>。cur 里攒的正是这对括号里的完整内容，现在要办"重复 k 遍 + 接回旧串"。弹栈顺序固定：先弹数字栈取 k，再弹字符串栈取旧串——两个栈同进同出，取回来的必然是配对的同一对存档。',
+          do: draw(snap(i))});
+
+        const kn = nums.pop();
+        F.push({hl:[13], tag:'弹次数', cls:'t-orange',
+          msg:'<code>k = nums.pop() = ' + kn.val + '</code>：这对 [ ] 的重复次数取出来了。栈后进先出 → <b>最内层的 ] 最先结算</b>——和括号嵌套从内到外消掉的顺序天然一致，套多深都不会乱。',
+          do: draw(snap(i, {k:kn.val, hlv:['k']}))});
+
+        const pv = strs.pop();
+        F.push({hl:[14], tag:'弹旧串', cls:'t-orange',
+          msg:'<code>prev = strs.pop() = "' + LCesc(pv.val) + '"</code>：同一场存档的另一半到手——对应 [ 之前的旧串。记住它的位置：等会儿要垫在拼好的新内容<b>前面</b>，因为原串里它本来就写在 [ 的左边。',
+          do: draw(snap(i, {k:kn.val, prev:pv.val, hlv:['prev']}))});
+
+        const inner = cur;
+        const made = cur.repeat(kn.val);
+        cur = pv.val + made;
+        F.push({hl:[15], tag:'拼接', cls:'t-green',
+          msg:'<code>cur = prev + cur × k</code>："' + LCesc(pv.val) + '" + "' + LCesc(inner) + '"×' + kn.val +
+              ' → <b>"' + LCesc(cur) + '"</b>。拼接顺序固定：<b>旧串在前，新段重复 k 遍在后</b>——顺序反了结果就错，这正是两个栈各管一摊、按位取用的意义。' + (nums.length ? '这段成果成了当前层的新串，外层 ] 再来时会被整体拿去重复——嵌套就是这样一层层向外包抄的。' : '最外层也结算完毕！'),
+          do: draw(snap(i, {k:kn.val, prev:pv.val, hlv:['cur']}))});
+
+      } else {
+        F.push({hl:[5,16], tag:'读字母', cls:'t-blue',
+          msg:'读到字符 <b>' + LCesc(ch) + '</b>：普通字母，不用惊动两个栈，直接接到 cur 尾部——攒串的细活，一个字符都不能丢。',
+          do: draw(snap(i))});
+        cur += ch;
+        F.push({hl:[17], tag:'接上串', cls:'t-ink',
+          msg:'<code>cur += "' + LCesc(ch) + '"</code> → <b>cur = "' + LCesc(cur) + '"</b>。这个 cur 是"当前层"的半成品：哪层开的 [，攒的就是哪层的串——] 一来就地结算，嵌套多深互不串味。',
+          do: draw(snap(i, {hlv:['cur']}))});
+      }
+    }
+
+    F.push({hl:[18], tag:'返回', cls:'t-dark',
+      msg:'整串读完，两个栈都空——每对 [ ] 都配对结算过，没有烂尾 → <b>return cur = "' + LCesc(cur) + '"</b> 🎉 复盘：[ 存档、] 结算、字母攒串，双栈把任意深的嵌套拆成一层层"重复 + 拼接"，代价与输出长度 M 成正比。',
+      do: draw(snap(null, {res:cur, hlv:['cur']}))});
+
+    return F;
+  }
+});
+</script>
+</body>
+</html>

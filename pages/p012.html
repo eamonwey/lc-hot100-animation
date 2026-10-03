@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P012 · 最小覆盖子串 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 12, num: 76, title: '最小覆盖子串', diff: '困难', cat: '子串',
+  method: 'minWindow',
+
+  lede: '题目：在字符串 <span class="var r">s</span> 里找出<b>最短</b>的一段连续子串，把 <span class="var i">t</span> 里的每种字符（连个数）都包住。' +
+        '动画里 <span class="var i">r</span> 负责"扩张"：一路往右捡字符；<span class="var o">l</span> 负责"收缩"：一旦凑齐，就试着从左边扔。' +
+        '<span class="var r">need</span> 是购物清单（每种字符要几个），<span class="var r">win</span> 是购物车（已有几个），' +
+        '<span class="var v">valid</span> 数"几种字符已经凑够"。扩张、收缩两个阶段来回接力，就是滑动窗口的完全体。',
+
+  roles: [
+    {c:'orange', code:'r', text:'右端指针：只管扩张，每个字符进窗一次'},
+    {c:'green',  code:'l', text:'左端指针：凑齐后收缩，能扔就扔'},
+    {c:'blue',   code:'need / win', text:'需求表 / 窗口计数'},
+    {c:'violet', code:'valid', text:'已凑够需求的字符种类数'}
+  ],
+
+  codeTitle: '跟着高亮读代码——<code>while</code> 那行变<span style="color:var(--green)">绿</span>＝窗口凑齐了 t，进入收缩；<code>if c in need</code> 变<span style="color:var(--red)">红</span>＝这个字符 t 根本不要。',
+
+  legend: [
+    {c:'blue', text:'窗口内（已进购物车）'},
+    {c:'orange', text:'r 当前格'},
+    {c:'green', text:'l 左端 / 凑够一种'},
+    {c:'violet', text:'当前最优覆盖 best'}
+  ],
+
+  idea: '右指针无脑扩张捡货，凑齐就让左指针贪心收缩扔货——每次"刚好要不够"的瞬间量一下窗口长短，最短的那个就是答案。',
+
+  qa: [
+    {q:'valid 为什么在 win[c] == need[c] 那一刻才 +1 / -1？',
+     a:'valid 统计的是"恰好凑够"的种类：win[c] 从 1 涨到 2（需求是 1）不算新成就。收缩时也要在"扔掉这一个就不够"的那一刻才 -1。两边对称之后，<b>valid == len(need) 就精确等价于"窗口覆盖了 t"</b>，判断只需要 O(1)。'},
+    {q:'扩张和收缩为什么要写成两层循环？',
+     a:'外层 for 让 r 无条件右移——每个字符只进窗口一次；内层 while 只在"凑齐"时触发，让 l 能一口气连扔多个字符。两个指针各自都只走一趟，所以总时间是 O(|s| + |t|)，不是 O(n²)。'},
+    {q:'窗口里 t 不要的字符怎么办？',
+     a:'win 只登记 need 里有的字符；t 不要的字符在窗口里但从不影响 valid。所以收缩扔到它们时一步都不用犹豫，直接滑过——这也是为什么左指针敢一路狂奔。'},
+    {q:'best 为什么在收缩开头更新，而不是扔完再更新？',
+     a:'while 每一轮开头，窗口 [l..r] 一定还合法（刚检查过 valid）；扔掉 s[l] 之后它可能就不合法了。所以"量长短、记 best"必须放在动手扔之前，顺序反了会漏掉最短的合法窗口。'}
+  ],
+
+  complexity: '时间 O(|s| + |t|)（两个指针各走一趟）　·　空间 O(|Σ|)（need/win 最多装字符集大小）',
+
+  form: [
+    {key:'s', label:'s', type:'str', def:'ADOBECODEBANC'},
+    {key:'t', label:'t', type:'str', def:'ABC'}
+  ],
+  presets: [
+    {label:'ADOBECODEBANC / ABC', values:{s:'ADOBECODEBANC', t:'ABC'}},
+    {label:'a / a（最小）', values:{s:'a', t:'a'}},
+    {label:'a / aa（凑不齐→空串）', values:{s:'a', t:'aa'}},
+    {label:'aa / aa（重复需求）', values:{s:'aa', t:'aa'}}
+  ],
+
+  code: `class Solution:
+    def minWindow(self, s, t):
+        need = {}                        # 购物清单: t 里每种字符要几个
+        for c in t:
+            need[c] = need.get(c, 0) + 1
+        win = {}                         # 购物车: 窗口里已有多少
+        valid = 0                        # 已凑够需求的字符种类数
+        best, l = '', 0                  # 最优答案 与 左端
+        for r, c in enumerate(s):        # 阶段1: 右端一路扩张
+            if c in need:
+                win[c] = win.get(c, 0) + 1
+                if win[c] == need[c]:    # 这种字符正好凑够
+                    valid += 1
+            while valid == len(need):    # 阶段2: 凑齐了 → 收缩
+                if not best or r - l + 1 < len(best):
+                    best = s[l:r+1]      # 记下更短的覆盖
+                d = s[l]                 # 看看左端要扔谁
+                if d in need:
+                    if win[d] == need[d]:
+                        valid -= 1       # 扔完后这种字符不够了
+                    win[d] -= 1
+                l += 1
+        return best
+`,
+
+  sol(input){
+    const s = String(input.s), t = String(input.t);
+    const need = {};
+    for(const c of t) need[c] = (need[c] || 0) + 1;
+    const kinds = Object.keys(need).length;
+    const win = {};
+    let valid = 0, l = 0, best = '';
+    for(let r = 0; r < s.length; r++){
+      const c = s[r];
+      if(need[c] != null){
+        win[c] = (win[c] || 0) + 1;
+        if(win[c] === need[c]) valid++;
+      }
+      while(valid === kinds){
+        if(!best || r - l + 1 < best.length) best = s.slice(l, r + 1);
+        const d = s[l];
+        if(need[d] != null){
+          if(win[d] === need[d]) valid--;
+          win[d]--;
+        }
+        l++;
+      }
+    }
+    return best;
+  },
+  expected: 'BANC',
+
+  quiz: [
+    {q:'内层 while 收缩时,为什么「量长短、记 best」放在动手扔 s[l] 之前,而不是扔完再记?',
+     options:['while 每轮开头窗口一定还合法(valid 刚检查过);扔掉 s[l] 后窗口可能立刻不合法,这个「刚好凑齐」的瞬间错过就不再来','best 应该越记越长,先记才记得住长的','只是代码风格,放后面结果一样'],
+     answer:0,
+     explain:'收缩的目的是把窗口刮到「再扔一个就不合法」的极限。每轮 while 开头 [l..r] 一定还覆盖 t;一旦扔掉左端,valid 可能当场掉下去,窗口就不合法了。合法窗口的最短值只出现在「扔之前的最后一眼」,所以必须先量后扔。放到后面记到的都是已经不合法的窗口,答案就错了。',
+     jumpTo:22},
+    {q:'窗口里混进了 t 根本不要的字符(比如 s="ADOBECODEBANC" 里的 D、O、E),它们会干扰判定吗?',
+     options:['会,必须先把它们全扔掉才能继续判定','不会:win 只登记 need 里有的字符,闲杂字符不进 win、不影响 valid;收缩扫到它们时直接滑过','会让 valid 永远凑不齐,导致无解'],
+     answer:1,
+     explain:'购物车 win 只登记清单上的货:t 不要的字符进窗时不做任何登记。所以「覆盖了 t」与否只由清单字符的份数决定,闲杂字符再多也不添乱。收缩时扫到闲杂字符,连 valid 都不用看,直接滑出窗口——这正是左指针敢一路狂奔、总复杂度仍是 O(|s|) 的原因。',
+     jumpTo:8},
+    {q:'s = "acbbaca"、t = "aba",最短覆盖子串是什么?',
+     options:['"acbba"','"baca"','"aca"','不存在,返回空串'],
+     answer:1,
+     explain:'t 有两个 a、一个 b。r=4 时窗口 "acbba"(下标 0..4)首次凑齐,记 best="acbba",随后扔掉左端 a 缺货;r=6 再进一个 a 又凑齐,收缩开始:滑过闲杂的 c、扔掉多余的 b(扔一个还够)、窗口刮到 "baca"(长 4),再扔 b 就缺货,停下。4 < 5,best 更新为 "baca"——下标 4、6 的两个 a 加下标 3 的 b,是最短的覆盖段。',
+     jumpTo:68},
+  ],
+
+  steps(input){
+    const F = [];
+    const s = String(input.s), t = String(input.t);
+    const S = s.split(''), T = t.split('');
+    const need = {};
+    for(const ch of T) need[ch] = (need[ch] || 0) + 1;
+    const needKeys = Object.keys(need);
+    const kinds = needKeys.length;
+    const win = {};
+    let valid = 0, l = 0, best = '';
+
+    const needEnt = () => needKeys.map(k => [k, need[k]]);
+    const winEnt = () => needKeys.map(k => [k, win[k] || 0]);
+    const stWin = (a, b, fill) => {
+      const st = {};
+      for(let idx = a; idx <= b; idx++) st[idx] = 'in';
+      if(fill) for(const k in fill) st[k] = fill[k];
+      return st;
+    };
+    const stTarget = (a, b) => {
+      const st = {};
+      for(let idx = a; idx <= b; idx++) st[idx] = 'target';
+      return st;
+    };
+    const marks = (li, ri) => {
+      const m = [];
+      if(li != null) m.push({name:'l', idx:li, cls:'mg', text:'▲ l'});
+      if(ri != null) m.push({name:'r', idx:ri, cls:'mi', text:'▲ r'});
+      return m;
+    };
+    const vars = o => ({r:o.r, c:o.c, l:o.l, valid:o.valid + '/' + kinds, best:o.best || '（还没有）'});
+
+    const draw = (o) => (v) => {
+      v.arr('s', S, {
+        label:'字符串 <code>s</code>　·　目标 <code>t = ' + LCesc(t) + '</code>',
+        quotes:true,
+        states: o.states || {},
+        markers: o.marks || []
+      });
+      v.arr('t', T, {label:'目标字符 <code>t</code>（要集齐的货）', quotes:true});
+      v.map('need', needEnt(), {label:'需求表 <code>need</code>（每种要几个）'});
+      v.map('win', winEnt(), {label:'窗口计数 <code>win</code>', hlK:o.hlK});
+      v.vars('vars', o.vars, {label:'变量'});
+      if(o.result !== undefined) v.result(o.result, {label:'最短覆盖子串'});
+    };
+
+    F.push({hl:[1,2,3,4,5], tag:'建需求表', cls:'t-grey',
+      msg:'先把 <code>t = "' + LCesc(t) + '"</code> 折算成购物清单 <code>need</code>：' +
+          needKeys.map(k => '<code>' + LCesc(k) + '</code> 要 ' + need[k] + ' 个').join('，') +
+          '。个数也要照抄——t 里有重复字符就得要好几份。这份清单就是验收标准：窗口里每种字符都攒够份数才算"覆盖了 t"，少一种、差一个都不行。',
+      do: draw({vars:vars({r:'—', c:'—', l:0, valid:0, best:''})})});
+
+    F.push({hl:[6,7,8], tag:'初始化', cls:'t-grey',
+      msg:'<code>win</code> 是购物车：窗口里每种字符已有几个，和需求表 need 逐项对照；<code>valid</code> 数"已经凑够需求的<b>种类</b>数"，现在 <code>' + valid + '/' + kinds + '</code>。<code>best</code> 先空着，左端 <code>l = 0</code>。接下来右指针 <code>r</code> 一格一格往右扩张，负责把货捡齐。',
+      do: draw({marks:marks(0, null), vars:vars({r:'—', c:'—', l:0, valid:0, best:''})})});
+
+    for(let r = 0; r < S.length; r++){
+      const c = S[r];
+      const wanted = need[c] != null;
+
+      F.push({hl:[9], tag:'右移扩张', cls:'t-ink',
+        msg:'<code>r</code> 走到第 <b>' + r + '</b> 格，捡到字符 <code>' + LCesc(c) + '</code>（橙格），窗口暂时是 [' + l + '..' + r + ']。不管捡到什么，先问一句：这是清单上的货吗？——扩张阶段 r 只管捡、只进不退。',
+        do: draw({states:stWin(l, r, {[r]:'active'}), marks:marks(l, r),
+                  vars:vars({r:r, c:c, l:l, valid:valid, best:best})})});
+
+      F.push({hl:[10], ok:wanted ? 10 : undefined, no:wanted ? undefined : 10,
+        tag:'清单检查', cls:wanted ? 't-blue' : 't-red',
+        msg: wanted
+          ? '<code>' + LCesc(c) + '</code> 在购物清单上（要 ' + need[c] + ' 个）→ 登记进购物车 <code>win</code>，登记完还要看它是不是刚好凑齐份数。'
+          : '<code>' + LCesc(c) + '</code> 不在清单上，t 根本不要它 → 直接无视，<code>win</code> 不动。它虽然躺在窗口里，但覆盖与否只看清单字符——闲杂字符进窗不污染 valid，这正是 win 只记 need 字符的好处。',
+        do: draw({states:stWin(l, r, {[r]:'active'}), marks:marks(l, r),
+                  vars:vars({r:r, c:c, l:l, valid:valid, best:best})})});
+
+      if(wanted){
+        win[c] = (win[c] || 0) + 1;
+        F.push({hl:[11], tag:'入窗登记', cls:'t-blue',
+          msg:'<code>win[' + LCesc(c) + '] += 1</code> → 购物车里的 <code>' + LCesc(c) + '</code> 现在有 <b>' + win[c] + '</b> 个（需求 ' + need[c] + ' 个）。下方 win 表里 ' + LCesc(c) + ' 那行刚被点亮，可对照旁边需求表看差多少。',
+          do: draw({states:stWin(l, r, {[r]:'in'}), marks:marks(l, r), hlK:c,
+                    vars:vars({r:r, c:c, l:l, valid:valid, best:best})})});
+
+        const fresh = win[c] === need[c];
+        if(fresh) valid++;
+        F.push({hl:fresh ? [12,13] : [12], ok:fresh ? 12 : undefined, no:fresh ? undefined : 12,
+          tag:'凑够一种', cls:fresh ? 't-green' : 't-grey',
+          msg: fresh
+            ? '<code>' + LCesc(c) + '</code> 正好凑够 ' + need[c] + ' 个 → 又一种字符达标，<code>valid</code> +1，现在是 <b>' + valid + '/' + kinds + '</b>' + (valid === kinds ? '——齐了！窗口已覆盖 t，内层 while 马上开工收缩。' : '。注意只在"从不够到刚好够"的一刻 +1：之后再多攒也不算新成就，valid 才能精确数出达标种类。')
+            : (win[c] < need[c]
+              ? '<code>' + LCesc(c) + '</code> 才 ' + win[c] + ' 个，需求 ' + need[c] + '，还差 ' + (need[c] - win[c]) + ' 个 → <code>valid</code> 保持 ' + valid + '/' + kinds + '，这格货先攒着。'
+              : '<code>' + LCesc(c) + '</code> 有 ' + win[c] + ' 个、需求只要 ' + need[c] + ' → 超出的白攒，但"凑够过"的状态还在，<code>valid</code> 保持 ' + valid + '/' + kinds + '。'),
+          do: draw({states:stWin(l, r, {[r]:'in'}), marks:marks(l, r), hlK:c,
+                    vars:vars({r:r, c:c, l:l, valid:valid, best:best})})});
+
+        let entered = false;
+        while(valid === kinds){
+          entered = true;
+          F.push({hl:[14], ok:14, tag:'凑齐!开始收缩', cls:'t-orange',
+            msg:'<code>valid = ' + valid + '/' + kinds + '</code>：窗口 [' + l + '..' + r + '] 已覆盖 t！但左端可能挂着多余的货——收缩阶段开工：<code>l</code> 试着往右扔，能扔就扔，把窗口刮到"再扔一个就不够"的刚好状态。不刮的话，记下来的答案就偏长。',
+            do: draw({states:stWin(l, r, {}), marks:marks(l, r),
+                      vars:vars({r:r, c:c, l:l, valid:valid, best:best})})});
+
+          const curLen = r - l + 1;
+          const prevBest = best;
+          const better = !prevBest || curLen < prevBest.length;
+          if(better) best = s.slice(l, r + 1);
+          F.push({hl:better ? [15,16] : [15], ok:better ? 15 : undefined, no:better ? undefined : 15,
+            tag:'量一量', cls:better ? 't-green' : 't-grey',
+            msg: better
+              ? '动手扔之前先量长短：窗口长 <b>' + curLen + '</b>' + (prevBest ? '，比 best <code>"' + LCesc(prevBest) + '"</code>（长 ' + prevBest.length + '）更短' : '，这是第一段合法窗口') +
+                ' → 记下 <code>best = "' + LCesc(best) + '"</code>（画面紫格标出这段）。必须趁还没扔就记：扔掉 s[' + l + '] 后窗口可能立刻不合法，这个瞬间错过就不再来。'
+              : '窗口长 ' + curLen + '，不比 best <code>"' + LCesc(prevBest) + '"</code>（长 ' + prevBest.length + '）短 → 不更新。best 只会越换越短，继续收缩。',
+            do: draw({states:better ? stTarget(l, r) : stWin(l, r, {}), marks:marks(l, r),
+                      vars:vars({r:r, c:c, l:l, valid:valid, best:best})})});
+
+          const d = s[l];
+          const dWanted = need[d] != null;
+          F.push({hl:[17,18], ok:dWanted ? 18 : undefined, no:dWanted ? undefined : 18,
+            tag:'看左端', cls:dWanted ? 't-blue' : 't-grey',
+            msg: dWanted
+              ? '左端是 <code>' + LCesc(d) + '</code>——清单上的正经货，扔它可能把 valid 扳下来，得先看它现在的余量再动手（橙虚线格 = 候扔）。'
+              : '左端是 <code>' + LCesc(d) + '</code>——t 不要的闲杂字符，win 从没登记过它，扔了毫不心疼，valid 纹丝不动。',
+            do: draw({states:stWin(l, r, {[l]:'stale'}), marks:marks(l, r),
+                      vars:vars({r:r, c:c, l:l, valid:valid, best:best})})});
+
+          if(dWanted){
+            const wasEnough = win[d] === need[d];
+            if(wasEnough) valid--;
+            win[d]--;
+            l++;
+            F.push({hl:wasEnough ? [19,20,21,22] : [19,21,22],
+                    ok:wasEnough ? 19 : undefined, no:wasEnough ? undefined : 19,
+              tag:wasEnough ? '扔!valid减一' : '扔一个还够',
+              cls:wasEnough ? 't-red' : 't-green',
+              msg: wasEnough
+                ? '<code>' + LCesc(d) + '</code> 原本正好 ' + need[d] + ' 个，扔掉这一个就不够了 → <code>valid</code> -1 变成 ' + valid + '/' + kinds + '，窗口不再覆盖 t；<code>l</code> 右移到 ' + l + '，下一轮 while 检查不再通过，收缩收工。'
+                : '<code>' + LCesc(d) + '</code> 有 ' + (win[d] + 1) + ' 个（需求只要 ' + need[d] + '），扔一个还够 → <code>valid</code> 不变，<code>l</code> 右移到 ' + l + '，while 继续——只要还凑齐，就接着刮。',
+              do: draw({states:stWin(l, r, {[l - 1]:'gone'}), marks:marks(l, r), hlK:d,
+                        vars:vars({r:r, c:c, l:l, valid:valid, best:best})})});
+          } else {
+            l++;
+            F.push({hl:[22], tag:'左端滑过', cls:'t-ink',
+              msg:'<code>' + LCesc(d) + '</code> 不是需求字符，和 valid 无关 → 直接滑出窗口（划灰），<code>l</code> 右移到 ' + l + '，while 继续试着刮。窗口越刮越短，直到缺货为止。',
+              do: draw({states:stWin(l, r, {[l - 1]:'gone'}), marks:marks(l, r),
+                        vars:vars({r:r, c:c, l:l, valid:valid, best:best})})});
+          }
+        }
+        if(entered){
+          F.push({hl:[14], no:14, tag:'收缩结束', cls:'t-red',
+            msg:'<code>valid = ' + valid + '/' + kinds + '</code>：窗口 [' + l + '..' + r + '] 又缺货、不再覆盖 → 跳出 while。<code>l</code> 停在"再退一格就不合法"的位置——这是最省的站法。接下来 <code>r</code> 继续右移，缺的那种货一进门就可能触发新一轮收缩。',
+            do: draw({states:stWin(l, r, {}), marks:marks(l, r),
+                      vars:vars({r:r, c:c, l:l, valid:valid, best:best})})});
+        }
+      }
+    }
+
+    const bi = best ? s.indexOf(best) : -1;
+    F.push({hl:[23], tag:'返回', cls:'t-dark',
+      msg: best
+        ? '扫完整个 s：r 一趟走到头，l 也只进不退地走了一趟，O(|s| + |t|)。所有"刚好凑齐"的瞬间里最短的是 <code>"' + LCesc(best) + '"</code>（下标 ' + bi + '..' + (bi + best.length - 1) + '，长 ' + best.length + '）🎉'
+        : '扫完整个 s 也没能把 t 的每种字符攒齐（s 里根本凑不齐这些货）→ 返回空串 <code>""</code>，表示不存在覆盖子串。',
+      do: draw({states: best ? stTarget(bi, bi + best.length - 1) : {},
+                result: best,
+                vars:vars({r:S.length - 1, c:'—', l:l, valid:valid, best:best})})});
+    return F;
+  }
+});
+</script>
+</body>
+</html>

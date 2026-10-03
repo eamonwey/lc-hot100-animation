@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P096 · 多数元素 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 96, num: 169, title: '多数元素', diff: '简单', cat: '技巧',
+  method: 'majorityElement',
+
+  lede: '题目：找出数组中出现次数<b>超过一半</b>的元素（题目保证存在），要求 O(n) 时间、O(1) 空间。' +
+        '<b>Boyer–Moore 摩尔投票</b>把它变成帮派火拼：<span class="var o">cand</span> 是当前候选人、<span class="var r">cnt</span> 是他的净票数——' +
+        '遇到自己人 +1，遇到别人 −1；票数掉到 0 就换当场这位当新候选人。多数派"一个能顶所有其他人"，两两同归于尽后站着的必然是它。',
+
+  roles: [
+    {c:'orange', code:'x',    text:'正在进场的数'},
+    {c:'green',  code:'cand', text:'当前候选人'},
+    {c:'blue',   code:'cnt',  text:'候选人的净票数：+1 / −1'},
+    {c:'red',    code:'−1',   text:'红色格子 = 给候选人减票的对立面'}
+  ],
+
+  codeTitle: '跟着高亮读代码——<code>if cnt == 0</code> 变<span style="color:var(--green)">绿</span>＝票数清零要换人（关键瞬间）；<code>if x == cand</code> 绿＝+1 票、红＝−1 抵消。',
+
+  legend: [
+    {c:'orange', text:'当前进场的 x'},
+    {c:'green',  text:'给候选人 +1 的格子'},
+    {c:'red',    text:'给候选人 −1（抵消）的格子'}
+  ],
+
+  idea: '摩尔投票：cnt==0 就换人，x==cand 加一票否则减一票——多数元素的票数比所有其他人加起来还多，抵消到最后手里有票的只能是它。',
+
+  qa: [
+    {q:'为什么候选人最后一定是多数元素？',
+     a:'把 +1/−1 想成"配对同归于尽"：每次抵消消耗一个多数元素和至多一个非多数元素。多数元素数量超过一半，非多数元素即使全体出动也不够配对——打光所有人之后，场上站着的必然是多数元素。'},
+    {q:'中途换人会不会把正确答案换丢？',
+     a:'换人的瞬间 cnt 恰好是 0，说明刚刚那段前缀里候选人和对手<b>正好打平、互相抵消干净</b>。被抵消掉的候选者损失多少票，对手也损失多少——多数元素的全局优势一票没少，它一定会在后面的某个 cnt==0 时刻重新夺回候选位。'},
+    {q:'cnt 掉到负数怎么办？',
+     a:'不会。本实现里 cnt 只会在等于 0 时换人，换人后立即 +1，所以 cnt 始终 ≥ 0。（有的写法 cnt 允许负数再统一换人，结果一样。）'},
+    {q:'为什么敢不做验证？还能怎么验？',
+     a:'题目<b>保证</b>多数元素存在，投票结果必然正确，所以 LeetCode 上直接返回 cand。若无保证，需回头扫一遍数一下 cand 的出现次数是否 > n/2——本页动画最后也真数了一遍给你看。'}
+  ],
+
+  complexity: '时间 O(n)　·　空间 O(1)（两个变量）',
+
+  form: [
+    {key:'nums', label:'nums', type:'arr', def:[2,2,1,1,1,2,2]}
+  ],
+  presets: [
+    {label:'[2,2,1,1,1,2,2] → 2', values:{nums:[2,2,1,1,1,2,2]}},
+    {label:'[3,2,3] → 3（频繁换人）', values:{nums:[3,2,3]}},
+    {label:'[1,2,1,2,1] → 1', values:{nums:[1,2,1,2,1]}},
+    {label:'[1] 单元素边界', values:{nums:[1]}}
+  ],
+
+  code: `class Solution:
+    def majorityElement(self, nums):
+        cand = 0        # 候选人
+        cnt = 0         # 他的净票数
+        for x in nums:
+            if cnt == 0:        # 清零 → 换人
+                cand = x
+            if x == cand:       # 自己人: +1
+                cnt += 1
+            else:               # 对立面: −1
+                cnt -= 1
+        return cand
+`,
+
+  sol(input){
+    const nums = input.nums || [];
+    let cand = 0, cnt = 0;
+    for(let i = 0; i < nums.length; i++){
+      const x = nums[i];
+      if(cnt === 0) cand = x;
+      if(x === cand) cnt += 1; else cnt -= 1;
+    }
+    return cand;
+  },
+  expected: 2,
+
+  quiz: [
+    {q:'nums = [1,3,1,1,2,1]:扫完第二个数 (x=3) 时,cand 和 cnt 各是多少?',
+     options:['cand=3、cnt=0——3 把 1 的票抵消到 0,顺势上位当候选人','cand=1、cnt=0——3 只是把净票抵成 0;"换人"要等下一个数进场、检查发现 cnt==0 时才发生,此刻候选人还是 1','cand=1、cnt=1——对手进场不动票数'],
+     answer:1,
+     explain:'逐票走:i0 进场 x=1,cnt==0 → cand=1,+1 → cnt=1;i1 进场 x=3,cnt≠0,3≠1 → cnt=0。此刻只是"两派打平",而代码里的换人发生在进场时的 if(cnt==0) —— cand 要等下一个数(恰好又是 1)进场才"重新接管",值都没变。选项 A 踩的正是节奏坑:把"票数归零"当成"立刻换人",实际归零只是"下一位进场时换人"的预告。扫完整串最终返回 1(出现 4 次,真多数)。',
+     jumpTo:14},
+    {q:'把"超过一半"放宽成"恰好一半",比如 [1,1,2,2]:摩尔投票返回 1。这个结果可信吗?',
+     options:['可信——1 排在前面,先到先得','不可信——"恰好一半"时两派可能整段同归于尽(两个 2 正好抵光两个 1),结束时的 cand 只是打平后幸存的记账员;算法所有保证都以"严格过半"为前提,前提一松动,返回值就失去意义(1 和 2 其实都不过半)','不可信——正确答案应该是 2,程序算错了'],
+     answer:1,
+     explain:'实地跑:cand=1 的票涨到 2,两个 2 各抵一票,结束时 cnt=0、cand 停在 1——但 1 只占一半、2 也只占一半,谁都不是"多数元素",这个输入下题目本就无解。正确性证明的每一步都在用"多数派票数 > 其余所有人之和":恰好一半时优势归零,1 换 1 能把双方同时打光。面试要点:题目若不保证存在,返回前必须回头数一遍 cand 的票(本页动画最后一步"回头验证"就是它);选项 C 也不对——2 并不比 1 更正确。',
+     jumpTo:26},
+    {q:'若题目不保证多数元素一定存在,"回头验证"要额外付出多少?',
+     options:['O(n) 时间、O(1) 空间:再扫一遍,只数 cand 出现的次数,和 n/2 比一下','O(n log n):得先排序才能数','O(n²):要两两比较所有元素'],
+     answer:0,
+     explain:'验证只盯 cand 这一个值:一遍循环、遇到就 +1,最后比较出现次数是否 > n/2——不用表、不用排序。整个"投票 + 验证"组合仍是 O(n) 时间、O(1) 空间,这也是它比哈希表计数(O(n) 额外空间)划算的地方:主流程几乎白送,验证只是再跑半趟。',
+     jumpTo:27},
+  ],
+
+  steps(input){
+    const F = [];
+    const nums = input.nums || [];
+    const n = nums.length;
+    let cand = 0, cnt = 0;
+    const votes = [];        // 每格投票记录: null 未处理 / +1 / -1
+    const ledger = [];       // 账本字符串
+
+    const draw = (o) => (v) => {
+      v.arr('nums', nums, {label:'数组 <code>nums</code>　·　绿 = +1 票，红 = −1 抵消',
+        states:o.st || {}, markers:o.mk || [], idxCls:o.ix || {}});
+      if(o.ledger) v.text('ledger', o.ledger, {label:'票数账本'});
+      if(o.vars) v.vars('vars', o.vars, {label:'变量', hl:o.hlv || []});
+      if(o.res !== undefined) v.result(o.res, {label:'返回结果'});
+    };
+    // 快照：历史票色 + 当前格高亮（铁律 5）
+    const stOf = (curCell, curSt) => {
+      const o = {};
+      for(let k = 0; k < votes.length; k++){
+        if(votes[k] === 1) o[k] = 'done';
+        else if(votes[k] === -1) o[k] = 'block';
+        else if(votes[k] === 0) o[k] = 'muted';
+      }
+      if(curCell != null) o[curCell] = curSt;
+      return o;
+    };
+    const mk = i => [{name:'x', idx:i, cls:'mi', text:'▲ x'}];
+    const ledTxt = () => ledger.length ? ledger.join('　') : '（还没开票）';
+
+    F.push({hl:[1,2,3,4], tag:'初始化', cls:'t-grey',
+      msg:'开票前先立规矩：这是一场<b>帮派火拼</b>，场上只留一个候选人 <code>cand</code>（变量面板绿色）和他的净票数 <code>cnt</code>。每个数进场要站队：自己人给 cand +1 票、对手抵消他 1 票；票数掉到 0 就当场换人。为什么最后持票的必是多数元素？它人数过半，<b>1 个成员进场就能拖走 1 个对手</b>——对手倾巢而出也只能和它 1 换 1 同归于尽，配对打完对手先光。现在 cand = 0、cnt = 0，等第一个数进场。',
+      do: draw({st:{}, mk:[], ledger:ledTxt(), vars:{x:'—', cand:0, cnt:0}})});
+
+    for(let i = 0; i < n; i++){
+      const x = nums[i];
+
+      F.push({hl:[5,6], ok: cnt === 0 ? 6 : undefined, no: cnt === 0 ? undefined : 6,
+        tag:'x 进场', cls: cnt === 0 ? 't-green' : 't-blue',
+        msg:'第 ' + (i + 1) + ' 个数进场：x = <b>' + x + '</b>（▲x 名牌站在第 ' + i + ' 格）。先查候选人 <code>cand = ' + cand + '</code> 的账本：<code>cnt = ' + cnt + '</code>' +
+            (cnt === 0
+              ? ' —— <b>0 票 = 场上没人当家</b>，x 来了直接接班（下一帧换人）。'
+              : ' —— 候选人手里还有 ' + cnt + ' 票净优势，地位稳固，x 只需按帮派站队。'),
+        do: draw({st: stOf(i, 'active'), mk: mk(i), ix:{[i]:'on-i'},
+                  ledger:ledTxt(),
+                  vars:{x:x, cand:cand, cnt:cnt}})});
+
+      if(cnt === 0){
+        cand = x;
+        ledger.push('「' + x + '」接管');
+        F.push({hl:[7], tag:'换人！', cls:'t-dark',
+          msg:'<code>cand = ' + x + '</code>，变量面板里 cand 跳成新值。为什么敢换、不怕把答案换丢？cnt 归 0 说明<b>刚翻篇的那段前缀里，老候选的帮派和对手 1 换 1 打平、同归于尽</b>——多数元素不管站在哪边，它折损多少、对面也折损多少，全局领先优势一票没丢，后面还有它的一大批同伙等着进场翻盘。换人只是换个记分员，总比分不作废。',
+          do: draw({st: stOf(i, 'just'), mk: mk(i), ix:{[i]:'on-i'},
+                    ledger:ledTxt(),
+                    vars:{x:x, cand:cand, cnt:cnt}, hlv:['cand']})});
+      }
+
+      const same = x === cand;
+      F.push({hl:[8], ok: same ? 8 : undefined, no: same ? undefined : 8,
+        tag:'站队判断', cls: same ? 't-green' : 't-red',
+        msg:'站队时间：进场数 <code>x = ' + x + '</code>，候选人 <code>cand = ' + cand + '</code>' +
+            (same
+              ? ' —— <b>同帮派增援</b>！给 cand 加 1 票，净优势扩大；画面上第 ' + i + ' 格即将染成绿色（+1 阵营）。'
+              : ' —— <b>对立帮派</b>！它不但不投 cand，还要抵掉他 1 票——这就是"1 换 1 同归于尽"：一个对手进场，必须带走候选人一票；第 ' + i + ' 格即将染成红色（−1 阵营）。'),
+        do: draw({st: stOf(i, 'active'), mk: mk(i), ix:{[i]:'on-i'},
+                  ledger:ledTxt(),
+                  vars:{x:x, cand:cand, cnt:cnt}})});
+
+      cnt = same ? cnt + 1 : cnt - 1;
+      votes[i] = same ? 1 : -1;
+      ledger.push(x + ':' + (same ? '+1' : '−1'));
+      F.push({hl: same ? [9] : [10,11], tag: same ? '+1 票' : '−1 抵消', cls: same ? 't-green' : 't-red',
+        msg:'执行 <code>cnt ' + (same ? '+' : '−') + ' 1</code> → 账本更新为 <code>cnt = ' + cnt + '</code>（变量面板 cnt 闪蓝），票数账本同步追加一行。' +
+            (cnt === 0
+              ? '<b>票数又归零了</b>——到第 ' + i + ' 格为止两派恰好打平、互相同归于尽，下一位进场就要触发换人。'
+              : '候选人 ' + cand + ' 现在攥着 ' + cnt + ' 票净优势：数越大，说明刚进场这一段他的帮派越占上风。'),
+        do: draw({st: stOf(null, null), mk: mk(i),
+                  ledger:ledTxt(),
+                  vars:{x:x, cand:cand, cnt:cnt}, hlv:['cnt']})});
+    }
+
+    // 验证阶段：回头真数一遍候选人出现次数
+    let occur = 0;
+    for(let k = 0; k < n; k++) if(nums[k] === cand) occur++;
+    const stV = {};
+    for(let k = 0; k < n; k++) if(nums[k] === cand) stV[k] = 'target';
+    F.push({hl:[5], tag:'回头验证', cls:'t-violet',
+      msg:'为什么还要回头数票？摩尔投票只保证"<b>若</b>多数元素存在，站到最后的必是它"，并不保证存在——拿 [1,2,3] 跑一遍这套流程会推出 3，可 3 根本不过半。所以严谨写法要再扫一遍验证：候选人 <code>' + cand + '</code> 出现 <b>' + occur + '</b> 次（画面染紫的就是他的票），过半线是 ' + (n / 2) + '，' + occur + ' &gt; ' + (n / 2) + ' ✓ 本局确实有多数元素。力扣本题保证了存在、这步可省；面试时补一句"无保证必须验证"就是加分项。',
+      do: draw({st: stV, mk:[], ledger:ledTxt(),
+                vars:{cand:cand, 出现次数:occur, 一半:n / 2}})});
+
+    F.push({hl:[12], tag:'返回', cls:'t-dark',
+      msg:'<code>return cand</code> = <b>' + cand + '</b> 🎉 复盘整场火拼：每一次 −1 都有一个 +1 陪葬（1 换 1），对手倾巢而出也配不平多数派的票仓，所以最后持票的只能是它。全程只扫一遍数组、只用两个变量——时间 O(n)、空间 O(1)，这就是摩尔投票用"火拼"替掉哈希表的地方。',
+      do: draw({st: stV, mk:[], ledger:ledTxt(), res: cand})});
+
+    return F;
+  }
+});
+</script>
+</body>
+</html>

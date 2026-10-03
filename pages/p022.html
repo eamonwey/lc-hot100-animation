@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P022 · 相交链表 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 22, num: 160, title: '相交链表', diff: '简单', cat: '链表',
+  method: 'getIntersectionNode',
+
+  lede: '题目：两条链表<b>从某个节点开始共用同一段尾巴</b>（内存里是同一批节点），找到那个相交节点；不相交就返回 None。' +
+        '动画里两条链各画一行，<span class="var v">紫框节点</span>就是共用的公共尾巴。' +
+        '<span class="var i">pA</span>、<span class="var r">pB</span> 各从自己的头出发，<b>走到头就换到另一条链的开头</b>——两人路程一样长，必定在交点碰面。',
+
+  roles: [
+    {c:'orange', code:'pA', text:'从 A 链出发的指针，走到头换去 B 链'},
+    {c:'blue',   code:'pB', text:'从 B 链出发的指针，走到头换去 A 链'},
+    {c:'violet', code:'公共尾巴', text:'紫框节点 = 两条链共用的同一批节点'}
+  ],
+
+  codeTitle: '跟着高亮读代码——while 那行变<span style="color:var(--green)">绿</span>＝还没相遇继续走，变<span style="color:var(--red)">红</span>＝相遇（或一起到 None）退出。',
+
+  legend: [
+    {c:'orange', text:'pA'},
+    {c:'blue',   text:'pB'},
+    {c:'violet', text:'公共尾巴（两边同一批节点）'}
+  ],
+
+  idea: '让两个指针走同样的总路程：pA 走完 A 就去走 B，pB 走完 B 就去走 A——路程相同，要么在交点相遇，要么一起到 None。',
+
+  qa: [
+    {q:'为什么换了链就一定相遇？',
+     a:'设 A 独有 a 个、B 独有 b 个、公共 c 个节点。pA 走 a+c 后换到 B 再走 b 步；pB 走 b+c 后换到 A 再走 a 步——<b>两人总步数都是 a+b+c</b>。若有交点，最后一段路完全重合，必同时踩上交点；若不相交，两人同时到达 None。'},
+    {q:'比较两个"节点"为什么用 is not 而不是 !=？',
+     a:'节点是对象，<code>is</code> 比的是"是不是内存里同一个节点"。两条链可能出现值相同的节点但并不是同一个节点，所以相交判定必须比身份，不能比值。'},
+    {q:'暴力法为什么不好？',
+     a:'先数出两条链的长度差，让长的先走差值步再同步走，也能 O(m+n)——但"换链"写法不用数长度、代码更短；哈希表存 A 链所有节点再扫 B 也行，只是要 O(n) 空间。'}
+  ],
+
+  complexity: '时间 O(m+n)　·　空间 O(1)（只有两个指针）',
+
+  form: [
+    {key:'a', label:'A 链', type:'arr', def:[4,1,8,4,5]},
+    {key:'b', label:'B 链', type:'arr', def:[5,6,1,8,4,5]},
+    {key:'skipA', label:'skipA', type:'num', def:2},
+    {key:'skipB', label:'skipB', type:'num', def:3}
+  ],
+  presets: [
+    {label:'官方例：4→1→8→4→5 与 5→6→1→8→4→5', values:{a:[4,1,8,4,5], b:[5,6,1,8,4,5], skipA:2, skipB:3}},
+    {label:'不相交：1→2→3 与 4→5→6', values:{a:[1,2,3], b:[4,5,6], skipA:3, skipB:3}},
+    {label:'B 整条是公共尾巴', values:{a:[1,2,3,4], b:[3,4], skipA:2, skipB:0}}
+  ],
+
+  code: `class Solution:
+    def getIntersectionNode(self, a, b, skipA, skipB):
+        def build(vals, nxt):             # 把一串值接到 nxt 前面
+            head = nxt
+            for v in reversed(vals):
+                head = ListNode(v, head)
+            return head
+        common = build(a[skipA:], None)   # 公共尾巴: 两条链共用同一批节点
+        headA = build(a[:skipA], common)  # A 的独有前缀接上尾巴
+        headB = build(b[:skipB], common)  # B 的独有前缀接上尾巴
+        pA, pB = headA, headB             # 双指针各从自己的头出发
+        while pA is not pB:               # 没相遇就一直走
+            pA = pA.next if pA else headB # 走到头就换到另一条链
+            pB = pB.next if pB else headA
+        return pA.val if pA else None     # 相遇点就是交点
+`,
+
+  sol(input){
+    const a = (input.a || []).map(Number), b = (input.b || []).map(Number);
+    const sA = Math.max(0, input.skipA | 0), sB = Math.max(0, input.skipB | 0);
+    const build = (vals, nxt) => {        // 把 vals 接到 nxt 前面, 返回头
+      const nds = vals.map(v => ({v, next: null}));
+      nds.forEach((nd, i) => { nd.next = nds[i + 1] || nxt; });
+      return nds.length ? nds[0] : nxt;
+    };
+    const common = build(a.slice(sA), null);
+    const headA = build(a.slice(0, sA), common);
+    const headB = build(b.slice(0, sB), common);
+    let pA = headA, pB = headB;
+    while(pA !== pB){
+      pA = pA ? pA.next : headB;
+      pB = pB ? pB.next : headA;
+    }
+    return pA ? pA.v : null;
+  },
+  expected: 8,
+
+  quiz: [
+    {q:'为什么「走到头就换到另一条链」的两个指针一定相遇？',
+     options:['因为交点之后的路是共享的，走得快的人先到会等慢的','pA 走 a+c 再补 b、pB 走 b+c 再补 a——两人总路程都是 a+b+c，抹平长度差后交点成了必经之地；不相交就同时到 None','因为 while 里加了步数上限，时间一到强制停'],
+     answer:1,
+     explain:'设 A 独有 a 个、B 独有 b 个、公共 c 个节点。pA 先走完 A（含落到 None 那一步）换到 B；pB 先走完 B 换到 A。两人每轮各走一步、总路程锁定同一数值，最后一段路又完全重合——要么在交点同时踩上同一个节点，要么（c=0）同时变成 None，while 的身份比较不成立退出。不存在一个先停、一个还在走的情况。',
+     jumpTo:3},
+    {q:'A 链 2→3、B 链 1→7→9（完全没有公共节点），两个指针最终怎样？返回什么？',
+     options:['pA 先走完自己那条就停住，返回 null','死循环——谁也遇不到谁，程序停不下来','两人各移动 6 次后同时变成 None，返回 null'],
+     answer:2,
+     explain:'不相交时：pA 走完 A 的 2 个节点落到 None（2 步），跳到 B 走 1→7→9 再落到 None（4 步），共 6 步；pB 走完 B 的 3 个节点落到 None，跳到 A 走 2→3 再落到 None，也是 6 步——两人在同一轮同时变成 None，pA is not pB 不再成立（None is None），循环退出返回 null。不会死循环：最迟 2(m+n) 步内必同时落地；也不会一个先停——两人每轮都各走一步。',
+     jumpTo:31},
+    {q:'比较两个指针时为什么用 is（节点身份）而不是比节点的值？',
+     options:['is 比 == 快，纯性能优化','两条链可能出现值相同的「陌生」节点——值相等不代表是内存里同一个节点，比值会把假的当成交点；相交判定必须比身份','因为链表节点没有实现 == 运算，只能用 is'],
+     answer:1,
+     explain:'「相交」的定义是共享同一批节点：交点之后两条链在内存里是同一段。若只比值，A 链里一个恰好同值的独立节点会让指针在错误位置「相遇」。同理，最后两人同时落到 None 也是靠身份比较判停——None is None 成立。这是链表题里「结构相等」和「值相等」的经典区分。',
+     jumpTo:4},
+  ],
+
+  steps(input){
+    const F = [];
+    const A = (input.a || []).map(Number), B = (input.b || []).map(Number);
+    const sA = Math.max(0, input.skipA | 0), sB = Math.max(0, input.skipB | 0);
+    const shared = A.slice(sA);           // 公共尾巴的值(以 A 链为准)
+    const aU = A.slice(0, Math.min(sA, A.length));
+    const bU = B.slice(0, Math.min(sB, B.length));
+    const nodesA = aU.map((v, i) => ({key: 'a' + i, val: v}))
+        .concat(shared.map((v, i) => ({key: 's' + i, val: v})));
+    const nodesB = bU.map((v, i) => ({key: 'b' + i, val: v}))
+        .concat(shared.map((v, i) => ({key: 's' + i, val: v})));
+    const orderA = nodesA.map(n => n.key), orderB = nodesB.map(n => n.key);
+    const valOf = {};
+    nodesA.forEach(n => { valOf[n.key] = n.val; });
+    nodesB.forEach(n => { valOf[n.key] = n.val; });
+    const name = k => k == null ? 'None' : '节点' + valOf[k];
+    const nextOf = k => {                 // 沿链走一步; 尾巴之后是 None
+      if(k == null) return null;
+      let i = orderA.indexOf(k);
+      if(i >= 0) return i + 1 < orderA.length ? orderA[i + 1] : null;
+      i = orderB.indexOf(k);
+      return i >= 0 && i + 1 < orderB.length ? orderB[i + 1] : null;
+    };
+    const headA = orderA.length ? orderA[0] : null;
+    const headB = orderB.length ? orderB[0] : null;
+    const chainStr = ks => ks.length ? ks.map(k => valOf[k]).join('→') : '(空)';
+
+    let pA = headA, pB = headB;
+
+    /* ★ 快照原则：指针/状态在 F.push 那一刻求值定死，绝不留到渲染时再读 */
+    const ptrs = () => {
+      const pa = [], pb = [];
+      const put = (k, text, cls) => {
+        if(k == null) return;
+        if(orderA.indexOf(k) >= 0) pa.push({key: k, text, cls});
+        if(orderB.indexOf(k) >= 0) pb.push({key: k, text, cls});
+      };
+      if(pA != null && pA === pB) put(pA, '▼ pA = pB', 'mv');
+      else { put(pA, '▼ pA', 'mi'); put(pB, '▼ pB', 'mr'); }
+      return {pa, pb};
+    };
+    const stOf = () => {
+      const st = {};
+      shared.forEach((_, i) => { st['s' + i] = 'pivot'; });
+      if(pA != null) st[pA] = 'active';
+      if(pB != null) st[pB] = (pA != null && pA === pB) ? 'target' : 'active';
+      return st;
+    };
+    const varsNow = () => ({pA: name(pA), pB: name(pB)});
+    const hA = headA ? {key: headA, text: 'headA', cls: 'mq'} : null;
+    const hB = headB ? {key: headB, text: 'headB', cls: 'mq'} : null;
+    const draw = (o) => (v) => {
+      v.list('LA', nodesA, {label: '链表 A　·　紫框 = 公共尾巴（两边同一批节点）',
+        states: o.st, pointers: o.pa, headTag: o.hA});
+      v.list('LB', nodesB, {label: '链表 B',
+        states: o.st, pointers: o.pb, headTag: o.hB});
+      if(o.vars) v.vars('vars', o.vars, {label: '两个指针'});
+      if(o.res !== undefined) v.result(o.res, {label: '返回值'});
+    };
+
+    F.push({hl: [1,2,3,4,5,6,7], tag: '造链', cls: 't-grey',
+      msg: '先把结构造出来（build 是从后往前接节点的）：画面上下两行各画一条链，A 链前 <b>' + sA + '</b> 个、B 链前 <b>' + sB + '</b> 个是各自独有的前缀，' +
+           (shared.length
+             ? '后面的 <b>' + LCesc(shared.join('→')) + '</b> 两条链<b>共用同一批节点</b>——内存里就是同一段，紫框把它们标出来；不是"碰巧值相同"，是同一个节点画了两遍。'
+             : '公共尾巴为 <b>(空)</b>——两条链各自独立、互不相交，待会看两个指针怎么一起落空。'),
+      do: draw({st: stOf(), pa: ptrs().pa, pb: ptrs().pb, hA, hB, vars: {pA: '—', pB: '—'}})});
+
+    F.push({hl: [8,9,10], tag: '接上尾巴', cls: 't-ink',
+      msg: 'headA = ' + LCesc(chainStr(orderA)) + '，headB = ' + LCesc(chainStr(orderB)) + '。' +
+           (shared.length
+             ? '看画面：两行末尾的紫框节点一一对应——那不是两串恰好相等的值，而是<b>同一批节点</b>画了两遍，这就是"相交"在内存里的样子。'
+             : '两边没有任何公共节点。盯住两个指针，看它们最后怎么一起走到 None。'),
+      do: draw({st: stOf(), pa: ptrs().pa, pb: ptrs().pb, hA, hB, vars: varsNow()})});
+
+    F.push({hl: [11], tag: '出发', cls: 't-blue',
+      msg: 'pA 站上 A 的头（' + name(headA) + '），pB 站上 B 的头（' + name(headB) + '）。规则：<b>各自走一步；谁走到 None，就瞬移到另一条链的开头</b>。' +
+           '为什么这样必定相遇？pA 的总路程 = A 独有 + 公共 + B 独有，pB = B 独有 + 公共 + A 独有——<b>两人一样长</b>，最后一段路完全重合，必然同时踩上交点；不相交就一起到 None。' +
+           '类比：两人从各自的楼出发、中途互换楼梯，只要总步数相同，要么在共同的台阶上碰头，要么一起踩空。',
+      do: draw({st: stOf(), pa: ptrs().pa, pb: ptrs().pb, hA, hB, vars: varsNow()})});
+
+    let guard = 0;
+    while(pA !== pB && guard++ < 600){
+      F.push({hl: [12], ok: 12, tag: 'while 检查', cls: 't-blue',
+        msg: 'pA 在 <b>' + name(pA) + '</b>，pB 在 <b>' + name(pB) + '</b>，不是内存里同一个节点 → <code>pA is not pB</code> 成立，继续走。' +
+             '注意比较的是<b>节点身份</b>（is），不是值——两条链可能有值相同的"陌生"节点，比值会上当；只有踩上同一格（或一起走到 None）循环才停。',
+        do: draw({st: stOf(), pa: ptrs().pa, pb: ptrs().pb, hA, hB, vars: varsNow()})});
+
+      const oldA = pA;
+      pA = (pA == null) ? headB : nextOf(pA);
+      F.push({hl: [13], tag: 'pA 移动', cls: 't-ink',
+        msg: oldA == null
+          ? 'pA 在 None（A 侧走完了）→ 按规则<b>跳到 B 链开头</b>，落到 ' + name(pA) + '。这就是"换跑道"：接下来它走的是 B 的路。'
+          : (pA == null
+              ? 'pA 从 ' + name(oldA) + ' 走到 <b>None</b>——A 侧（含公共尾巴）到头了，下一步它将跳去 B 链开头，路程继续累计。'
+              : 'pA 从 ' + name(oldA) + ' 走到 <b>' + name(pA) + '</b>，沿 A 链老老实实前进。'),
+        do: draw({st: stOf(), pa: ptrs().pa, pb: ptrs().pb, hA, hB, vars: varsNow()})});
+
+      const oldB = pB;
+      pB = (pB == null) ? headA : nextOf(pB);
+      F.push({hl: [14], tag: 'pB 移动', cls: 't-ink',
+        msg: oldB == null
+          ? 'pB 在 None（B 侧走完了）→ 按规则<b>跳到 A 链开头</b>，落到 ' + name(pB) + '。pB 换的这条道正好是 pA 刚走完的——两人路程就在这一换一走中对齐。'
+          : (pB == null
+              ? 'pB 从 ' + name(oldB) + ' 走到 <b>None</b>——B 侧（含公共尾巴）到头了，下一步它将跳去 A 链开头。'
+              : 'pB 从 ' + name(oldB) + ' 走到 <b>' + name(pB) + '</b>，沿 B 链老老实实前进。'),
+        do: draw({st: stOf(), pa: ptrs().pa, pb: ptrs().pb, hA, hB, vars: varsNow()})});
+    }
+
+    const meetNode = pA;
+    F.push({hl: [12], no: 12, tag: meetNode ? '相遇！' : '同时到 None', cls: meetNode ? 't-green' : 't-red',
+      msg: meetNode
+        ? '<code>pA is not pB</code> 不成立了：两人<b>站在同一个节点 ' + name(meetNode) + ' 上</b> → 循环结束。从这往后两条链是同一段路，而两人总步数又相同，所以必然在这里（交点）碰头，不会擦肩错过。'
+        : 'pA、pB <b>同时变成 None</b> → 两条链不相交：两人走了同样的总路程（m+n 步），却始终没踩到同一个节点，最后只能一起落空。',
+      do: draw({st: stOf(), pa: ptrs().pa, pb: ptrs().pb, hA, hB, vars: varsNow()})});
+
+    F.push({hl: [15], tag: '返回', cls: 't-dark',
+      msg: meetNode
+        ? 'return pA.val 🎉 交点值 = <b>' + valOf[meetNode] + '</b>。复盘：pA 走了 a+c 再补 b，pB 走了 b+c 再补 a——路程抹平之后，交点成了两人的必经之地。'
+        : 'return None：pA 是 None，两条链没有相交节点，返回空。',
+      do: draw({st: stOf(), pa: ptrs().pa, pb: ptrs().pb, hA, hB, vars: varsNow(),
+                res: meetNode ? valOf[meetNode] : null})});
+
+    return F;
+  }
+});
+</script>
+</body>
+</html>

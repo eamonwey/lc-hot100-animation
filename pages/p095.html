@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P095 · 只出现一次的数字 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 95, num: 136, title: '只出现一次的数字', diff: '简单', cat: '技巧',
+  method: 'singleNumber',
+
+  lede: '题目：数组里每个数都出现<b>两次</b>，只有一个数出现<b>一次</b>，把它找出来——要求不开额外空间。' +
+        '动画里 <span class="var i">acc</span> 是异或累积器，逐个数喂进去；运算区展示二进制逐位相消的过程，右侧账本记下每个数出现几次，帮你亲眼看"成对抵消"。',
+
+  roles: [
+    {c:'orange', code:'x',   text:'当前喂进来的数'},
+    {c:'blue',   code:'acc', text:'异或累积器：成对的数在它身上位位相消'},
+    {c:'green',  code:'账本', text:'出现次数记号：出现 2 次 = 一对，会互相抵消'}
+  ],
+
+  codeTitle: '跟着高亮读代码——就一行核心：<code>acc = acc ^ x</code>。看左边运算区的二进制，同一数位上两个 1 相遇会同时熄灭。',
+
+  legend: [
+    {c:'orange', text:'正在处理的格子'},
+    {c:'blue',   text:'acc 最新值'}
+  ],
+
+  idea: '异或三性质：a^a=0、a^0=a、可交换结合 → 全部数异或一遍，成对的全消成 0，最后剩下的就是只出现一次的那个。',
+
+  qa: [
+    {q:'为什么相同的数异或后会消失？',
+     a:'异或是"逐位对比，不同记 1"。同一个数和自己比，每一位都相同 → 每一位都是 0，即 a^a=0。所以成对的数无论隔多远，贡献都是 0。'},
+    {q:'两个 1 中间隔着别的数，还能抵消吗？',
+     a:'能。异或满足<b>交换律和结合律</b>，运算结果和顺序无关——等价于把相同的数两两排在一起先消掉。比如 4^1^2^1^2 = (1^1)^(2^2)^4 = 4。'},
+    {q:'为什么不用哈希表计数？',
+     a:'哈希表也要 O(n) 额外空间。异或法只用一个变量 <b>acc</b>：时间 O(n)、空间 O(1)，是这道题的标准最优解。前提是"其余数都恰好出现两次"——若出现 3 次就得用位计数或状态机了。'},
+    {q:'acc 初值为什么是 0？',
+     a:'因为 a^0=a，0 是异或的"单位元"——任何数碰上 0 都保持原样，从 0 起步不会污染结果。'}
+  ],
+
+  complexity: '时间 O(n)　·　空间 O(1)（一个累积器）',
+
+  form: [
+    {key:'nums', label:'nums', type:'arr', def:[4,1,2,1,2]}
+  ],
+  presets: [
+    {label:'[4,1,2,1,2] → 4', values:{nums:[4,1,2,1,2]}},
+    {label:'[3,3,7,5,5] → 7', values:{nums:[3,3,7,5,5]}},
+    {label:'[0,0,0,0,8] → 8（带 0）', values:{nums:[0,0,0,0,8]}},
+    {label:'[42] 单元素边界', values:{nums:[42]}}
+  ],
+
+  code: `class Solution:
+    def singleNumber(self, nums):
+        # 异或三性质: a^a=0, a^0=a, 可交换结合
+        acc = 0             # 累积器从 0 起步(a^0=a)
+        for i in range(len(nums)):
+            x = nums[i]             # 逐个取出数字
+            acc = acc ^ x           # 成对的数位位相消
+        return acc                  # 剩下的就是答案
+`,
+
+  sol(input){
+    let acc = 0;
+    const nums = input.nums || [];
+    for(let i = 0; i < nums.length; i++) acc = acc ^ nums[i];
+    return acc;
+  },
+  expected: 4,
+
+  quiz: [
+    {q:'默认例扫完前三个数 (4,1,2) 后 acc = 7。能从 7 反推出"此刻落单的是 4 和 2"吗?',
+     options:['能——acc 就是"落单数清单"的压缩包,总能拆回去','不能——acc 只是"已见全部数的异或"这一行汇总:4⊕1⊕2=7,多个落单数的位信息纠缠在一起(7 也可以是 3⊕4),拆不回唯一清单;只有成对的全部消光、只剩一个落单数时,acc 才恰好等于它','不能——acc 里只记了"落单数有几个",没记它们的值'],
+     answer:1,
+     explain:'异或是逐位折叠的校验和,不是清单:多组不同的数可以折出同一个值(4⊕2=7、3⊕4=7、1⊕6=7……),中途的 acc 因此无法解码。选项 C 错在另一头:acc 里确实带着每个落单数的"影子"(7 的三个二进制 1 正来自 4 和 2),只是影子互相纠缠、分不出谁是谁。算法也不需要中途解码——交换律保证成对的迟早抵消,扫完时 acc 自然只剩那个唯一落单数,这才第一次"看得懂"。',
+     jumpTo:9},
+    {q:'nums = [2,8,5,8,2]:扫到第 4 个数(第二个 8)之后,acc 是多少?',
+     options:['7——两个 8 互相抵消,acc 剩下 2⊕5 = 7','0——第二个 8 一到,累积器清零重来','10——acc 只会越算越大'],
+     answer:0,
+     explain:'逐笔记账:0⊕2=2 → 2⊕8=10 → 10⊕5=15 → 15⊕8=7。⊕8 做了两次等于没做(8⊕8=0),此刻 acc = 2⊕5 = 7。注意"抵消"不等于"清零":2 和 5 还没等到各自的搭档,影子仍留在 acc 里;异或也不是加法,不会单调变大。扫完最后一步 7⊕2=5,答案 5。',
+     jumpTo:12},
+    {q:'若数组里有个数出现 3 次、其余各出现两次(如 [5,5,5,7]),这招还灵吗?',
+     options:['灵——出现 3 次的数异或 3 次刚好抵消','不灵——x⊕x⊕x = x,3 次 = 一对消成 0 + 一个落单,剩的那份 5 永久留在 acc:5⊕5⊕5⊕7 = 5⊕7 = 2,既不是 5 也不是 7,答案彻底失真;得换逐位计数/状态机(LC 137 的套路)','灵,把数组从头再异或一遍就好'],
+     answer:1,
+     explain:'a^a=0 的抵消律按"对"消化,出现 3 次的数会剩一份孤本混进结果:全串异或出 2,谁都不是。再异或一遍也没用——同样的数、同样的折叠,结果还是 2;真要解"其余出现三次"的版本(LC 137),得逐位统计 1 的个数再对 3 取模,或用状态机。所以本题"其余恰好出现两次"的前提不是废话,是抵消律的适用边界。',
+     jumpTo:18},
+  ],
+
+  steps(input){
+    const F = [];
+    const nums = input.nums || [];
+    const bits = Math.max(3, ...nums.map(x => Number(x).toString(2).length));
+    const b2 = x => Number(x).toString(2).padStart(bits, '0');
+    let acc = 0;
+    const cnt = new Map();       // 值 -> 出现次数（演示用账本）
+    const order = [];            // 首次出现顺序
+
+    const draw = (o) => (v) => {
+      v.arr('nums', nums, {label:'数组 <code>nums</code>', states:o.st || {}, markers:o.mk || [], idxCls:o.ix || {}});
+      if(o.opTxt) v.text('op', o.opTxt, {label:'本步运算（二进制）'});
+      v.map('cnt', o.cnt, {label:'出现次数账本（动画加的，看"成对抵消"）', hlK:o.hlK});
+      if(o.vars) v.vars('vars', o.vars, {label:'变量', hl:o.hlv || []});
+      if(o.res !== undefined) v.result(o.res, {label:'返回结果'});
+    };
+    const cntSnap = () => order.map(k => [String(k), cnt.get(k)]);
+
+    F.push({hl:[1,2,4], tag:'初始化', cls:'t-grey',
+      msg:'<code>acc</code> 从 <b>0</b> 起步——0 是异或的单位元（a^0=a），从它开始累算不会污染任何数。异或的逐位规则一句话：<b>同 0 异 1</b>（两位相同得 0、不同得 1），由此推出三条性质：<b>a^a=0</b>（自己跟自己每位都相同，全消成 0）、<b>a^0=a</b>、<b>交换+结合</b>（谁先谁后结果一样）。本方法就靠这三条：把全部数一口气异或完，等价于把相同的数两两排在一起先消成 0，最后只剩"只出现一次"的那个——acc 就是这场大扫除的记账本。',
+      do: draw({st:{}, mk:[], cnt:[], vars:{i:'—', x:'—', acc:0}})});
+
+    for(let i = 0; i < nums.length; i++){
+      const x = nums[i];
+
+      F.push({hl:[5,6], tag:'取出 x', cls:'t-ink',
+        msg:'走到第 <b>' + i + '</b> 格，取出 <code>x = ' + x + '</code>（二进制 ' + b2(x) + '），准备喂给 acc。这步只"拿"不"算"：▲i 名牌指着当前格、格子亮橙，下方账本里 ' + x + ' 目前记 ' + (cnt.get(x) || 0) + ' 次——等下异或完再记一笔。',
+        do: draw({st:(function(){ const s = {}; s[i] = 'active'; return s; })(),
+                  mk:[{name:'i', idx:i, cls:'mi', text:'▲ i'}], ix:{[i]:'on-i'},
+                  cnt: cntSnap(),
+                  vars:{i:i, x:x, acc:acc}})});
+
+      const newAcc = acc ^ x;
+      F.push({hl:[7], ok:7, tag:'异或', cls:'t-blue',
+        msg:'<code>acc = acc ^ x</code>：' + b2(acc) + ' (' + acc + ') ⊕ ' + b2(x) + ' (' + x + ') = <b>' + b2(newAcc) + ' (' + newAcc + ')</b>。逐位规则"<b>同 0 异 1</b>"：两边都是 1 的位迎头相撞、一起熄灭（1⊕1=0），只有一边是 1 的位原样落进 acc——运算区里能看清每一位谁被翻动。此刻 acc 的值忽大忽小别慌：交换律保证顺序不影响最终结果，成对的数迟早互相抵消，中途值乱是正常的。',
+        do: draw({st:(function(){ const s = {}; s[i] = 'in'; return s; })(),
+                  mk:[{name:'i', idx:i, cls:'mi', text:'▲ i'}], ix:{[i]:'on-i'},
+                  opTxt:'acc = ' + b2(acc) + ' (' + acc + ')　⊕　' + b2(x) + ' (' + x + ')　=　' + b2(newAcc) + ' (' + newAcc + ')',
+                  cnt: cntSnap(),
+                  vars:{i:i, x:x, acc:newAcc}, hlv:['acc']})});
+      acc = newAcc;
+
+      const c = (cnt.get(x) || 0) + 1;
+      cnt.set(x, c);
+      if(c === 1) order.push(x);
+      F.push({hl:[5], tag:'记账', cls: c % 2 === 0 ? 't-green' : 't-grey',
+        msg:'账本记一笔：<code>' + x + '</code> 第 <b>' + c + '</b> 次出现——' +
+            (c % 2 === 0
+              ? '<b>凑成一对</b>！这两次 ' + x + ' 隔着别的数进入 acc 也不要紧——交换律允许把整串异或重排成"相同的数挨在一起"，x⊕x = 0，这一对对最终结果的贡献清零（账本记 2 次）。'
+              : '暂时<b>落单</b>，账本先记着；此刻 acc 里还带着它的一份"影子"，等搭档出现再做一次同样的异或就会抵消——若直到扫完都没等来，它就是唯一的答案。'),
+        do: draw({st:(function(){ const s = {}; s[i] = 'done'; return s; })(),
+                  mk:[{name:'i', idx:i, cls:'mi', text:'▲ i'}],
+                  opTxt:'acc = ' + b2(newAcc) + ' (' + newAcc + ')',
+                  cnt: cntSnap(), hlK:String(x),
+                  vars:{i:i, x:x, acc:newAcc}})});
+    }
+
+    const singles = order.filter(k => cnt.get(k) % 2 === 1);
+    F.push({hl:[5], no:5, tag:'扫完了', cls:'t-red',
+      msg:'数组扫完。账本上出现奇数次的只有 <b>' + singles.join('、') + '</b>，其余全部两两配对；acc 也正好停在 <b>' + acc + '</b>，两边对上了。终局推理：按交换律把整串异或重排成 (对1)⊕(对2)⊕…⊕(落单)，每一对 a^a=0 消掉，0⊕0⊕…⊕落单 = 落单——acc 里剩下的只能是它。',
+      do: draw({st:{}, mk:[], opTxt:'acc = ' + b2(acc) + ' (' + acc + ')',
+                cnt: cntSnap(), vars:{i:'扫完', x:'—', acc:acc}})});
+
+    F.push({hl:[8], tag:'返回', cls:'t-dark',
+      msg:'<code>return acc</code> = <b>' + acc + '</b> 🎉 复盘：一遍循环 O(n) 时间、一个累积器 O(1) 空间——哈希表计数虽然也好写，但要多花 O(n) 额外空间，这一手是本题的最优解。适用前提别忘：除一个数外<b>其余恰好出现两次</b>；要是有数出现 3 次，a^a=0 的抵消律就接不住了，得换位计数或状态机。',
+      do: draw({st:{}, mk:[], cnt: cntSnap(), res: acc})});
+
+    return F;
+  }
+});
+</script>
+</body>
+</html>

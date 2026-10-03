@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P036 · 二叉树的最大深度 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 36, num: 104, title: '二叉树的最大深度', diff: '简单', cat: '二叉树',
+  method: 'maxDepth',
+
+  lede: '题目：求二叉树<b>最深</b>有多少层（根算第 1 层，空树是 0）。' +
+        '这题是"递归长什么样"的教具：函数一次次<b>往下调用自己</b>（右侧调用栈长高），' +
+        '碰到空位就返回 0，然后层层往回汇报 <span class="var o">max(左, 右) + 1</span>。' +
+        '看懂了它，一半的二叉树递归题你都会写了。',
+
+  roles: [
+    {c:'orange', code:'active', text:'当前正在处理的节点'},
+    {c:'blue',   code:'in',     text:'递归路径上的祖先'},
+    {c:'green',  code:'done',   text:'深度已算好'},
+    {c:'ink',    code:'stack',  text:'右侧竖条 = 递归调用栈'}
+  ],
+
+  codeTitle: '跟着高亮读代码——<code>if</code> 行变<span style="color:var(--green)">绿</span>＝碰到了空子树（递归出口），变<span style="color:var(--red)">红</span>＝节点存在，继续往下分。',
+
+  idea: '树的答案 = 问左右孩子要答案：depth(树) = max(depth(左), depth(右)) + 1，空树是出口 0。',
+
+  qa: [
+    {q:'递归到底是怎么"回来"的？',
+     a:'每层函数调用自己的副本去算左、右子树；孩子算完把数字<b>返回</b>给上一层，上一层才继续算 max+1。右侧调用栈一长一消，就是一层层"下去再上来"的过程。'},
+    {q:'出口为什么是 if not root: return 0？',
+     a:'递归必须有能停下来的最小情形。这里最小情形是"空树"：没有节点，深度自然是 0。没有这个出口，递归会在 null 上继续 .left 而崩溃。'},
+    {q:'除了递归还能怎么求？',
+     a:'层序遍历（BFS）：一层一层数，数了几层就是多深。空间上递归占栈高 O(h)，BFS 占队列最宽层 O(w)。递归三行写完，是最优雅的。'}
+  ],
+
+  complexity: '时间 O(n)（每个节点访问一次）　·　空间 O(h)（递归栈，h 为树高，最坏 O(n)）',
+
+  form: [
+    {key:'root', label:'root', type:'tree', def:[3,9,20,null,null,15,7]}
+  ],
+  presets: [
+    {label:'常规树', values:{root:[3,9,20,null,null,15,7]}},
+    {label:'链状树 [1,null,2]', values:{root:[1,null,2]}},
+    {label:'满二叉树', values:{root:[1,2,3,4,5,6,7]}},
+    {label:'空树 []', values:{root:[]}}
+  ],
+
+  code: `class Solution:
+    def maxDepth(self, root):
+        if not root:                    # 递归出口: 空树
+            return 0
+        l = self.maxDepth(root.left)    # 问左子树多深
+        r = self.maxDepth(root.right)   # 问右子树多深
+        return max(l, r) + 1            # 较大者 + 自己这一层
+`,
+
+  sol(input){
+    const T = Viz.parseTree(input.root || []);
+    const byKey = {}; T.nodes.forEach(n => byKey[n.key] = n);
+    function d(k){
+      if(k == null) return 0;
+      return Math.max(d(byKey[k].left), d(byKey[k].right)) + 1;
+    }
+    return T.root == null ? 0 : d(T.root);
+  },
+  expected: 3,
+
+  quiz: [
+    {q:'递归出口为什么是「空树返回 0」,而不是返回 1?',
+     options:['返回 1 也对,只是答案整体偏大','空树一个节点都没有,深度就是 0;这个 0 是递推 max(左,右)+1 的"地基",叶子往下一问就落在它上面','返回 0 会让叶子算出负数'],
+     answer:1,
+     explain:'深度的最小情形是"空树":没有节点就谈不上层。叶子的 max(l, r) + 1 需要左右两个空位各报一个 0 当原料,才能算出 1。若空位返回 1,每条链都会整体虚高一层;返回 0 则层层 +1 恰好把"自己站的这一层"补上,数目严丝合缝。',
+     jumpTo:4},
+    {q:'把输入换成满二叉树 [1,2,3,4,5,6,7],最大深度是多少?',
+     options:['2','3','7'],
+     answer:1,
+     explain:'四个叶子 4~7 各自返回 max(0,0)+1 = 1;节点 2、3 拿到左右两个 1,返回 max(1,1)+1 = 2;根 1 返回 max(2,2)+1 = 3。深度 = 从根到最深叶子的层数(根算第 1 层),不是节点个数——选 7 是把节点数当成了深度。',
+     jumpTo:28},
+    {q:'树退化成一条链(每个节点只有一个孩子)时,这个递归解法的空间开销是?',
+     options:['O(1),只用了几个变量','O(log n),和平衡树时一样','O(h) = O(n):递归栈要一层层压到链底,树高 h 等于节点数 n'],
+     answer:2,
+     explain:'空间花在递归调用栈上:栈深等于树高 h。平衡树里 h ≈ log n,但链状树 h = n,最坏就退到 O(n)。这也是所有"递归走树"解法的通性;想省栈可以改层序 BFS(占最宽一层)或 Morris 遍历( O(1)),但代码复杂度会明显上升。',
+     jumpTo:2},
+  ],
+
+  steps(input){
+    const F = [];
+    const T = Viz.parseTree(input.root || []);
+    const t = Viz.treeLayout(input.root || []);
+    const byKey = {}; T.nodes.forEach(n => byKey[n.key] = n);
+    const doneDep = new Map();       // key -> 已算出的深度
+    let callSeq = 0;
+
+    const vName = k => k == null ? 'null' : String(byKey[k].val);
+    const snapTags = () => { const o = {}; doneDep.forEach((d, k) => o[k] = d); return o; };
+
+    const draw = (o) => (v) => {
+      const states = {};
+      (o.path || []).forEach(k => { states[k] = 'in'; });
+      if(o.cur != null) states[o.cur] = 'active';
+      (o.done || []).forEach(k => { if(states[k] == null) states[k] = 'done'; });
+      const tags = {};
+      Object.entries(o.tags || {}).forEach(([k, d]) => { tags[k] = {text:'深度=' + d, cls:'mg'}; });
+      v.tree('T', t, {label:'二叉树　·　数字 = 节点值', states, tags});
+      const stack = o.stack || [];
+      v.stack('S', stack, {
+        label:'递归调用栈　·　越往下越新',
+        states: stack.length ? {[stack[stack.length - 1].key]:'active'} : {},
+        topTag:'栈顶'
+      });
+      if(o.l != null || o.r != null) v.vars('vars', {l: o.l != null ? o.l : '…', r: o.r != null ? o.r : '…'}, {label:'当前函数的变量'});
+      if(o.result != null) v.result(o.result, {label:'最大深度'});
+    };
+
+    function visit(k, frames, path){
+      const id = 'c' + (++callSeq);
+      const stack = frames.concat([{key:id, val:'maxDepth(' + vName(k) + ')'}]);
+      if(k == null){
+        F.push({hl:[3,4], ok:3, tag:'递归出口', cls:'t-grey',
+          msg:'调用 <code>maxDepth(null)</code>：走到了空位，<code>not root</code> 成立 → <b>return 0</b>——空树一层都没有，深度就是 0。' +
+              '这是递归的"最小情形"：所有递归都要有这样一个能停下来的出口，否则会在 null 上继续取 .left 直接崩溃。这个 0 将作为子树的答案，被上一层拿去参加 max。',
+          do: draw({stack, path})});
+        return 0;
+      }
+      F.push({hl:[3], no:3, tag:'进入函数', cls:'t-blue',
+        msg:'调用 <b>maxDepth(节点 ' + vName(k) + ')</b>：节点存在，但它自己的深度现在还算不出来——整棵树的深度 = 更深的那个子树 + 自己站的这一层。' +
+            '所以先递归<b>问左孩子：你那边多深？</b>右边排队等会儿再问。把问题丢给孩子、自己原地等答案，这是所有树递归的标准姿势。',
+        do: draw({stack, cur:k, path: path.concat(k)})});
+
+      const l = visit(byKey[k].left, stack, path.concat(k));
+      F.push({hl:[5], tag:'左边返回', cls:'t-green',
+        msg:'左孩子那边汇报：<code>l = ' + l + '</code>——以左孩子为根的子树最深有 ' + l + ' 层。' +
+            '半份材料到手，接着 <code>r = self.maxDepth(root.right)</code> 去问右边；此刻本层还压在栈里，橙色节点就是在原地等答案。',
+        do: draw({stack, cur:k, path: path.concat(k), l})});
+
+      const r = visit(byKey[k].right, stack, path.concat(k));
+      F.push({hl:[6], tag:'右边返回', cls:'t-green',
+        msg:'右孩子也汇报：<code>r = ' + r + '</code>——右子树最深 ' + r + ' 层。左右两份答案都到齐了，本层终于能算总账：递归"先分后合"，下去时把问题拆小，回来时把数字收拢。',
+        do: draw({stack, cur:k, path: path.concat(k), l, r})});
+
+      const ret = Math.max(l, r) + 1;
+      doneDep.set(k, ret);
+      F.push({hl:[7], tag:'汇总返回', cls:'t-orange',
+        msg:'节点 ' + vName(k) + '：<code>max(' + l + ', ' + r + ') + 1 = ' + ret + '</code>——两边取大者（树深由更深的一侧决定），再加自己站的这一层。' +
+            '答案 <b>' + ret + '</b> 定格，树上挂出"深度="名牌，本层随即出栈，把 ' + ret + ' 汇报给上一层。',
+        do: draw({stack: frames, path, done: Array.from(doneDep.keys()), tags: snapTags()})});
+      return ret;
+    }
+
+    F.push({hl:[1,2], tag:'开始', cls:'t-grey',
+      msg:'目标：整棵树最深有几层（根算第 1 层，空树算 0）。递推关系就一行：<b>depth(树) = max(depth(左), depth(右)) + 1</b>，空位返回 0 兜底。' +
+          '类比：想知道自己这棵树多高，只要问左右两个领队"你们那边多深"，取大者再 +1。盯住右侧调用栈的起伏——下去是提问，回来是汇报。',
+      do: draw({stack:[]})});
+
+    const ans = T.root == null ? 0 : visit(T.root, [], []);
+    F.push({hl:[7], tag:'递归结束', cls:'t-dark',
+      msg:(T.root == null
+          ? '空树没有任何节点，深度为 <b>0</b> 🎉 递归一次都没进，出口直接就是答案。'
+          : '根节点返回 <b>' + ans + '</b>——整棵树的最大深度 🎉 树上每个节点都标着各自的深度，从根往下每层 +1，<b>最深的那条链</b>就是答案的来源。') +
+          ' 复盘：每个节点恰好算一次 → 时间 O(n)；栈深等于树高 → 空间 O(h)。',
+      do: draw({stack:[], done: Array.from(doneDep.keys()), tags: snapTags(), result: ans})});
+
+    return F;
+  }
+});
+</script>
+</body>
+</html>

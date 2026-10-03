@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P024 · 回文链表 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 24, num: 234, title: '回文链表', diff: '简单', cat: '链表',
+  method: 'isPalindrome',
+
+  lede: '题目：判断链表是不是<b>回文</b>——正着读、反着读一模一样（1→2→2→1 是，1→2→3 不是）。' +
+        '动画分三个阶段：<span class="var i">慢指针 slow</span> 配 <span class="var r">快指针 fast</span> 找中点，' +
+        '然后把<b>后半段箭头整体掉头</b>，最后左半、右半<b>一对一对比对</b>。全程只动指针，不开辟新数组。',
+
+  roles: [
+    {c:'orange', code:'slow', text:'慢指针：一次 1 步，最后停在后半段起点'},
+    {c:'blue',   code:'fast', text:'快指针：一次 2 格，到尾时 slow 正好到中点'},
+    {c:'green',  code:'prev', text:'反转好的后半段头 / 右半比对指针'},
+    {c:'blue',   code:'head', text:'左半比对指针（阶段 3 往右走）'}
+  ],
+
+  codeTitle: '三个阶段看高亮：蓝＝找中点，橙＝反转，绿＝比对。while 行变<span style="color:var(--red)">红</span>＝这一阶段结束。',
+
+  legend: [
+    {c:'orange', text:'slow 慢指针'},
+    {c:'blue',   text:'fast 快指针'},
+    {c:'green',  text:'prev 反转好的部分'},
+    {swatch:'var(--violet-soft)', text:'虚线弧：掉头后的新箭头'}
+  ],
+
+  idea: '回文 = 后半段反转后和前半段一模一样：快慢指针找中点 → 掉头后半 → 一对一对比，全相等就是回文。',
+
+  qa: [
+    {q:'为什么快慢指针能找到中点？',
+     a:'fast 一次跳 2 格、slow 一次 1 步：fast 到尾时正好走了 slow 两倍的路，所以 slow 停在正中偏后的位置——它就是后半段的起点。不用先数一遍长度。'},
+    {q:'反转后半段会不会把链表改坏？',
+     a:'会——这就是 O(1) 空间的代价。对比完原链表已经变成"前半 + 反转的后半"两段。面试可以补一句：不想改原链就用数组/栈存值，空间换到 O(n)。'},
+    {q:'奇数个节点怎么办？中点归谁？',
+     a:'slow 会停在<b>正中间那个节点</b>上，反转时它也进了后半段。比对时左右指针会在中点碰头、自己和自己比（必然相等），不影响结论。'},
+    {q:'复杂度？',
+     a:'时间 O(n)：三趟各扫一遍；空间 O(1)：只用了几个指针变量。'}
+  ],
+
+  complexity: '时间 O(n)　·　空间 O(1)（原链表会被拆成两段）',
+
+  form: [
+    {key:'head', label:'head', type:'list', def:[1,2,2,1]}
+  ],
+  presets: [
+    {label:'1→2→2→1（回文）', values:{head:[1,2,2,1]}},
+    {label:'1→2→3→2→1（奇数回文）', values:{head:[1,2,3,2,1]}},
+    {label:'1→2→9→1（不是回文）', values:{head:[1,2,9,1]}},
+    {label:'单节点 7', values:{head:[7]}}
+  ],
+
+  code: `class Solution:
+    def isPalindrome(self, head):
+        slow = fast = head              # 快慢指针找中点
+        while fast and fast.next:       # 快的到尾, 慢的到中点
+            slow = slow.next
+            fast = fast.next.next
+        prev = None                     # 准备反转后半段
+        while slow:
+            nxt = slow.next             # 先记住下一个
+            slow.next = prev            # 箭头掉头
+            prev = slow                 # prev 右移
+            slow = nxt                  # slow 右移
+        while head and prev and head.val == prev.val:
+            head = head.next            # 这一对相等, 双双右移
+            prev = prev.next
+        return head is None or prev is None  # 没被拦住 = 是回文
+`,
+
+  sol(input){
+    const vals = (input.head || []).filter(x => x != null);
+    const n = vals.length;
+    let slow = 0, fast = 0;                    // 下标模拟: slow=后半段起点
+    while(fast < n && fast + 1 < n){ slow++; fast += 2; }
+    const back = vals.slice(slow).reverse();   // 反转后的后半段
+    let i = 0;
+    while(i < slow && i < back.length && vals[i] === back[i]) i++;
+    return i >= slow || i >= back.length;
+  },
+  expected: true,
+
+  quiz: [
+    {q:'快慢指针找中点：为什么 fast 一次跳两格、slow 一次一步，fast 到尾时 slow 恰好在中间？循环条件为什么要写 fast 和 fast.next 两个判断？',
+     options:['fast 随便跳几格都行，两格只是习惯','fast 每轮走的路是 slow 的两倍，fast 撞到尾时 slow 正好走了一半；条件必须先确认 fast 没出界、再确认它身后还有一格，少判一个，下一步对 None 取 next 就会报错','写一个判断就够了，另一个是冗余'],
+     answer:1,
+     explain:'速度 2:1 保证路程也是 2:1——fast 走完全程时 slow 恰好走半程，不用先数长度就找到中点。但 fast 一次要跨两格，落脚前提是 fast 和 fast.next 都存在：只判 fast 的话，fast 落到 None 后再取 fast.next 直接崩；只判 fast.next 的话，fast 本身可能是 None。双重检查是给 fast.next.next 上保险。',
+     jumpTo:6},
+    {q:'输入 [1,2,3,3,2,1]（6 个节点）：阶段 1 结束时 slow 停在哪个节点？后半段反转后和前半段比对结果如何？',
+     options:['slow 停在下标 3（第二个 3），后半段 [3,2,1] 反转成 [1,2,3]，与前半 [1,2,3] 完全一致 → 是回文','slow 停在下标 2（第一个 3），前半只剩 [1,2]，比对不等 → 不是回文','slow 停在下标 3，后半段不反转没法比对，程序报错'],
+     answer:0,
+     explain:'fast 从下标 0 出发：三轮后 fast 落到链外，slow 走到下标 3——前半 [1,2,3]（下标 0~2）与后半 [3,2,1]（下标 3~5）的分界。把后半箭头掉头得 1→2→3，与左半一对一对比：1=1、2=2、3=3，全等 → 回文。偶数长度时 slow 停在「后半段第一个节点」，两段等长；奇数长度时 slow 停在正中间，它会跟后半段一起被反转，比对时左右指针在中点自比一次（必然相等），不影响结论。',
+     jumpTo:8},
+    {q:'这个算法会把原链表改坏吗？代价是什么？',
+     options:['不会，所有指针最后都会自动恢复原状','会——反转后半段后，原链表已被拆成「前半 + 反转的后半」两段，回不去了；这是 O(1) 空间的代价，不想改原链就用数组/栈存值比对，空间换到 O(n)','只有回文时才会改坏，非回文不受影响'],
+     answer:1,
+     explain:'阶段 2 把后半段的箭头逐个掉头，这一步不可逆：比对结束后链表不是原来的形状。面试答这题可以主动补一句「本解法会修改原链，空间 O(1)；若要求只读，用栈或数组存值，空间 O(n)」——展示对 trade-off 的自觉。无论输入是不是回文，破坏都会发生，与结果无关。',
+     jumpTo:18},
+  ],
+
+  steps(input){
+    const F = [];
+    const vals = (input.head || []).filter(x => x != null);
+    const N = vals.length;
+    const nodes = vals.map((v, i) => ({key: 'n' + i, val: v}));
+    const nv = k => k == null ? 'None' : '节点' + nodes[+k.slice(1)].val;
+    const link = {};                           // 真实指针: 每个节点的 next(阶段2反转会被改写, nx 必须跟着走)
+    for(let i = 0; i < N; i++) link['n' + i] = (i + 1 < N ? 'n' + (i + 1) : null);
+    const nx = k => k == null ? null : link[k];
+    const val = k => nodes[+k.slice(1)].val;
+    const HT = N ? {key: 'n0', text: 'head', cls: 'mq'} : null;
+
+    let edges = [];                            // 画面上的箭头快照
+    for(let i = 0; i < N - 1; i++) edges.push(['n' + i, 'n' + (i + 1)]);
+
+    let slow = N ? 'n0' : null, fast = N ? 'n0' : null;
+    let head = N ? 'n0' : null, prev = null, nxt = null;
+    let matched = [];                          // 阶段3 已过关的节点
+
+    /* ★ 快照原则：edges.slice() / ptr() 都在 F.push 那一刻定死 */
+    const ptrSF = () => {                      // 阶段1: slow + fast
+      const a = [];
+      if(slow != null && slow === fast) a.push({key: slow, text: '▼ slow = fast', cls: 'mv'});
+      else {
+        if(slow != null) a.push({key: slow, text: '▼ slow', cls: 'mi'});
+        if(fast != null) a.push({key: fast, text: '▼ fast', cls: 'mr'});
+      }
+      return a;
+    };
+    const ptrPS = () => {                      // 阶段2: prev + slow
+      const a = [];
+      if(prev != null) a.push({key: prev, text: '▼ prev', cls: 'mg'});
+      if(slow != null) a.push({key: slow, text: '▼ slow', cls: 'mi'});
+      return a;
+    };
+    const ptrHP = () => {                      // 阶段3: head + prev
+      const a = [];
+      if(head != null && head === prev) a.push({key: head, text: '▼ head = prev', cls: 'mv'});
+      else {
+        if(head != null) a.push({key: head, text: '▼ head', cls: 'mr'});
+        if(prev != null) a.push({key: prev, text: '▼ prev', cls: 'mg'});
+      }
+      return a;
+    };
+    const draw = (o) => (v) => {
+      v.list('L', nodes, {label: '链表　·　箭头 = 节点的 next 指向',
+        states: o.st || {}, edges: o.edges, pointers: o.ptr || [], headTag: o.ht});
+      if(o.vars) v.vars('vars', o.vars, {label: '变量'});
+      if(o.res !== undefined) v.result(o.res, {label: '返回结果'});
+    };
+
+    F.push({hl: [1,2,3], tag: '初始化', cls: 't-grey',
+      msg: 'slow、fast 两个指针都站上表头' + (N ? ' ' + nv(slow) : '') + '。链表不能随机访问、又想省空间，所以分三步走：<b>快慢指针找中点 → 把后半段箭头掉头 → 前后半一对一对比</b>——回文的本质就是"后半段倒过来读 == 前半段"。' +
+           '约定：slow 一次 1 步（橙）、fast 一次跳 2 格（蓝），fast 走的路永远是 slow 的两倍——这是待会找中点的全部依据。',
+      do: draw({edges: edges.slice(), ptr: ptrSF(), ht: HT,
+                st: {[slow || 'x'] : 'active'}, vars: {slow: nv(slow), fast: nv(fast)}})});
+
+    /* ---------- 阶段1: 快慢指针找中点 ---------- */
+    while(fast != null && nx(fast) != null){
+      F.push({hl: [4], ok: 4, tag: '阶段1·找中点', cls: 't-blue',
+        msg: 'slow 在 ' + nv(slow) + '、fast 站在 ' + nv(fast) + '，fast 后面还有 ' + nv(nx(fast)) + ' → 还能跳满两格，中点未到，继续走。' +
+             '循环条件 <code>fast and fast.next</code> 是双重安全检查：先确认 fast 没出界，再确认它身后还有一格——少判一个，下一步对 None 取 next 就会报错。',
+        do: draw({edges: edges.slice(), ptr: ptrSF(), ht: HT,
+                  st: {[slow]:'active', [fast]:'in'}, vars: {slow: nv(slow), fast: nv(fast)}})});
+      slow = nx(slow);
+      F.push({hl: [5], tag: '阶段1·找中点', cls: 't-blue',
+        msg: 'slow 慢慢走 1 步：到 <b>' + nv(slow) + '</b>。快慢同一起跑线，fast 每轮的路程都是 slow 的两倍——等 fast 撞到尾，slow 恰好走到一半，不用先数长度就能找到中点。',
+        do: draw({edges: edges.slice(), ptr: ptrSF(), ht: HT,
+                  st: {[slow]:'active', [fast]:'in'}, vars: {slow: nv(slow), fast: nv(fast)}})});
+      const oldF = fast, mid = nx(oldF);
+      fast = nx(mid);
+      F.push({hl: [6], tag: '阶段1·找中点', cls: 't-blue',
+        msg: 'fast 一步跳两格：从 ' + nv(oldF) + ' 越过 ' + nv(mid) + '，落到 <b>' + nv(fast) + '</b>。' +
+             '这一轮 slow 走 1、fast 走 2，fast 的总路程始终是 slow 的两倍。踩坑提醒：<code>fast.next.next</code> 能写的前提是 fast 和 fast.next 都非空——上一帧的循环条件就是在给它上保险。',
+        do: draw({edges: edges.slice(), ptr: ptrSF(), ht: HT,
+                  st: {[slow]:'active', [fast]:'in'}, vars: {slow: nv(slow), fast: nv(fast)}})});
+    }
+    F.push({hl: [4], no: 4, tag: '中点找到', cls: 't-orange',
+      msg: 'fast 到尾了 → <b>slow 停在后半段的起点 ' + nv(slow) + '</b>（fast 总路程是 slow 的两倍，slow 自然刚好走完前半）。后半段 = [' +
+           (slow != null ? vals.slice(+slow.slice(1)).join('→') : '') + ']，前半保持不动，马上把后半反转。' +
+           (N % 2 === 1 ? '节点数是奇数，slow 停在正中间那个——它会跟着后半段一起被反转，比对时左右指针会在中点自比（必然相等），不影响结论。' : ''),
+      do: draw({edges: edges.slice(), ptr: ptrSF(), ht: HT,
+                st: {[slow || 'x']:'pivot'}, vars: {slow: nv(slow), fast: nv(fast)}})});
+
+    /* ---------- 阶段2: 反转后半段 ---------- */
+    F.push({hl: [7], tag: '阶段2·反转后半', cls: 't-orange',
+      msg: '<code>prev = None</code>：反转好的部分还空着。为什么要反转后半段？单链表没法从尾巴往前走，把后半段的箭头掉头后，才能从表尾方向<b>顺着走回来</b>跟左半对比。接下来把 ' + nv(slow) + ' 开头那段逐个掉头。',
+      do: draw({edges: edges.slice(), ptr: ptrPS(), ht: HT,
+                st: {[slow || 'x']:'active'}, vars: {prev: 'None', slow: nv(slow)}})});
+
+    while(slow != null){
+      F.push({hl: [8], ok: 8, tag: '阶段2·反转后半', cls: 't-orange',
+        msg: 'slow 还在 ' + nv(slow) + ' → 后半段还有节点没反转；此刻 prev = ' + nv(prev) + '，绿格 = 已经掉头的部分。' +
+             '不变式：prev 开头那段已完全反转、slow 开头那段还保持原样，两段之间只靠 nxt 记着的"后路"联系。',
+        do: draw({edges: edges.slice(), ptr: ptrPS(), ht: HT,
+                  st: {[slow]:'active', [prev || 'x']:'done'}, vars: {prev: nv(prev), slow: nv(slow)}})});
+      nxt = nx(slow);
+      F.push({hl: [9], tag: '阶段2·反转后半', cls: 't-orange',
+        msg: 'nxt = ' + nv(nxt) + '：先记住 slow 后面' + (nxt ? '的节点' : '（没有下一个了）') + '。老规矩——不先存，箭头一掉头后半段就断链。',
+        do: draw({edges: edges.slice(), ptr: ptrPS(), ht: HT,
+                  st: {[slow]:'active', [nxt]:'peek', [prev || 'x']:'done'},
+                  vars: {prev: nv(prev), slow: nv(slow), nxt: nv(nxt)}})});
+      edges = edges.filter(([a]) => a !== slow);
+      if(prev != null) edges.push([slow, prev]);
+      link[slow] = prev;                      // 真实指针同步掉头
+      F.push({hl: [10], tag: '阶段2·反转后半', cls: 't-orange',
+        msg: 'slow 的箭头掉头，改指 ' + (prev ? nv(prev) : '<b>None</b>（原后半段的末尾，反转后就是这段的头，后面不指任何人）') +
+             '。这根新箭头就是待会"从表尾往回走"的路。',
+        do: draw({edges: edges.slice(), ptr: ptrPS(), ht: HT,
+                  st: {[slow]:'block', [prev || 'x']:'done'}, vars: {prev: nv(prev), slow: nv(slow), nxt: nv(nxt)}})});
+      prev = slow;
+      slow = nxt;
+      F.push({hl: [11,12], tag: '阶段2·反转后半', cls: 't-orange',
+        msg: 'prev、slow 各右移一格：prev 到 <b>' + nv(prev) + '</b>（已反转段的头），slow 到 ' + nv(slow) + '（下一段待处理）。绿色部分 = 已经反转好。',
+        do: draw({edges: edges.slice(), ptr: ptrPS(), ht: HT,
+                  st: {[prev || 'x']:'done', [slow || 'x']:'active'},
+                  vars: {prev: nv(prev), slow: nv(slow)}})});
+    }
+    F.push({hl: [8], no: 8, tag: '反转完毕', cls: 't-green',
+      msg: 'slow 到 None → 后半段反转完成，<b>prev 站在反转后的后半段头上（' + nv(prev) + '）</b>——它正是原链表的表尾。' +
+           '接下来 head 从左半头、prev 从右半头，一对一往中间比。代价提示：原链表已经被拆成两段，这是 O(1) 空间换来的。',
+      do: draw({edges: edges.slice(), ptr: ptrPS(),
+                st: {[prev || 'x']:'done'}, vars: {prev: nv(prev), slow: 'None'}})});
+
+    /* ---------- 阶段3: 前后两半逐对比对 ---------- */
+    while(head != null && prev != null && val(head) === val(prev)){
+      matched = matched.concat([head, prev]);
+      F.push({hl: [13], ok: 13, tag: '阶段3·逐对比对', cls: 't-green',
+        msg: '比一对：左边 ' + nv(head) + ' vs 右边 ' + nv(prev) + ' → <b>相等 ✓</b>' +
+             (head === prev ? '（左右指针在中点碰头了，自己比自己必然相等——奇数长度的正常现象）' : '') +
+             '。"正读反读一样"等价于"左半第 k 个 = 反转后的右半第 k 个"，一对对验过去就是全部检查。',
+        do: draw({edges: edges.slice(), ptr: ptrHP(),
+                  st: Object.assign({[head]:'active', [prev]:'active'},
+                    matched.reduce((m, k) => (m[k] = 'done', m), {})),
+                  vars: {head: nv(head), prev: nv(prev)}})});
+      head = nx(head);
+      prev = nx(prev);
+      F.push({hl: [14,15], tag: '阶段3·逐对比对', cls: 't-green',
+        msg: '这一对过关，head、prev 双双右移：head 到 ' + nv(head) + '，prev 到 ' + nv(prev) +
+             '。任何一对不等就立刻判负；全过关、走到头才是回文。',
+        do: draw({edges: edges.slice(), ptr: ptrHP(),
+                  st: Object.assign({[head || 'x']:'active', [prev || 'x']:'active'},
+                    matched.reduce((m, k) => (m[k] = 'done', m), {})),
+                  vars: {head: nv(head), prev: nv(prev)}})});
+    }
+    const equalAll = (head == null || prev == null);
+    F.push({hl: [13], no: 13, tag: equalAll ? '比对完毕' : '比出不同！', cls: equalAll ? 't-green' : 't-red',
+      msg: equalAll
+        ? '指针走出了链外 → <b>没有一对不相等</b>，比对结束：前半段和反转的后半段完全重合——这正是回文的定义。'
+        : '比出不相等的一对：左边 <b>' + (head == null ? 'None' : val(head)) + '</b> vs 右边 <b>' + (prev == null ? 'None' : val(prev)) + '</b> ✗ → 一处不同就足以推翻"正读反读一样"，不是回文！',
+      do: draw({edges: edges.slice(), ptr: ptrHP(),
+                st: equalAll
+                  ? matched.reduce((m, k) => (m[k] = 'done', m), {})
+                  : Object.assign({[head || 'x']:'block', [prev || 'x']:'block'},
+                      matched.reduce((m, k) => (m[k] = 'done', m), {})),
+                vars: {head: nv(head), prev: nv(prev)}})});
+
+    F.push({hl: [16], tag: '返回', cls: 't-dark',
+      msg: equalAll
+        ? 'return head is None or prev is None → <b>True</b> 🎉 有一个指针先走出链，说明全程没有拦路的差异对，正读反读一样。'
+        : 'return head is None or prev is None → <b>False</b>：两个指针还卡在链中间——正是那对不相等的节点挡住了去路。',
+      do: draw({edges: edges.slice(), ptr: ptrHP(),
+                st: equalAll
+                  ? matched.reduce((m, k) => (m[k] = 'done', m), {})
+                  : {[head || 'x']:'block', [prev || 'x']:'block'},
+                res: equalAll})});
+
+    return F;
+  }
+});
+</script>
+</body>
+</html>

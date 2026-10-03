@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P008 · 无重复字符的最长子串 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 8, num: 3, title: '无重复字符的最长子串', diff: '中等', cat: '滑动窗口',
+  method: 'lengthOfLongestSubstring',
+
+  lede: '题目：找出字符串里<b>最长的不含重复字符</b>的连续子串，返回它的长度。' +
+        '动画里左手 <span class="var o">l</span>、右手 <span class="var i">r</span> 夹出一个窗口：<span class="var i">r</span> 只管一路向右捡字符，' +
+        '一旦捡到窗里已有的（<span class="var r">occ</span> 在场名单上撞车），左手就把左端字符一个个请出去，直到不撞车为止。' +
+        '窗口每稳住一次，就量一次长度——这就是滑动窗口的雏形。',
+
+  roles: [
+    {c:'orange', code:'r',   text:'右手：只管右移扩张'},
+    {c:'green',  code:'l',   text:'左手：撞车时收缩窗口'},
+    {c:'blue',   code:'occ', text:'窗口字符名单（集合查重）'},
+    {c:'violet', code:'ans', text:'目前最长的无重复长度'}
+  ],
+
+  codeTitle: '跟着高亮读代码——<code>while c in occ</code> 变<span style="color:var(--green)">绿</span>＝窗口干净，新字符直接进窗；变<span style="color:var(--red)">红</span>＝撞车了，左手开始扔人。',
+
+  legend: [
+    {c:'blue', text:'窗口内的字符'},
+    {c:'orange', text:'r 正在捡的字符'},
+    {c:'green', text:'l 左端'},
+    {c:'violet', text:'目前最优窗口'}
+  ],
+
+  idea: '右手无脑扩张，左手只在撞车时收缩——窗口永远是"以 r 结尾的最长无重复子串"，每稳住一次量一遍，最长即答案。',
+
+  qa: [
+    {q:'为什么找齐答案不用回头重查旧字符？',
+     a:'occ 里只登记窗口内的字符，撞不撞车只看它。左手扔掉的字符永远不会再回来（l 只前进），所以每个字符最多进窗、出窗各一次，整个算法是 O(n) 而不是 O(n²)。'},
+    {q:'窗口的不变式是什么？',
+     a:'每一轮结算完都保证：<b>窗口 s[l..r] 内没有任何重复字符</b>，且它是"以 r 结尾"的最长一个。r 前进只会让窗口变大（可能撞车），l 前进只在撞车时把窗口修好。'},
+    {q:'为什么找到重复后是"逐个扔到不重复为止"？',
+     a:'这是最直白的写法：while 每扔一个、查一次，直到名单干净。进阶版可以记"每个字符最后出现的位置"，让 l 直接跳到重复字符的下一格——思路相同，少扔几步而已。'},
+    {q:'全是相同字符（"bbbbb"）会怎样？',
+     a:'窗口永远只有 1 格：每捡一个新 b 都撞车，左手扔掉旧 b 再进。答案 1。动画里能看到窗口在原地不停"换血"。'}
+  ],
+
+  complexity: '时间 O(n)（l、r 各走一趟）　·　空间 O(|Σ|)（名单最多装字符集大小）',
+
+  form: [
+    {key:'s', label:'s', type:'str', def:'abcabcbb'}
+  ],
+  presets: [
+    {label:'abcabcbb（答案 3）', values:{s:'abcabcbb'}},
+    {label:'bbbbb（全是重复）', values:{s:'bbbbb'}},
+    {label:'pwwkew（别掉进子序列陷阱）', values:{s:'pwwkew'}},
+    {label:'dvdf（经典易错）', values:{s:'dvdf'}}
+  ],
+
+  code: `class Solution:
+    def lengthOfLongestSubstring(self, s):
+        occ = set()                    # 窗口内的字符名单
+        ans, l = 0, 0                  # 最长长度 与 左端
+        for r, c in enumerate(s):      # 右手 r 一路向右捡
+            while c in occ:            # 撞见重复 -> 左手收缩
+                occ.remove(s[l])       # 把左端字符请出窗
+                l += 1
+            occ.add(c)                 # 新字符进窗
+            ans = max(ans, r - l + 1)  # 量一量窗口长度
+        return ans
+`,
+
+  sol(input){
+    const s = String(input.s == null ? '' : input.s);
+    const occ = new Set();
+    let ans = 0, l = 0;
+    for(let r = 0; r < s.length; r++){
+      while(occ.has(s[r])){ occ.delete(s[l]); l++; }
+      occ.add(s[r]);
+      ans = Math.max(ans, r - l + 1);
+    }
+    return ans;
+  },
+  expected: 3,
+
+  quiz: [
+    {q:'"pwwkew" 里 pwke 是不重复的,为什么答案不是 4?',
+     options:['因为 w 出现了两次,要扣掉一份','pwke 不连续——题目要的是「子串」(连续一段),不是「子序列」;连续的无重复子串最长是 wke,长 3','算法有 bug,把 4 算少了'],
+     answer:1,
+     explain:'子串必须连续,pwke 中间跳过了 w,是子序列不是子串。连续约束下,"pwwkew" 的无重复子串最长是 wke(或 kew),长度 3。滑动窗口天然只维护连续段——这正是它和「子序列 DP」的分界线,掉进这个坑是本题最高频的错误。',
+     jumpTo:48},
+    {q:'s = "abba" 跑这个算法,返回值是多少?',
+     options:['3','2','4','1'],
+     answer:1,
+     explain:'逐格走:r=0 a 进窗,长 1;r=1 b 进窗,长 2(ans=2);r=2 b 撞车 → 左手把 a、b 依次请出去(l 从 0 走到 2),b 再进窗,窗口长 1;r=3 a 不撞车,进窗成 s[2..3]="ba" 长 2,没破纪录。答案是 2。易错点:想改成「记每个字符最后出现位置、l 直接跳」的写法,若不做「l 只前进、不回跳」的保护,"abba" 就会错算成 3。',
+     jumpTo:16},
+    {q:'每次「进窗」结算时,窗口都满足什么性质(不变式)?',
+     options:['窗口内无重复字符,且是「以 r 结尾」的最长无重复子串——再往左扩必撞车','窗口长度恰好等于 ans','窗口里装着全串出现过的所有不同字符'],
+     answer:0,
+     explain:'右手 r 每停一步,左手都把撞车的旧字符请干净才放新字符进窗——所以窗口 s[l..r] 无重复,而且 l 已顶到「再左一格就重复」的极限,它就是以 r 结尾的最长无重复子串。每稳住一次量一遍、max 兜底,扫完全串 ans 就是全局答案。窗口长只在某步恰好等于 ans,不是恒等式;窗口也不必装下所有不同字符。',
+     jumpTo:18},
+  ],
+
+  steps(input){
+    const F = [];
+    const s = String(input.s == null ? '' : input.s);
+    const S = s.split('');
+    const n = S.length;
+    const occ = new Set();
+    let l = 0, ans = 0, bestL = 0, bestR = -1;
+
+    const marks = (li, ri) => {
+      const m = [];
+      if(li != null && li >= 0 && li <= ri) m.push({name:'l', idx:li, cls:'mg', text:'▲ l'});
+      if(ri != null && ri >= 0) m.push({name:'r', idx:ri, cls:'mi', text:'▲ r'});
+      return m;
+    };
+    const win = (a, b, extra) => {
+      const st = {};
+      for(let i = Math.max(0, a); i <= b; i++) st[i] = 'in';
+      if(extra) for(const k in extra) st[k] = extra[k];
+      return st;
+    };
+    /* ★ 快照原则：o 里的数据全部在 push 那一刻定死 */
+    const draw = (o) => (v) => {
+      v.arr('s', S, {
+        label:'字符串 <code>s</code>　·　左手 l 守左端，右手 r 一路向右',
+        quotes:true, states:o.states || {}, markers:o.marks || []
+      });
+      v.set('occ', o.occ || [], {label:'窗口字符名单 <code>occ</code>（撞车就收缩）', color:'b'});
+      v.vars('vars', o.vars, {label:'变量'});
+      if(o.result !== undefined) v.result(o.result, {label:'最长无重复长度'});
+    };
+
+    F.push({hl:[1,2,3,4], tag:'初始化', cls:'t-grey',
+      msg:'<code>occ</code> 是窗口的"在场名单"，此刻是空的（下面蓝色面板一行都没有）；<code>l = 0</code> 守左端、<code>ans = 0</code> 记最长。分工铁律：<b>右手 r 只管一路向右捡字符、从不回头；捡到名单上已有的就让左手把左端字符一个个请出去</b>，直到名单干净。为什么两根指针都只进不退还能找全？每个字符最多进窗、出窗各一次——要是 r 一撞车就退回去重来，就退化成 O(n²) 了。',
+      do: draw({states:{}, marks:[], occ:[],
+                vars:{r:'—', c:'—', l:l, '窗口长':0, ans:ans}})});
+
+    for(let r = 0; r < n; r++){
+      const c = S[r];
+
+      F.push({hl:[5], tag:'右手扩张', cls:'t-ink',
+        msg:'右手走到第 <b>' + r + '</b> 格，捡起字符 <code>' + LCesc(c) + '</code>（橙色当前格）' +
+            (r > 0 ? '，当前窗口 s[' + l + '..' + (r - 1) + '] 共 ' + (r - l) + ' 个字符（蓝格），occ 名单上记的正是它们。' : '，窗口还空着，名单也是空的。') +
+            '为什么 r 可以无脑右移、从不犹豫？答案要求子串连续，r 每前进一格只是多试一个右端点，错过了就再也不回来——先扩张，撞车了再收缩，天塌不下来。',
+        do: draw({states:win(l, r - 1, {[r]:'active'}), marks:marks(l, r),
+                  occ:Array.from(occ), vars:{r:r, c:c, l:l, '窗口长':r - l, ans:ans}})});
+
+      const dup0 = occ.has(c);
+      F.push({hl:[6], ok:dup0 ? undefined : 6, no:dup0 ? 6 : undefined,
+        tag:'查名单', cls:dup0 ? 't-red' : 't-green',
+        msg:dup0
+          ? '<code>' + LCesc(c) + '</code> 已经在窗口名单里（occ 面板上能亲眼看到它）→ <b>撞车了！</b>窗口里出现两个相同字符就不再是"无重复子串"，必须先把旧的处理掉再扩张：左手开始把左端字符一个个请出去，直到把旧的那个 ' + LCesc(c) + ' 也扔走。'
+          : '<code>' + LCesc(c) + '</code> 不在名单里 → 窗口干净，可以直接进窗。查名单用的是集合，O(1) 一步出结果；要是每步都把窗口整个扫一遍找重复，单步 O(n)、整体退化成 O(n²)——集合就是为这一查买的保险。',
+        do: draw({states:win(l, r - 1, {[r]:'active'}), marks:marks(l, r),
+                  occ:Array.from(occ), vars:{r:r, c:c, l:l, '窗口长':r - l, ans:ans}})});
+
+      while(occ.has(c)){
+        const oldL = l, d = S[l];
+        occ.delete(d);
+        l++;
+        F.push({hl:[7,8], tag:'左手收缩', cls:'t-orange',
+          msg:'把左端 s[' + oldL + ']=<code>' + LCesc(d) + '</code> 请出窗（画面上灰色退场），<code>l</code> 右移到 ' + l + '，名单里少了 ' + LCesc(d) + '。为什么从左端一个个扔就够？有点像超员的车只能从车头依次下车：l 只前进、扔掉的永不回来——窗口虽变小，但任何"以 r 结尾"的无重复子串都不可能从被扔掉的格子里开始，一个不漏。',
+          do: draw({states:win(l, r - 1, {[oldL]:'gone', [r]:'active'}), marks:marks(l, r),
+                    occ:Array.from(occ), vars:{r:r, c:c, l:l, '窗口长':r - l, ans:ans}})});
+        const still = occ.has(c);
+        F.push({hl:[6], ok:still ? undefined : 6, no:still ? 6 : undefined,
+          tag:'再看一眼', cls:still ? 't-red' : 't-green',
+          msg:still
+            ? '<code>' + LCesc(c) + '</code> 还在名单里 → 旧的那个还没请走，撞车没解决，继续扔左端 <code>' + LCesc(S[l]) + '</code>。while 循环就是"扔一个、查一次"的往复，直到名单干净为止——一次只扔一个，扔过头就白白缩短了窗口。'
+            : '名单干净了：旧的那个 ' + LCesc(c) + ' 已被请出去，窗口里不再有重复，<code>' + LCesc(c) + '</code> 可以进窗了。',
+          do: draw({states:win(l, r - 1, {[r]:'active'}), marks:marks(l, r),
+                    occ:Array.from(occ), vars:{r:r, c:c, l:l, '窗口长':r - l, ans:ans}})});
+      }
+
+      occ.add(c);
+      F.push({hl:[9], tag:'进窗', cls:'t-blue',
+        msg:'<code>occ.add(' + LCesc(c) + ')</code> → 窗口变成 s[' + l + '..' + r + ']（蓝色段），名单里 ' + occ.size + ' 个字符互不重复。此刻的窗口有含金量：它是<b>以 r 结尾的最长无重复子串</b>——再往左扩必撞车（旧字符还在名单里，正是它逼我们收缩过），往右扩还没发生。这就是滑动窗口的不变式：每次结算，窗口都恰好顶到左边界。',
+        do: draw({states:win(l, r, {[r]:'active'}), marks:marks(l, r),
+                  occ:Array.from(occ), vars:{r:r, c:c, l:l, '窗口长':r - l + 1, ans:ans}})});
+
+      const len = r - l + 1, better = len > ans;
+      if(better){ ans = len; bestL = l; bestR = r; }
+      F.push({hl:[10], ok:better ? 10 : undefined, no:better ? undefined : 10,
+        tag:'量窗口', cls:better ? 't-green' : 't-grey',
+        msg:better
+          ? '窗口长 <b>' + len + '</b>，打破纪录 → <code>ans = ' + ans + '</code>（目前最优是紫色的 s[' + bestL + '..' + bestR + ']）。窗口每稳住一次就量一次、一步不省：最优解可能停在任何位置，指望它出现在最后一步必漏答。'
+          : '窗口长 ' + len + '，没超过纪录 ans = ' + ans + ' → 不更新。这等价于执行 <code>ans = max(ans, ' + len + ')</code>：max 兜底，短窗口不动纪录——量了不亏，不量必漏。',
+        do: draw({states:win(l, r, {[r]:'active'}), marks:marks(l, r),
+                  occ:Array.from(occ), vars:{r:r, c:c, l:l, '窗口长':len, ans:ans}})});
+    }
+
+    F.push({hl:[11], tag:'返回', cls:'t-dark',
+      msg:bestR >= 0
+        ? '扫完全串，最长无重复子串是 <code>s[' + bestL + '..' + bestR + '] = "' + LCesc(s.slice(bestL, bestR + 1)) + '"</code>，长度 <b>' + ans + '</b> 🎉 复盘：r 扫了一趟、l 也只前进了一趟，每个字符最多进窗、出窗各一次，总时间 O(n)；occ 名单最多装字符集大小种字符，空间也省。'
+        : '空串一个字符都没有，任何子串都无从谈起 → 返回 0。ans 初始化为 0 正好兜住这个边界，循环一次都不用跑。',
+      do: draw({states:bestR >= 0 ? win(bestL, bestR, {}) : {},
+                marks:bestR >= 0 ? marks(bestL, bestR) : [],
+                occ:Array.from(occ),
+                vars:{r:n - 1, c:'—', l:l, '窗口长':bestR >= 0 ? bestR - bestL + 1 : 0, ans:ans},
+                result:ans})});
+    return F;
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P097 · 颜色分类 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 97, num: 75, title: '颜色分类', diff: '中等', cat: '技巧',
+  method: 'sortColors',
+
+  lede: '题目：数组里只有 <b>0、1、2</b> 三种数（想象红白蓝三色旗），把它们<b>原地</b>排成 0…0 1…1 2…2，最好只扫一趟。' +
+        '<b>荷兰国旗三指针</b>：<span class="var o">low</span> 左边全是就位的 0，<span class="var v">high</span> 右边全是就位的 2，' +
+        '<span class="var i">cur</span> 逐格检查——遇 0 换到 low 端双双前进，遇 2 换到 high 端但 <b>cur 原地不动</b>（换来的数还没看过！），遇 1 直接前进。',
+
+  roles: [
+    {c:'orange', code:'cur',  text:'正在检查的格子'},
+    {c:'green',  code:'low',  text:'0 区右边界：左边全是就位的 0'},
+    {c:'violet', code:'high', text:'2 区左边界：右边全是就位的 2'},
+    {c:'grey',   code:'中间',  text:'未归位区（只剩 1 和待检查的数）'}
+  ],
+
+  codeTitle: '跟着高亮读代码——if/elif 行变<span style="color:var(--green)">绿</span>＝命中 0 或 2 要交换。<b>2 的分支里 cur 不前进</b>是本题最大的坑。',
+
+  legend: [
+    {c:'green',  text:'就位的 0 区'},
+    {c:'violet', text:'就位的 2 区'},
+    {c:'orange', text:'cur 正在看'},
+    {c:'grey',   text:'还没归位的中间区'}
+  ],
+
+  idea: '遇 0 换 low 双前进，遇 2 换 high 只退 high（cur 留下重看换来的数），遇 1 直接走——三根指针一趟把 0/1/2 归位。',
+
+  qa: [
+    {q:'为什么遇 2 换完后 cur 不能前进？',
+     a:'换过来的是 <b>high 位置那个从没看过的数</b>，可能是 0、1 甚至又一个 2——必须留在原地下一轮重看。而遇 0 时换过来的是 low 位置的数，中间区存的只会是 1（或就是它自己），早就看过了，可以放心前进。'},
+    {q:'三根指针的不变式是什么？',
+     a:'任意时刻：<b>[0, low) 全是 0；[low, cur) 全是 1；[cur, high] 是未检查区；(high, n−1] 全是 2</b>。循环到 cur > high 时中间区清空，整个数组自然有序。'},
+    {q:'和"数一遍再回填"的计数法比呢？',
+     a:'先数 0/1/2 各几个再重写数组，两趟、也好写；但本题考的是<b>一趟</b>原地交换。三指针每步只做常数次操作，时间 O(n)、空间 O(1)。'},
+    {q:'cur > high 就停，为什么不是 cur == n？',
+     a:'high 右边已经全是 2，cur 走进 2 区就全是重复劳动；cur 越过 high 的那一刻，未检查区为空，数组已经排好了。'}
+  ],
+
+  complexity: '时间 O(n)（每个位置至多重看一次）　·　空间 O(1)',
+
+  form: [
+    {key:'nums', label:'nums', type:'arr', def:[2,0,2,1,1,0]}
+  ],
+  presets: [
+    {label:'[2,0,2,1,1,0]', values:{nums:[2,0,2,1,1,0]}},
+    {label:'[2,0,1]', values:{nums:[2,0,1]}},
+    {label:'[0,0,1,1,2,2]（已排好）', values:{nums:[0,0,1,1,2,2]}},
+    {label:'[2,2,2]（全 2 边界）', values:{nums:[2,2,2]}}
+  ],
+
+  code: `class Solution:
+    def sortColors(self, nums):
+        low, cur, high = 0, 0, len(nums) - 1
+        while cur <= high:
+            if nums[cur] == 0:          # 0 → 归左岸
+                nums[low], nums[cur] = nums[cur], nums[low]
+                low += 1
+                cur += 1
+            elif nums[cur] == 2:        # 2 → 归右岸
+                nums[cur], nums[high] = nums[high], nums[cur]
+                high -= 1         # cur 不动! 还要再看
+            else:                       # 1: 直接前进
+                cur += 1
+        return nums
+`,
+
+  sol(input){
+    const nums = (input.nums || []).slice();
+    let low = 0, cur = 0, high = nums.length - 1;
+    while(cur <= high){
+      if(nums[cur] === 0){
+        const t = nums[low]; nums[low] = nums[cur]; nums[cur] = t;
+        low++; cur++;
+      } else if(nums[cur] === 2){
+        const t = nums[cur]; nums[cur] = nums[high]; nums[high] = t;
+        high--;
+      } else {
+        cur++;
+      }
+    }
+    return nums;
+  },
+  expected: [0,0,1,1,2,2],
+
+  quiz: [
+    {q:'同样是交换后继续,为什么遇 0 时 cur 敢 +1,遇 2 时 cur 却钉在原地?',
+     options:['遇 0 换来的是 low 位置的"老熟人":不变式 [low, cur) 里全是检查过的 1(low==cur 时更是自己换自己);遇 2 换来的是 high 位置从没看过的数——可能是 0、1 甚至又一个 2,必须留下重看','因为 0 比 2 小,处理起来不需要再看','遇 0 时是 low 前进替 cur 走了那一步,cur 不动是补偿'],
+     answer:0,
+     explain:'全程不变式:[0,low) 全 0、[low,cur) 全 1、[cur,high] 未检查、(high,n−1] 全 2。low 站在 1 区开头,换过来的必是已过堂的 1(或自己),放行不亏;high 站在未检查区右端,换到 cur 这格的是"新面孔",万一它是 0,cur 一冒进它就永远进不了绿区。两种交换的本质区别不在 0 和 2,而在换来的数"看过没有"。',
+     jumpTo:13},
+    {q:'nums = [1,2,0]:第一轮 cur=0 看到 1 直接前进;第二轮 cur=1 看到 2,和 high(2 号格)交换、high 退到 1。此刻 cur 指着几?下一步怎么走?',
+     options:['指着 0(high 上换来的原住民)——cur 原地重看:下一轮它与 low 交换、落进绿区,low、cur 双双前进,最终 [0,1,2]','指着 2——cur 直接 +1 跳过去,最终 [1,0,2]','指着 1——不用管,继续前进'],
+     answer:0,
+     explain:'第二轮交换把 nums[2]=0 换到 cur 位:数组变 [1,0,2]、high=1,而 cur 仍钉在 1。这个 0 是从未看过的新面孔,第三轮重新过堂:它与 low(0 号格)交换 → [0,1,2],low=1、cur=2 > high=1 收工。若这一步 cur 冒进 +1,0 永远进不了绿区,数组卡死在 [1,0,2]——"换来的数要再看一眼"就是保命口诀。',
+     jumpTo:4},
+    {q:'若把代码改成"遇 2 交换后 cur 也 +1",下面哪个输入会当场排错?',
+     options:['[2,1,2]:第一次"交换"是自己换自己,换完 cur 这格仍是那个 2,冒进的 cur 把它抛在原地——它永远进不了紫区,结果卡在 [2,1,2];正确算法 cur 原地重看、把它和 1 交换,排出 [1,2,2]','[2,2,2]:全 2 一路自我交换,改动后一定死循环','[0,0,0]:没有 2 可换,改动后会越界'],
+     answer:0,
+     explain:'破坏点在"换来的新面孔被跳过"。逐个验收:[2,1,2] 破坏版走出 [2,1,2](没排)——正确版第二轮会把 2 和 high 位上的 1 交换成 [1,2,2];[2,2,2] 破坏版每轮都是自己换自己、留下的仍是 2,跳过不亏,结果碰巧仍对,而且不会死循环(high 每轮都在减,循环必然终止);[0,0,0] 连 2 分支都进不去,改动无从触发。构造测试就照这个思路:专挑"换来的数 ≠ 换走的数"的输入。',
+     jumpTo:21},
+  ],
+
+  steps(input){
+    const F = [];
+    const nums = (input.nums || []).slice();
+    const n = nums.length;
+    let low = 0, cur = 0, high = n - 1;
+
+    const draw = (o) => (v) => {
+      v.arr('nums', o.vals, {label:'数组 <code>nums</code>　·　绿 = 就位的 0 区，紫 = 就位的 2 区',
+        states:o.st || {}, markers:o.mk || [], idxCls:o.ix || {}});
+      if(o.vars) v.vars('vars', o.vars, {label:'变量', hl:o.hlv || []});
+      if(o.res !== undefined) v.result(o.res, {label:'返回结果'});
+    };
+    // 快照：就位区染色（铁律 5：low/cur/high 必须在帧生成那一刻定格）
+    const stOf = (extra) => {
+      const o = Object.assign({}, extra);
+      for(let k = 0; k < low; k++) o[k] = 'done';
+      for(let k = high + 1; k < n; k++) o[k] = 'target';
+      return o;
+    };
+    const mkOf = () => ([
+      {name:'low',  idx:low,  cls:'mg', text:'▲ low'},
+      {name:'cur',  idx:cur,  cls:'mi', text:'▲ cur'},
+      {name:'high', idx:high, cls:'mv', text:'▲ high'}
+    ]);
+
+    F.push({hl:[1,2,3], tag:'初始化', cls:'t-grey',
+      msg:'"荷兰国旗"开局：数组里只有 0/1/2，要在一趟原地交换里排成 0…0 1…1 2…2。三根指针把数组切成四段，<b>不变式</b>：[0, low) 全是就位的 0（绿区），[low, cur) 全是就位的 1，[cur, high] 是没看过的未知区，(high, ' + (n - 1) + '] 全是就位的 2（紫区）。现在 low = 0、cur = 0、high = ' + (n - 1) + '，绿紫两区都还是空的，整个数组都是未知区。接下来 cur 逐格看数：0 扔左岸、2 扔右岸、1 留原地——把未知区一口口吃光。',
+      do: draw({vals: nums.slice(), st: stOf({}), mk: mkOf(),
+                vars:{low:low, cur:cur, high:high}})});
+
+    while(cur <= high){
+      const val = nums[cur];
+
+      F.push({hl:[4], ok:4, tag:'while 检查', cls:'t-blue',
+        msg:'<code>cur = ' + cur + ' ≤ high = ' + high + '</code>：未知区 [cur, high] 还剩 <b>' + (high - cur + 1) + '</b> 格没检查。看看 <code>nums[' + cur + '] = ' + val + '</code> 属于哪一岸。顺带一提：循环条件是 cur ≤ high 而非 cur &lt; n——high 右边早已是排好的 2 区，cur 走进去纯属重复劳动。',
+        do: draw({vals: nums.slice(), st: stOf((function(){ const e = {}; e[cur] = 'active'; return e; })()),
+                  mk: mkOf(), ix:{[cur]:'on-i'},
+                  vars:{low:low, cur:cur, high:high, 'nums[cur]':val}})});
+
+      if(val === 0){
+        F.push({hl:[5], ok:5, tag:'看到 0', cls:'t-green',
+          msg:'<code>nums[' + cur + '] = 0</code>：0 的家在最左边的绿区，可它人在未知区——<b>和 low 位置的数换个座位</b>（画面上 low 格标蓝 = 交换对象），0 就落进绿区门口。跟 low 换安全吗？low 站在 1 区开头，那里只会是已经看过的 1，把它换进中间不碍事；换完 low、cur 双双前进，绿区扩一格、未知区缩一格。',
+          do: draw({vals: nums.slice(), st: stOf((function(){ const e = {}; e[cur] = 'active'; e[low] = 'in'; return e; })()),
+                    mk: mkOf(), ix:{[cur]:'on-i'},
+                    vars:{low:low, cur:cur, high:high, 'nums[cur]':val}})});
+
+        const selfSwap = low === cur;
+        const t = nums[low]; nums[low] = nums[cur]; nums[cur] = t;
+        low += 1; cur += 1;
+        F.push({hl:[6,7,8], tag:'0 就位', cls:'t-green',
+          msg: (selfSwap
+              ? 'low 和 cur 指着同一格，<b>自己和自己换</b>等于没动；这格 0 原地划进绿区，low、cur 各进一格到 ' + low + '，不变式毫发无损。'
+              : '交换完成：0 坐进绿区第 ' + (low - 1) + ' 格（绿区扩一格），从 low 换过来的 <b>1</b> 挪到 cur 的老位置——正好补进 1 区尾巴。这个 1 是 [low, cur) 里的"老熟人"，早就检查过，所以 <code>cur</code> 敢直接 +1；对比遇 2 的分支（换来的是没看过的数，cur 不敢动），这正是两种交换的本质区别。'),
+          do: draw({vals: nums.slice(), st: stOf({}), mk: mkOf(),
+                    vars:{low:low, cur:cur, high:high}, hlv:['low','cur']})});
+      } else if(val === 2){
+        F.push({hl:[9], ok:9, tag:'看到 2', cls:'t-green',
+          msg:'<code>nums[' + cur + '] = 2</code>：2 的家在最右边的紫区——<b>和 high 位置的数换个座位</b>（画面上 high 格标蓝 = 交换对象），2 落进紫区、high 左移收编一格。但<b>cur 原地不动</b>：换到 cur 这格来的是 high 上的"原住民"，它从没被看过，可能是 0、1 甚至又一个 2，必须下一轮重新过堂。',
+          do: draw({vals: nums.slice(), st: stOf((function(){ const e = {}; e[cur] = 'active'; e[high] = 'in'; return e; })()),
+                    mk: mkOf(), ix:{[cur]:'on-i'},
+                    vars:{low:low, cur:cur, high:high, 'nums[cur]':val}})});
+
+        const came = nums[high];   // 换之前 high 上的数, 交换后将落在 cur
+        const t = nums[cur]; nums[cur] = nums[high]; nums[high] = t;
+        high -= 1;
+        F.push({hl:[10,11], tag:'2 就位', cls:'t-violet',
+          msg:'换完了：2 坐进紫区（紫区扩一格），<code>high</code> 退到 ' + high + '，而 cur 仍钉在 ' + cur + ' <b>没动</b>。为什么不能顺手前进？这个没看过的 <code>' + came + '</code> 若被跳过——万一是 0，它就永远进不了绿区，答案直接错（拿 [1,2,0] 试：cur 冒进就会卡成 [1,0,2]）。踩坑口诀：<b>换来的数要再看一眼</b>，下一轮 while 会重新审视它。',
+          do: draw({vals: nums.slice(), st: stOf((function(){ const e = {}; e[cur] = 'active'; return e; })()),
+                    mk: mkOf(), ix:{[cur]:'on-i'},
+                    vars:{low:low, cur:cur, high:high, 换来:came}, hlv:['high']})});
+      } else {
+        F.push({hl:[12], tag:'看到 1', cls:'t-ink',
+          msg:'<code>nums[' + cur + '] = 1</code>：1 的家就在中间区 [low, cur)，它脚下这格就是家——<b>不用挪窝</b>。既不动 low 也不动 high，直接准备 <code>cur</code> +1 去看下一格。',
+          do: draw({vals: nums.slice(), st: stOf((function(){ const e = {}; e[cur] = 'active'; return e; })()),
+                    mk: mkOf(), ix:{[cur]:'on-i'},
+                    vars:{low:low, cur:cur, high:high, 'nums[cur]':val}})});
+
+        cur += 1;
+        F.push({hl:[13], tag:'cur 前进', cls:'t-ink',
+          msg:'<code>cur + 1</code> → ' + cur + '：1 区悄悄扩了一格，绿区紫区原地不动。三根指针各司其职——这就是"遇 1 才前进"。',
+          do: draw({vals: nums.slice(), st: stOf({}), mk: mkOf(),
+                    vars:{low:low, cur:cur, high:high}})});
+      }
+    }
+
+    F.push({hl:[4], no:4, tag:'while 结束', cls:'t-red',
+      msg:'<code>cur = ' + cur + ' &gt; high = ' + high + '</code> → 未知区缩成空集，循环结束。把四段拼起来验收不变式：[0, ' + low + ') 全 0、[' + low + ', ' + cur + ') 全 1、(' + high + ', ' + (n - 1) + '] 全 2——<b>三段无缝铺满整个数组，天然有序</b>，一次排序函数都没调过。',
+      do: draw({vals: nums.slice(), st: stOf({}), mk: mkOf(),
+                vars:{low:low, cur:cur, high:high}})});
+
+    F.push({hl:[14], tag:'返回', cls:'t-dark',
+      msg:'<code>return nums</code> = <b>[' + nums.join(',') + ']</b> 🎉 复盘：cur 每轮至少吃掉一格未知区（遇 2 时靠 high 左移缩区），一趟扫描必然终止；全程只交换、不开新数组，时间 O(n)、空间 O(1)。带走那句口诀——<b>遇 2 换来的数要再看一眼，cur 不许动</b>。',
+      do: draw({vals: nums.slice(), st: stOf({}), mk:[], res: nums.slice()})});
+
+    return F;
+  }
+});
+</script>
+</body>
+</html>

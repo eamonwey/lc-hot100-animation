@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P007 · 接雨水 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 7, num: 42, title: '接雨水', diff: '困难', cat: '双指针',
+  method: 'trap',
+
+  lede: '题目：一排柱子高低不平，下过雨后<b>凹槽里能接住多少水</b>？每格头顶的水位 = min(它左边的最高墙, 它右边的最高墙)，积水 = 水位 − 自己的墙高。' +
+        '动画里 <span class="var o">l</span>、<span class="var i">r</span> 两个哨兵从两端相向走，<span class="var r">lm</span> / <span class="var r">rm</span> 记录两侧见过的最高墙——' +
+        '<b>谁那侧的最高墙更矮，谁头顶的水位就先确定，结算完就移动谁</b>。水往矮处流，跟着矮的一侧走就对了。',
+
+  roles: [
+    {c:'green',  code:'l',      text:'左哨兵：结算完就右移'},
+    {c:'orange', code:'r',      text:'右哨兵：结算完就左移'},
+    {c:'blue',   code:'lm / rm',text:'左 / 右见过的最高墙（决定水位）'},
+    {c:'violet', code:'ans',    text:'累计接住的雨水'}
+  ],
+
+  codeTitle: '跟着高亮读代码——<code>if lm &lt; rm</code> 变<span style="color:var(--green)">绿</span>＝左边更矮、结算左端；变红＝右边不更高、结算右端。水永远由矮的那侧说了算。',
+
+  legend: [
+    {c:'orange', text:'l / r 哨兵所在格'},
+    {c:'violet', text:'刚接水的格子'},
+    {c:'blue', text:'柱子里的蓝色浸染 = 该柱已结算的积水'}
+  ],
+
+  idea: '水位由两侧最高墙中较矮的一堵决定：lm < rm 时第 l 格水位必是 lm（右边罩得住），放心结算再移动矮的一侧——一趟扫完，空间 O(1)。',
+
+  qa: [
+    {q:'为什么 lm < rm 时，敢直接用 lm 当第 l 格的水位？',
+     a:'第 l 格的真实水位 = min(左边最高, 右边最高)。左边最高正是 lm；而右边呢——<b>r 那侧保证还有一堵 ≥ rm 的墙</b>（rm 就是那边见过的最高），rm 又比 lm 大，右边罩得住。于是 min = lm，不必等右边细节全看清就能结算。'},
+    {q:'两个哨兵相向而行，会不会漏算中间的格子？',
+     a:'不会。每次都结算"矮的一侧"的端点再移动它，每个格子恰好被 l 或 r 结算一次；最后相遇的那格必是全局最高的柱子之一，头顶存不住水，所以不算漏。'},
+    {q:'和"预计算两侧最大值"的 DP 法比好在哪？',
+     a:'按列算需要 leftMax / rightMax 两个辅助数组，空间 O(n)；双指针发现"矮侧水位已定"这个性质，边走边算，空间压到 O(1)，时间同样 O(n)。'},
+    {q:'lm、rm 初始为 0，会不会算出负水？',
+     a:'不会。每轮先执行 lm = max(lm, height[l])、rm = max(rm, height[r]) 再结算，保证 lm ≥ height[l]、rm ≥ height[r]，每次加的都是非负数。'}
+  ],
+
+  complexity: '时间 O(n)（l、r 合起来各走一趟）　·　空间 O(1)（只用几个变量）',
+
+  form: [
+    {key:'height', label:'height', type:'arr', def:[0,1,0,2,1,0,1,3,2,1,2,1]}
+  ],
+  presets: [
+    {label:'经典例（答案 6）', values:{height:[0,1,0,2,1,0,1,3,2,1,2,1]}},
+    {label:'[4,2,0,3,2,5]（答案 9）', values:{height:[4,2,0,3,2,5]}},
+    {label:'[2,0,2]（最小凹槽）', values:{height:[2,0,2]}},
+    {label:'[5,4,3,2,1]（不积水）', values:{height:[5,4,3,2,1]}}
+  ],
+
+  code: `class Solution:
+    def trap(self, height):
+        ans = 0
+        l, r = 0, len(height) - 1      # 两个哨兵
+        lm, rm = 0, 0                  # 两侧见过的最高墙
+        while l < r:
+            lm = max(lm, height[l])    # 刷新左半最高
+            rm = max(rm, height[r])    # 刷新右半最高
+            if lm < rm:                # 矮的一侧说了算
+                ans += lm - height[l]  # 左端水位 = lm
+                l += 1
+            else:
+                ans += rm - height[r]  # 右端水位 = rm
+                r -= 1
+        return ans
+`,
+
+  sol(input){
+    const h = (input.height || []).map(Number);
+    let ans = 0, l = 0, r = h.length - 1, lm = 0, rm = 0;
+    while(l < r){
+      lm = Math.max(lm, h[l]);
+      rm = Math.max(rm, h[r]);
+      if(lm < rm){ ans += lm - h[l]; l++; }
+      else{ ans += rm - h[r]; r--; }
+    }
+    return ans;
+  },
+  expected: 6,
+
+  quiz: [
+    {q:'双指针收缩时,为什么每次都移动「矮的那一侧」?',
+     options:['矮的板留着毫无用处,先扔掉图个吉利','高板留住才可能有更大容量:宽度已经在变小,水面又被矮板封顶,留着矮板只会更差','随便移哪边都行,只是移动矮的代码好写'],
+     answer:1,
+     explain:'面积 = min(左板, 右板) × 宽。每次移动后宽度必然 −1;若保留矮板,水面仍被它封顶——宽度减、高度不增,新面积只会更小。扔掉矮板,才有机会换到更高的板。这就是"被移走的一侧,与对侧的所有组合都已经算过且必更小"的不变式。',
+     jumpTo:4},
+    {q:'当 lm < rm(左侧最高墙更矮)时,该结算哪一格的积水?',
+     options:['l 这一格:水位由 lm 决定,接水后 l 右移','r 这一格:水位由 rm 决定,接水后 r 左移','两格同时结算,取较小者'],
+     answer:0,
+     explain:'lm < rm 说明左墙是短板,而右墙 rm ≥ lm 兜底:格 l 的水位就是 lm,积水 = lm − height[l]。r 格先不结算——右边可能还有更高的板让水位更高。谁矮结算谁,结算完它让位。',
+     jumpTo:5},
+    {q:'为什么这个 O(n) 双指针不会漏掉"最优的一对木板"?',
+     options:['因为每次移走的都是较矮一侧,而最优解对应的两侧永远不会被移走','因为已经用哈希表记住了每对组合的结果','因为数组先排过序'],
+     answer:0,
+     explain:'不变式:设最优解是木板 a、b。当 a、b 都是当前区间两端时算法就会结算到它;在此之前,每次被移走的都是区间中较矮的一侧——它与"对面墙"的组合面积一定 ≤ 移走前的面积,所以被丢掉的组合全都不优于已记录的值。最优对从未被拆散。',
+     jumpTo:46},
+  ],
+
+  steps(input){
+    const F = [];
+    const H = (input.height || []).map(Number);
+    const n = H.length;
+    const cw = Math.max(24, Math.min(40, Math.floor(520 / Math.max(n, 1)) - 6));
+    const water = new Array(n).fill(0);       // 每根柱的积水量(展示用)
+    let ans = 0, l = 0, r = n - 1, lm = 0, rm = 0;
+
+    const marks = (li, ri) => [
+      {name:'l', idx:li, cls:'mg', text:'▲ l'},
+      {name:'r', idx:ri, cls:'mi', text:'▲ r'}
+    ];
+    const wst = (justIdx) => {
+      const st = {};
+      for(let i = 0; i < n; i++) if(water[i] > 0) st[i] = 'target';
+      if(justIdx != null && water[justIdx] > 0) st[justIdx] = 'just';
+      return st;
+    };
+    /* ★ 快照原则：o 里的全部数据都在 push 那一刻算好，do(v) 只读 o */
+    const draw = (o) => (v) => {
+      v.bars('h', H, {
+        label:'柱状图 <code>height</code>　·　柱内蓝色浸染 = 该柱已结算的积水',
+        cw: cw, states: o.states || {}, markers: o.marks || [], water: o.water || []
+      });
+      v.arr('w', o.warr || [], {
+        label:'每根柱头顶的积水 <code>water[i]</code>（加起来就是答案）',
+        cw: Math.max(28, Math.min(46, Math.floor(560 / Math.max(n, 1)) - 8)),
+        states: o.wstates || {}
+      });
+      v.vars('vars', o.vars, {label:'变量'});
+      if(o.result !== undefined) v.result(o.result, {label:'总积水量'});
+    };
+
+    F.push({hl:[1,2,3,4,5], tag:'初始化', cls:'t-grey',
+      msg:'两个哨兵各站一头：<code>l = 0</code>、<code>r = ' + (n - 1) + '</code>，两本"最高墙"账本 <code>lm</code> / <code>rm</code> 都从 0 记起，<code>ans = 0</code> 还没接到水。每格能接多少水 = <b>min(左边最高墙, 右边最高墙) − 自己的墙高</b>——所以只要两侧最高墙都已知，水位就定了。口诀：<b>水往矮处流</b>——哪侧最高墙更矮，哪侧端点的水位就先确定，结算完就移动哪侧。画面：上方柱状图两端钉着 ▲绿 l、▲橙 r 名牌，下方一行 water[i] 逐格记头顶积水，现在全是 0。',
+      do: draw({states:{0:'active', [n - 1]:'active'}, marks:marks(0, n - 1),
+                water:[], warr:water.slice(), wstates:{},
+                vars:{l:l, r:r, lm:lm, rm:rm, ans:ans}})});
+
+    while(l < r){
+      F.push({hl:[6], ok:6, tag:'while 检查', cls:'t-blue',
+        msg:'<code>l = ' + l + '，r = ' + r + '</code>，还没碰头 → 循环继续。每轮固定三步：刷新两侧最高墙 → 比出矮的一侧 → 结算那侧的端点格子并移动它。一格一轮，最后每格恰好被结算一次。',
+        do: draw({states:{[l]:'active', [r]:'active'}, marks:marks(l, r),
+                  water:water.slice(), warr:water.slice(), wstates:wst(null),
+                  vars:{l:l, r:r, lm:lm, rm:rm, ans:ans}})});
+
+      const oldLm = lm, oldRm = rm;
+      lm = Math.max(lm, H[l]);
+      rm = Math.max(rm, H[r]);
+      F.push({hl:[7,8], tag:'刷新最高墙', cls:'t-ink',
+        msg:'先把账本更新到含当前端点：<code>lm = max(' + oldLm + ', height[' + l + '] = ' + H[l] + ') = ' + lm + '</code>，<code>rm = max(' + oldRm + ', height[' + r + '] = ' + H[r] + ') = ' + rm + '</code>（变量面板里刚变的值闪蓝）。这步不能省：马上要拿 lm/rm 当水位结算，若端点自己就是根更高的墙却不记账，就会拿旧水位算出负水、漏掉真正的蓄水。',
+        do: draw({states:{[l]:'active', [r]:'active'}, marks:marks(l, r),
+                  water:water.slice(), warr:water.slice(), wstates:wst(null),
+                  vars:{l:l, r:r, lm:lm, rm:rm, ans:ans}})});
+
+      const leftShort = lm < rm;
+      F.push({hl:[9], ok:leftShort ? 9 : undefined, no:leftShort ? undefined : 9,
+        tag:'谁矮听谁的', cls:leftShort ? 't-blue' : 't-violet',
+        msg:leftShort
+          ? '左边矮：<code>lm = ' + lm + ' &lt; rm = ' + rm + '</code> → 第 ' + l + ' 格的水位当场锁定为 <b>' + lm + '</b>。为什么敢不等右半算完？左边最高墙就是 lm；右边至少还立着那堵 ≥ rm 的墙（rm 正是那侧见过的最高），rm &gt; lm，两头一夹 min 只能是 lm——右半再高也改不了它。画面：第 ' + l + ' 格亮紫框，就是这轮待结算的格子。'
+          : '右边矮（含相等）：<code>rm = ' + rm + ' ≤ lm = ' + lm + '</code> → 第 ' + r + ' 格的水位当场锁定为 <b>' + rm + '</b>。道理对称：右边最高墙是 rm，左边保证还有 ≥ lm 的墙罩着，lm ≥ rm，min 只能是 rm。画面：第 ' + r + ' 格亮紫框，就是这轮待结算的格子。',
+        do: draw({states:{[leftShort ? l : r]:'pivot'}, marks:marks(l, r),
+                  water:water.slice(), warr:water.slice(), wstates:wst(null),
+                  vars:{l:l, r:r, lm:lm, rm:rm, ans:ans}})});
+
+      if(leftShort){
+        const w = lm - H[l], p = l;
+        ans += w; water[p] = w; l++;
+        F.push({hl:[10,11], tag:'左端接水', cls:'t-green',
+          msg:'结算第 ' + p + ' 格：墙高 ' + H[p] + '，水位 ' + lm + ' → 接住 <b>' + w + '</b> 格水（水位 − 墙高），<code>ans = ' + ans + '</code>。' + (w > 0 ? '画面：这根柱子里蓝色浸染的部分就是刚接的水，下方 water 行第 ' + p + ' 格同步亮出 ' + w + '。' : '墙和水位齐平，一滴也接不到——画面上它不染色，0 也是合法结算。') + '然后 <code>l</code> 右移到 ' + l + '：这格已按它能拿到的水位结清，不必再看。',
+          do: draw({states:{[p]:'target'}, marks:marks(l, r),
+                    water:water.slice(), warr:water.slice(), wstates:wst(p),
+                    vars:{l:l, r:r, lm:lm, rm:rm, ans:ans}})});
+      } else {
+        const w = rm - H[r], p = r;
+        ans += w; water[p] = w; r--;
+        F.push({hl:[12,13,14], tag:'右端接水', cls:'t-green',
+          msg:'结算第 ' + p + ' 格：墙高 ' + H[p] + '，水位 ' + rm + ' → 接住 <b>' + w + '</b> 格水（水位 − 墙高），<code>ans = ' + ans + '</code>。' + (w > 0 ? '画面：这根柱子里蓝色浸染的部分就是刚接的水，下方 water 行第 ' + p + ' 格同步亮出 ' + w + '。' : '墙和水位齐平，一滴也接不到——画面上它不染色，0 也是合法结算。') + '然后 <code>r</code> 左移到 ' + r + '：这格已按它能拿到的水位结清，不必再看。',
+          do: draw({states:{[p]:'target'}, marks:marks(l, r),
+                    water:water.slice(), warr:water.slice(), wstates:wst(p),
+                    vars:{l:l, r:r, lm:lm, rm:rm, ans:ans}})});
+      }
+    }
+
+    const filled = [];
+    for(let i = 0; i < n; i++) if(water[i] > 0) filled.push(i);
+    F.push({hl:[6], no:6, tag:'哨兵碰头', cls:'t-red',
+      msg:n === 0
+        ? '数组为空，没有柱子可结算。'
+        : '<code>l = ' + l + '，r = ' + r + '</code> → 两哨兵在第 ' + l + ' 格碰头，循环结束。碰头这格是全场唯一没被结算的：它必是全局最高的柱子之一，两边都压不过它，水位就是自己的墙高，一滴水也存不住。至此 l 结算了左半、r 结算了右半，每格恰好一次，没有漏网之雨。',
+      do: draw({states:{[Math.max(0, l)]:'pivot'}, marks:marks(Math.max(0, l), Math.max(0, r)),
+                water:water.slice(), warr:water.slice(), wstates:wst(null),
+                vars:{l:l, r:r, lm:lm, rm:rm, ans:ans}})});
+
+    F.push({hl:[15], tag:'返回', cls:'t-dark',
+      msg:'<code>return ans</code> 🎉 一共接住 <b>' + ans + '</b> 格水' +
+          (filled.length
+            ? '：第 ' + filled.join('、') + ' 格分别积 ' + filled.map(i => water[i]).join('、') + ' 格，柱状图里蓝色浸染连起来就是答案的形状。'
+            : '（这组地形处处单调或齐平，一处凹槽都没有）。') +
+          '复盘：l、r 合计各走一趟 → 时间 O(n)；全程只添了 lm/rm/ans 几个变量 → 空间 O(1)。口诀收尾：<b>水往矮处流，移动矮的一侧</b>。',
+      do: draw({states:{}, marks:marks(Math.max(0, l), Math.max(0, r)),
+                water:water.slice(), warr:water.slice(), wstates:wst(null),
+                vars:{l:l, r:r, lm:lm, rm:rm, ans:ans}, result:ans})});
+    return F;
+  }
+});
+</script>
+</body>
+</html>

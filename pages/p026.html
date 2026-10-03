@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P026 · 环形链表 II · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 26, num: 142, title: '环形链表 II', diff: '中等', cat: '链表',
+  method: 'detectCycle',
+
+  lede: '题目：不光要判断<span class="var v">有没有环</span>，还要找到<b>入环的第一个节点</b>（紫色弧线落点）；无环返回 -1。' +
+        '两阶段作战：<span class="var i">阶段一</span>快慢指针跑圈相遇，证明有环；<span class="var r">阶段二</span>一个指针留在相遇点、' +
+        '另一个<b>回到开头</b>，两人<b>一步一格同步走</b>——再次相遇的地方就是入环口。',
+
+  roles: [
+    {c:'orange', code:'slow/meet', text:'慢指针 → 相遇后改名 meet，留守原地'},
+    {c:'blue',   code:'fast', text:'快指针：一次 2 格，负责追上'},
+    {c:'green',  code:'p',    text:'阶段二从 head 出发，一步一步走'}
+  ],
+
+  codeTitle: '跟着高亮读代码——阶段一 if 变<span style="color:var(--green)">绿</span>＝相遇；阶段二 while 变<span style="color:var(--green)">绿</span>＝p 和 meet 碰头，入口找到了。',
+
+  legend: [
+    {c:'orange', text:'slow / meet'},
+    {c:'blue',   text:'fast 快指针'},
+    {c:'green',  text:'p（阶段二从 head 出发）'},
+    {c:'violet', text:'紫色虚线弧 = 回环；紫底 = 找到的入环口'}
+  ],
+
+  idea: '相遇后一个指针回 head，两指针同步一步一步走：a = (k-1)·圈长 + (圈长-b)，再次相遇处必是入环口。',
+
+  qa: [
+    {q:'为什么"一个回开头、同步走"就能找到入口？',
+     a:'设头到入口 a 步、入口到相遇点 b 步、环长 c。相遇时 fast 比 slow 多绕了整圈：fast = slow + k·c，而 fast = 2·slow，解出 <b>a = (k-1)·c + (c-b)</b>。右边正是"从相遇点往前走 (c-b) 再绕整圈"的距离——所以从头走的 p 和从相遇点走的 meet 走 a 步后在入口碰头。'},
+    {q:'相遇点一定就是入环口吗？',
+     a:'不一定！本页默认用例里相遇点在第 3 个节点、入口在第 1 个——正好不同。换 preset「3→2→0→4, pos=2」也能看到两处不是同一节点。'},
+    {q:'和上一题（141）的代码差别在哪？',
+     a:'141 相遇就 return True；142 相遇只是"中场哨"——拿到相遇点后还要跑阶段二。结构上就是把 141 的 return 换成"布置找入口"。'},
+    {q:'复杂度？',
+     a:'时间 O(n)：阶段一最多跑几圈，阶段二最多走 a 步；空间 O(1)。哈希表法要 O(n) 空间。'}
+  ],
+
+  complexity: '时间 O(n)　·　空间 O(1)',
+
+  form: [
+    {key:'head', label:'head', type:'arr', def:[3,2,0,-4]},
+    {key:'pos', label:'pos', type:'num', def:1}
+  ],
+  presets: [
+    {label:'官方例：3→2→0→-4, pos=1', values:{head:[3,2,0,-4], pos:1}},
+    {label:'3→2→0→4, pos=2（同步走多轮）', values:{head:[3,2,0,4], pos:2}},
+    {label:'入口就是头：1→2, pos=0', values:{head:[1,2], pos:0}},
+    {label:'无环：1→2→3, pos=-1', values:{head:[1,2,3], pos:-1}}
+  ],
+
+  code: `class Solution:
+    def detectCycle(self, head, pos):
+        nodes = []                       # 先按数组把节点造出来
+        for v in head:
+            nodes.append(ListNode(v))
+        for i in range(len(nodes) - 1):
+            nodes[i].next = nodes[i + 1] # 依次相连
+        if pos >= 0 and nodes:           # 尾巴接到第 pos 个 → 成环
+            nodes[-1].next = nodes[pos]
+        head = nodes[0] if nodes else None
+        entry = -1                       # 先记答案: -1 表示无环
+        slow = fast = head
+        while fast and fast.next:        # 阶段一: 快慢指针判环
+            slow = slow.next
+            fast = fast.next.next
+            if slow is fast:             # 相遇 → 有环, 开始找入口
+                meet, p = slow, head     # meet 留原地, p 回到开头
+                while p is not meet:     # 阶段二: 同步一步一步走
+                    p = p.next
+                    meet = meet.next
+                entry = nodes.index(p)   # 再相遇处就是入环口
+                break
+        return entry                     # 入口下标; 无环是 -1
+`,
+
+  sol(input){
+    const vals = (input.head || []).map(Number);
+    const n = vals.length;
+    const pos = (input.pos == null ? -1 : (input.pos | 0));
+    const nx = i => (i + 1 < n) ? i + 1 : (pos >= 0 && pos < n ? pos : -1);
+    if(!n) return -1;
+    let slow = 0, fast = 0, entry = -1;
+    while(fast !== -1 && nx(fast) !== -1){
+      slow = nx(slow);
+      fast = nx(nx(fast));
+      if(slow === fast){
+        let meet = slow, p = 0;           // p 从 head(下标0) 出发
+        while(p !== meet){ p = nx(p); meet = nx(meet); }
+        entry = p;
+        break;
+      }
+    }
+    return entry;
+  },
+  expected: 1,
+
+  quiz: [
+    {q:'阶段一 fast 追上 slow 的那个节点，就是入环口吗？',
+     options:['一定是——追上就说明到入口了','不一定！相遇点在环内由圈长决定，一般在入环口后面一段（默认用例里相遇在第 3 个节点、入口在第 1 个），必须靠阶段二重新定位','一定不是，两者永远差一整圈'],
+     answer:1,
+     explain:'fast 是在环里绕圈「套圈」追上 slow 的，追上位置取决于圈长和 head 到入口的距离，通常落在环的中段而不是入口。默认用例 [3,2,0,-4] pos=1 里，入口是下标 1，相遇点却是下标 3（值 -4）——两处明显不同。所以 141 题「相遇即有环」的结论到这里只算半场：拿到了相遇点，还要跑阶段二才能锁定入口。',
+     jumpTo:17},
+    {q:'默认链 [3,2,0,-4]、pos=1：阶段一在第 3 个节点（值 -4）相遇。阶段二 p 从 head 出发，和 meet 同步走几步后在哪儿碰头？入口下标是？',
+     options:['各走 1 步，在第 1 个节点（值 2）碰头 → entry = 1','各走 3 步，回到相遇点（值 -4）碰头 → entry = 3','各走 2 步，在第 2 个节点（值 0）碰头 → entry = 2'],
+     answer:0,
+     explain:'meet 站在下标 3，它的 next 沿紫色弧线绕回下标 1——那正是入环口，所以 meet 第 1 步就踩到入口；p 从 head 走 a = 1 步也恰好到达下标 1。两人同步各迈一步、同时落上同一个节点 → entry = 1。误选「回到相遇点」是想当然以为同步走要绕一整圈——其实 a = (k−1)·c + (c−b) 保证两段路程同时走完，常常一两步就见。',
+     jumpTo:21},
+    {q:'「p 回 head、meet 留在相遇点，两人同步一步一步走」为什么必在入环口会合？',
+     options:['由 a = (k−1)·c + (c−b) 保证：头到入口的距离 = 相遇点走 (c−b) 步再加自动抵消的整圈——p 走 a 步到入口，meet 同步走 a 步也恰好在入口','纯属巧合，换个数据就失效','因为 meet 走得快，会先到入口等着 p'],
+     answer:0,
+     explain:'设头到入口 a 步、入口到相遇点 b 步、圈长 c。相遇时 fast = 2·slow 且比 slow 多绕 k 整圈，解出 a = (k−1)·c + (c−b)。p 从头走 a 步直达入口；meet 从相遇点先走 (c−b) 步到入口，再绕 (k−1) 整圈仍停在入口——两人步数同步递增，必在入口同格。这不是巧合而是恒等式，而且全程不用数出圈长 c，同步走就是让两段路同时走完的安排。',
+     jumpTo:18},
+  ],
+
+  steps(input){
+    const F = [];
+    const vals = (input.head || []).map(Number);
+    const N = vals.length;
+    const pos = (input.pos == null ? -1 : (input.pos | 0));
+    const hasCycle = N > 0 && pos >= 0 && pos < N;
+    const nodes = vals.map((v, i) => ({key: 'n' + i, val: v}));
+    const name = k => k == null ? 'None' : '节点' + vals[+k.slice(1)];
+    const idxOf = k => +k.slice(1);
+    const nx = k => {
+      if(k == null) return null;
+      const i = idxOf(k);
+      if(i + 1 < N) return 'n' + (i + 1);
+      return hasCycle ? 'n' + pos : null;
+    };
+    const info = 'head = ' + LCesc(vals.join('→') || '(空)') + '，pos = ' + pos + '：' +
+      (hasCycle
+        ? '尾节点（值 ' + vals[N - 1] + '）的 next 指回第 <b>' + pos + '</b> 个节点（值 ' + vals[pos] + '）→ 有环。'
+        : '尾巴不指回任何节点 → 无环，没有紫色弧线。');
+
+    let slow = N ? 'n0' : null, fast = N ? 'n0' : null;
+    let meet = null, p = null, entry = -1, met = false;
+
+    /* ★ 快照原则：ptr()/varsNow() 在 F.push 那一刻调用，把结果存进帧对象 */
+    const ptrSF = () => {
+      const a = [];
+      if(slow != null && slow === fast) a.push({key: slow, text: '▼ slow = fast', cls: 'mv'});
+      else {
+        if(slow != null) a.push({key: slow, text: '▼ slow', cls: 'mi'});
+        if(fast != null) a.push({key: fast, text: '▼ fast', cls: 'mr'});
+      }
+      return a;
+    };
+    const ptrPM = () => {
+      const a = [];
+      if(p != null && p === meet) a.push({key: p, text: '▼ p = meet', cls: 'mv'});
+      else {
+        if(p != null) a.push({key: p, text: '▼ p', cls: 'mg'});
+        if(meet != null) a.push({key: meet, text: '▼ meet', cls: 'mi'});
+      }
+      return a;
+    };
+    const varsSF = () => ({entry: String(entry), slow: name(slow), fast: name(fast)});
+    const varsPM = () => ({entry: String(entry), p: name(p), meet: name(meet)});
+    const draw = (o) => (v) => {
+      v.list('L', nodes, {label: '链表　·　紫色虚线弧 = 尾巴绕回的环',
+        states: o.st || {}, pointers: o.ptr || [],
+        cycleFrom: hasCycle ? 'n' + pos : undefined,
+        headTag: N ? {key: 'n0', text: 'head', cls: 'mq'} : null});
+      v.text('info', info, {html: true});
+      if(o.vars) v.vars('vars', o.vars, {label: '变量'});
+      if(o.res !== undefined) v.result(o.res, {label: '返回结果'});
+    };
+
+    F.push({hl: [1,2,3,4,5,6,7,8,9], tag: '造链+成环', cls: 't-grey',
+      msg: '先按输入把链造出来：head = ' + LCesc(vals.join('→') || '(空)') + '，共 ' + N + ' 个节点，' +
+        (hasCycle
+          ? '再把尾巴（值 ' + vals[N - 1] + '）的 next 指回第 <b>' + pos + '</b> 个节点（值 ' + vals[pos] + '）——紫色虚线弧就是回环，弧线的落点正是本题要找的<b>入环口</b>（现在先记住它在第 ' + pos + ' 个，动画结束见分晓）。'
+          : 'pos = -1，尾巴不指回任何节点——<b>没有环</b>，也就无所谓入口，画面上没有紫色弧线。') +
+        '本题比"判断有没有环"难一层：不但要确认有环，还要报出入环口的下标 entry。',
+      do: draw({ptr: [], vars: {entry: '-1', slow: '—', fast: '—'}})});
+
+    F.push({hl: [10,11,12], tag: '出发', cls: 't-blue',
+      msg: 'entry 先记为 -1——万一最后发现无环，就原样返回这个"查无入口"的暗号。slow、fast 从节点 ' + name(slow) + ' 出发：阶段一先用快慢指针<b>确认有环</b>——连有没有环都不知道，谈入口没有意义；追上了才有资格进入阶段二。',
+      do: draw({ptr: ptrSF(), st: {[slow || 'x']:'active'}, vars: varsSF()})});
+
+    let guard = 0;
+    while(fast != null && nx(fast) != null && guard++ < 300){
+      F.push({hl: [13], ok: 13, tag: '阶段一·快慢判环', cls: 't-blue',
+        msg: '阶段一 while 检查：slow 在 ' + name(slow) + '、fast 在 ' + name(fast) + '，fast 身后还有 ' + name(nx(fast)) + '，两步迈得开 → 继续跑。这行同时是"无环保险"：无环时 fast 冲到链尾附近，条件自动失败退出，程序不会卡死。',
+        do: draw({ptr: ptrSF(), st: {[slow]:'active', [fast]:'in'}, vars: varsSF()})});
+      slow = nx(slow);
+      F.push({hl: [14], tag: '阶段一·快慢判环', cls: 't-blue',
+        msg: 'slow 迈 1 步：到 <b>' + name(slow) + '</b>（橙色名牌前移，变量面板同步更新）。慢指针只管匀速陪跑，给 fast 一个稳定的追击目标——它自己不做任何判断，安静等快的来套圈。',
+        do: draw({ptr: ptrSF(), st: {[slow]:'active', [fast]:'in'}, vars: varsSF()})});
+      const f1 = nx(fast);
+      F.push({hl: [15], tag: '阶段一·快慢判环', cls: 't-blue',
+        msg: 'fast 本轮第 1 步：到 ' + name(f1) + '（蓝名牌前移）' + (idxOf(f1) <= idxOf(fast) ? '——从尾巴沿紫色弧绕回了环里，这是有环才有的走法。' : '。') + 'fast 一步要跨 2 格，动画拆成两帧演：先走一步、再走一步，看清它每下踩在哪。',
+        do: draw({ptr: ptrSF(), st: {[slow]:'active', [f1 || 'x']:'in'}, vars: varsSF()})});
+      const f2 = nx(f1);
+      fast = f2;
+      F.push({hl: [15], tag: '阶段一·快慢判环', cls: 't-blue',
+        msg: 'fast 第 2 步：落到 <b>' + name(f2) + '</b>' + (f2 != null && idxOf(f2) <= idxOf(f1) ? '（又一次绕回环里）' : '') +
+             '。这轮结算：fast 走 2、slow 走 1，两者的距离又<b>缩短 1</b>——现在 slow 在 ' + name(slow) + '、fast 在 ' + name(f2) + '。差距一格一格缩、迟早归零，绝不会一下跳过。',
+        do: draw({ptr: ptrSF(), st: {[slow]:'active', [fast || 'x']:'in'}, vars: varsSF()})});
+      if(slow === fast){ met = true; break; }
+      F.push({hl: [16], no: 16, tag: '追上了吗', cls: 't-red',
+        msg: '<code>if slow is fast</code> 不成立：slow 在 ' + name(slow) + '（橙）、fast 在 ' + name(fast) + '（蓝），分居两格——还没追上，回 while 继续。别急：有环时距离每轮缩 1，追上只是时间问题；没环时 fast 会先冲出链尾、循环自己结束。',
+        do: draw({ptr: ptrSF(), st: {[slow]:'active', [fast || 'x']:'in'}, vars: varsSF()})});
+    }
+
+    if(!met){
+      F.push({hl: [13], no: 13, tag: 'while 结束', cls: 't-red',
+        msg: N ? 'while 条件不成立：fast 站在 ' + name(fast) + '，身后没路了——快指针冲出了链尾，<b>无环实锤</b>（画面上蓝名牌已消失），连阶段二都不用跑，entry 保持 -1。'
+               : '链表是空的，slow、fast 无处出发，循环一次都没进——空链无环，entry 保持 -1。',
+        do: draw({ptr: ptrSF(), st: {}, vars: varsSF()})});
+      F.push({hl: [23], tag: '返回', cls: 't-dark',
+        msg: 'return entry = <b>-1</b>：链表无环，按约定用 -1 表示"查无入环口"。金色输出框里就是这道题的最终答案。',
+        do: draw({ptr: [], st: {}, vars: {entry: '-1'}, res: -1})});
+      return F;
+    }
+
+    meet = slow;
+    p = N ? 'n0' : null;
+    F.push({hl: [16,17], ok: 16, tag: '相遇！', cls: 't-orange',
+      msg: '<code>if slow is fast</code> 成立：slow 和 fast 在节点 <b>' + name(meet) + '</b>（第 ' + idxOf(meet) + ' 个）相遇 → <b>确定有环</b>！代码立刻改角色：这个节点改名 <b>meet</b> 留守原地，另派一个新指针 <b>p 回到开头 head</b>（绿名牌已跳回最左）。特别注意：相遇点一般<b>不是</b>入环口——fast 是在环里绕圈追上 slow 的，撞在哪取决于圈长，所以还差一个阶段二来找真入口。',
+      do: draw({ptr: ptrPM(), st: {[meet]:'target'}, vars: varsPM()})});
+
+    guard = 0;
+    while(p !== meet && guard++ < 300){
+      F.push({hl: [18], no: 18, tag: '阶段二·找入口', cls: 't-green',
+        msg: '阶段二 <code>while p is not meet</code> 检查：p 在 ' + name(p) + '（第 ' + idxOf(p) + ' 个），meet 在 ' + name(meet) + '（第 ' + idxOf(meet) + ' 个）——还不是同一个节点 → <b>两人各走一步</b>。为什么这样必在入口会合？设头到入口 a 步、入口到相遇点 b 步、圈长 c，能推出 p 从头走 a 步、meet 从相遇点走 (c−b) 加若干自动抵消的整圈也正好 a 步——步调一致，入口见。',
+        do: draw({ptr: ptrPM(), st: {[p]:'active', [meet]:'target'}, vars: varsPM()})});
+      p = nx(p);
+      F.push({hl: [19], tag: '阶段二·找入口', cls: 't-green',
+        msg: 'p 迈 1 步：到 <b>' + name(p) + '</b>（第 ' + idxOf(p) + ' 个，绿名牌前移）。p 沿着前半段（进环后沿环）匀速前进、只出不回——它要走的总路程 a 步是定数，走完必然到达入口。',
+        do: draw({ptr: ptrPM(), st: {[p]:'active', [meet]:'target'}, vars: varsPM()})});
+      meet = nx(meet);
+      F.push({hl: [20], tag: '阶段二·找入口', cls: 't-green',
+        msg: 'meet 也迈 1 步：到 <b>' + name(meet) + '</b>（第 ' + idxOf(meet) + ' 个）——它被关在环里绕圈，出不去。两针始终同步各走 1 步、谁也不多走，这样才能在入口恰好碰头。',
+        do: draw({ptr: ptrPM(), st: {[p]:'active', [meet]:'target'}, vars: varsPM()})});
+    }
+
+    F.push({hl: [18], ok: 18, tag: '再次相遇', cls: 't-green',
+      msg: '<code>while p is not meet</code> 条件不成立：p（第 ' + idxOf(p) + ' 个）和 meet（第 ' + idxOf(meet) + ' 个）站上了<b>同一个节点</b>——按数学保证，<b>这里就是入环口</b>（画面染成金色）！道理：设头到入口 a 步、入口到相遇点 b 步、圈长 c，fast 追上 slow 时恰好多绕了 k 整圈，解出 <b>a = (k−1)·c + (c−b)</b>——p 从头走 a 步到入口，meet 从相遇点走 (c−b) 步加上自动抵消的整圈也正好 a 步，两针同步落地。',
+      do: draw({ptr: ptrPM(), st: {[p]:'target'}, vars: varsPM()})});
+
+    entry = idxOf(p);
+    F.push({hl: [21,22], tag: '记下入口', cls: 't-orange',
+      msg: '<code>entry = nodes.index(p)</code>：入环口下标记为 <b>' + entry + '</b>（第 ' + idxOf(p) + ' 个节点，值 ' + vals[entry] + '），break 收工。画面上紫底节点就是它——任务完成，只差把它交回去。',
+      do: draw({ptr: ptrPM(), st: {[p]:'target'}, vars: varsPM()})});
+
+    F.push({hl: [23], tag: '返回', cls: 't-dark',
+      msg: 'return entry = <b>' + entry + '</b> ✨ 入环口是第 ' + entry + ' 个节点（值 ' + vals[entry] + '）。复盘：阶段一快慢指针只负责"证明有环"，阶段二"一个回头、同步走"负责定位入口——两段配合，时间 O(n)、空间 O(1)，全程没动用一个哈希表。',
+      do: draw({ptr: ptrPM(), st: {[p]:'target'}, vars: varsPM(), res: entry})});
+
+    return F;
+  }
+});
+</script>
+</body>
+</html>

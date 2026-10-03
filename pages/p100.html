@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P100 · 生命游戏 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 100, num: 289, title: '生命游戏', diff: '中等', cat: '技巧',
+  method: 'gameOfLife',
+
+  lede: '题目：棋盘上 1 是活细胞、0 是死的，按规则同时算出<b>下一代</b>：活细胞的活邻居是 2 或 3 个 → 活到下代；' +
+        '死细胞恰好有 3 个活邻居 → 复活；其余都死。难点是<b>要求原地更新</b>——直接改数字会污染还没算的邻居。' +
+        '巧招：把每个数的<b>二进制第 2 位当草稿纸</b>记下代生死（0=死→死，1=活→死，2=死→活，3=活→活），' +
+        '数邻居时 <code>&amp; 1</code> 只读旧状态，最后全体 <code>&gt;&gt;= 1</code> 一次性转正。动画逐格扫描：橙格正在数邻居，蓝格是它数到的活邻居。',
+
+  roles: [
+    {c:'orange', code:'(r,c)', text:'正在数邻居的格子'},
+    {c:'blue',   code:'live', text:'8 邻居里活细胞个数（按旧状态数）'},
+    {c:'violet', code:'|= 2', text:'草稿标记：第 2 位记"下代活"'}
+  ],
+
+  codeTitle: '跟着高亮读代码——第 13 行变<span style="color:var(--green)">绿</span>＝自己是活的；' +
+             '第 15、17 行的 <code>|= 2</code> 就是打草稿；最后 <code>&gt;&gt;= 1</code> 一轮全转正。',
+
+  legend: [
+    {c:'orange', text:'正在数邻居的格子'},
+    {c:'blue', text:'数到的活邻居（旧状态）'},
+    {c:'violet', text:'下一代的活细胞'},
+    {swatch:'var(--grey-soft)', text:'格子里的数 = 旧状态 + 草稿位'}
+  ],
+
+  idea: '原地更新：用二进制第 2 位当草稿记下一代（1→3 活着、0→2 复活），数邻居 &amp;1 只看旧状态，最后全体 &gt;&gt;=1 转正。',
+
+  qa: [
+    {q:'为什么能原地更新、不会互相污染？',
+     a:'信息分两位存放：<b>最低位永远是旧状态</b>，第 2 位是下一代草稿。数邻居时 <code>&amp; 1</code> 把草稿位屏蔽掉，' +
+       '所以邻居就算已经打完标记，读到的仍是旧状态——"同时更新"的语义就保住了。'},
+    {q:'2 和 3 这些中间值是什么意思？',
+     a:'旧状态 + 草稿拼出来的四个值：0 = 死→死，1 = 活→死（没打标记），2 = 死→活（复活），3 = 活→活（存活）。' +
+       '第二遍 <code>&gt;&gt;= 1</code> 右移一位，草稿位落成正式状态：2、3 都变 1，0、1 都变 0。'},
+    {q:'边界格子怎么办？',
+     a:'题目规定棋盘外的格子全是死细胞，所以越界方向直接不计入——代码里用 <code>0 ≤ r+dr &lt; m</code> 这类判断挡掉越界坐标即可。'},
+    {q:'复杂度？',
+     a:'每格数 8 个邻居，两遍扫描，时间 O(m·n)；草稿存在原数组的高位里，额外空间 O(1)。'}
+  ],
+
+  complexity: '时间 O(m·n)（每格数 8 个邻居）　·　空间 O(1)（高位当草稿，原地标记）',
+
+  form: [
+    {key:'board', label:'board（每行一行）', type:'grid', def:[[0,1,0],[0,0,1],[1,1,1],[0,0,0]]}
+  ],
+  presets: [
+    {label:'默认 4×3（LC 例）', values:{board:[[0,1,0],[0,0,1],[1,1,1],[0,0,0]]}},
+    {label:'横向眨眼灯 → 竖起来', values:{board:[[0,0,0],[1,1,1],[0,0,0]]}},
+    {label:'全灭 → 仍全灭（边界）', values:{board:[[0,0,0],[0,0,0],[0,0,0]]}},
+    {label:'全活 3×3 → 挤死（边界）', values:{board:[[1,1,1],[1,1,1],[1,1,1]]}}
+  ],
+
+  code: `class Solution:
+    def gameOfLife(self, board):
+        m, n = len(board), len(board[0])
+        for r in range(m):                     # 第一遍: 数邻居、打标记
+            for c in range(n):
+                live = 0                       # 8 邻居里的活细胞数
+                for dr in (-1, 0, 1):
+                    for dc in (-1, 0, 1):
+                        if dr == 0 and dc == 0:
+                            continue           # 跳过自己
+                        if 0 <= r + dr < m and 0 <= c + dc < n:
+                            live += board[r + dr][c + dc] & 1   # & 1: 只看旧状态
+                if board[r][c] & 1:            # 自己现在是活的
+                    if live == 2 or live == 3: # 活到下代: 邻居 2 或 3 个
+                        board[r][c] |= 2       # 二号位打"下代活"标记
+                elif live == 3:                # 自己是死的
+                    board[r][c] |= 2           # 恰好 3 个活邻居 → 复活
+        for r in range(m):                     # 第二遍: 草稿转正
+            for c in range(n):
+                board[r][c] >>= 1              # 右移一位, 新状态落位
+`,
+
+  sol(input){
+    const b = input.board.map(r => r.slice());
+    const m = b.length, n = b[0] ? b[0].length : 0;
+    const orig = b.map(r => r.slice());
+    // 第一遍: 原地标记（与 Python 逐行同逻辑）
+    for(let r = 0; r < m; r++)
+      for(let c = 0; c < n; c++){
+        let live = 0;
+        for(let dr = -1; dr <= 1; dr++)
+          for(let dc = -1; dc <= 1; dc++){
+            if(dr === 0 && dc === 0) continue;
+            const rr = r + dr, cc = c + dc;
+            if(rr >= 0 && rr < m && cc >= 0 && cc < n) live += b[rr][cc] & 1;
+          }
+        if((b[r][c] & 1) && (live === 2 || live === 3)) b[r][c] |= 2;
+        else if(!(b[r][c] & 1) && live === 3) b[r][c] |= 2;
+      }
+    // 第二遍: 转正
+    for(let r = 0; r < m; r++)
+      for(let c = 0; c < n; c++) b[r][c] >>= 1;
+    // 对拍: 与"开新数组的直白版"逐格比较
+    for(let r = 0; r < m; r++)
+      for(let c = 0; c < n; c++){
+        let live = 0;
+        for(let dr = -1; dr <= 1; dr++)
+          for(let dc = -1; dc <= 1; dc++){
+            if(dr === 0 && dc === 0) continue;
+            const rr = r + dr, cc = c + dc;
+            if(rr >= 0 && rr < m && cc >= 0 && cc < n && orig[rr][cc] === 1) live++;
+          }
+        const nxt = (orig[r][c] === 1) ? ((live === 2 || live === 3) ? 1 : 0) : (live === 3 ? 1 : 0);
+        if(b[r][c] !== nxt) throw new Error('原地标记结果与直白版不一致 @(' + r + ',' + c + ')');
+      }
+    return null;   // 原地修改, 无返回值（SPEC 114 条款）
+  },
+  expected: null,
+
+  quiz: [
+    {q:'默认棋盘里 (2,0) 是个活细胞。第一遍扫描它数到几个活邻居?下代结局如何?',
+     options:['live = 1(只有右边 (2,1) 活)——太孤(不足 2),下代死:不打草稿标记,数字保持 1,转正 >>= 1 后归 0','live = 2——恰好落在存活区,下代还是活的','live = 3——凑齐存活条件,照样活'],
+     answer:0,
+     explain:'(2,0) 贴着左边界,8 个方向里左半越界按"棋盘外全死"跳过,能看的只有 (1,0)=0、(1,1)=0、(2,1)=1、(3,0)=0、(3,1)=0——活邻居只有 (2,1) 一个。活细胞邻居不足 2 → 太孤 → 下代死:不打 |= 2 标记,数字保持 1(这一代它还活着,邻居计数不受影响),第二遍 >>= 1 后自然归 0。注意越界方向不是"跳过不数",而是"按死细胞数、恰好加 0"——边界格的邻居天生少,规则照常适用。',
+     jumpTo:24},
+    {q:'扫到 (1,1) 时,它的左邻 (1,0) 刚被打了"复活"草稿、数字从 0 变成 2。数 (1,1) 的活邻居时,这个 2 会被算成活的吗?',
+     options:['不会——2 的二进制是 10,& 1 只取最低位得 0,读到的仍是旧状态"死";草稿位被屏蔽,"同时更新"就这样保住','会——数字已经不是 0 了,只要非 0 就算活','不会,因为 (1,1) 的扫描轮次排在 (1,0) 之前'],
+     answer:0,
+     explain:'草稿诀窍的全部秘密就在这一问:每格同时驮着两位信息——最低位 = 旧状态,第 2 位 = 下代草稿。数邻居一律 & 1:2 & 1 = 0,(1,0) 仍按"死"计入。本例 (1,1) 数到 live = 5(死细胞要恰好 3 才复活)→ 保持死亡,和"开新数组"的直白版结果一致。选项 B 正是"边扫边改"的污染现场;选项 C 连扫描方向都说反了——行优先扫描 (1,0) 恰恰先于 (1,1) 被处理,污染风险真实存在,全靠 & 1 挡住。',
+     jumpTo:16},
+    {q:'若不开草稿位、边扫边把新状态直接写回棋盘,横向 [1,1,1](一行三个活细胞)会出什么乱子?',
+     options:['中格被误杀:轮到它时左格已被写回 0,只数到 1 个活邻居、判死——而按"同时更新"语义它左右旧邻居都是 1,live = 2 本该存活,竖起来的眨眼灯当场断腰','没影响:每个格子写回前都自动备份了','反而更好:三格都活了下来'],
+     answer:0,
+     explain:'生命游戏的规则是"下一代全体由旧棋盘同时决定"。边扫边写会把已算完的新状态混进别人的邻居计数:左格 (1,0) 本来就该死(live=1),先写回 0 没冤枉它;可轮到中格,它本该靠左右两个旧邻居数到 live = 2 存活,现在左边已被 0 化,只数到 1 → 误杀——下一代本该是竖 blinker([0,1,0] × 3 行),中间那格没了。本题唯一的技术难点就是让两种状态在同一个格子里和平共处:高位草稿 + & 1 读旧 + >>= 1 转正,三招合起来才是真·原地。',
+     jumpTo:1},
+  ],
+
+  steps(input){
+    const F = [];
+    const src = input.board;
+    if(!src.length || !src[0].length){
+      F.push({hl:[1,2,3], tag:'空棋盘', cls:'t-grey', msg:'棋盘是空的，没有细胞，下一代还是空。', do:() => {}});
+      return F;
+    }
+    const m = src.length, n = src[0].length;
+    const b = src.map(r => r.slice());          // 带草稿的工作矩阵 (0/1/2/3)
+
+    /* ★ 快照原则：矩阵内容与状态在 F.push 那一刻拷贝定死 */
+    const snap = () => b.map(r => r.slice());
+    const allSt = (name) => {
+      const s = {};
+      for(let r = 0; r < m; r++) for(let c = 0; c < n; c++) s[r + ',' + c] = name;
+      return s;
+    };
+    const DIRS = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+    const draw = (o) => (v) => {
+      v.grid('G', o.mat, {
+        label:'棋盘 <code>board</code>　·　0=死→死　1=活→死　2=死→活　3=活→活',
+        states:o.states || {}, cw:44
+      });
+      if(o.vars) v.vars('vars', o.vars, {label:'变量', hl:o.vhl || []});
+      if(o.result !== undefined) v.result(o.result, {label:'下一代棋盘'});
+    };
+
+    F.push({hl:[1,2,3], tag:'开始 · 规则与草稿', cls:'t-grey',
+      msg:'棋盘 ' + m + ' 行 × ' + n + ' 列，规则两条：活细胞有 <b>2 或 3</b> 个活邻居 → 存活；死细胞恰好 <b>3</b> 个活邻居 → 复活；其余一律死。难在<b>同时更新</b>：所有格子的生死都由旧棋盘决定，不能边扫边改——想想横向 [1,1,1]：中格本该靠左右两个旧邻居活下来，若先把左格改成 0，轮到中格只数到 1 个活邻居，就被误杀了。巧招：每格拿<b>二进制第 2 位当草稿</b>记下代生死（0=死→死、1=活→死、2=死→活、3=活→活），数邻居时 <code>&amp; 1</code> 只读旧状态，谁也污染不了谁。',
+      do: draw({mat:snap(), vars:{m:m, n:n, 阶段:'第一遍 · 打标记'}})});
+
+    /* ---------- 第一遍：逐格扫描 ---------- */
+    for(let r = 0; r < m; r++){
+      for(let c = 0; c < n; c++){
+        F.push({hl:[4,5,6], tag:'走到 (' + r + ',' + c + ')', cls:'t-ink',
+          msg:'第一遍逐格扫描：轮到 <b>(' + r + ',' + c + ')</b>（橙格）。先把活邻居计数器清零 <code>live = 0</code>，接着数它周围 8 格里有几个活细胞——数的是<b>最低位（旧状态）</b>，草稿位一概不看。',
+          do: draw({mat:snap(), states:(function(){ const s = {}; s[r + ',' + c] = 'active'; return s; })(),
+                    vars:{r:r, c:c, live:'…', 'board[r][c]':b[r][c]}})});
+
+        const nb = [];
+        let live = 0;
+        DIRS.forEach(d => {
+          const rr = r + d[0], cc = c + d[1];
+          if(rr < 0 || rr >= m || cc < 0 || cc >= n) return;
+          if(b[rr][cc] & 1){ live++; nb.push('(' + rr + ',' + cc + ')'); }
+        });
+        F.push({hl:[7,8,9,10,11,12], tag:'数 8 邻居', cls:'t-blue',
+          msg:'8 个方向各看一眼：越界方向按"棋盘外全死"跳过，自己也不数；读到的数先 <code>&amp; 1</code> 剥掉草稿位、只认最低位——邻居就算刚打完标记也不影响计数，"同时更新"就这样保住。本格数到活邻居：' + (nb.length ? nb.join('、') : '一个都没有') + '，共 <b>live = ' + live + '</b>（蓝格 = 数到的活邻居）。',
+          do: draw({mat:snap(), states:(function(){
+                    const s = {};
+                    DIRS.forEach(d => {
+                      const rr = r + d[0], cc = c + d[1];
+                      if(rr >= 0 && rr < m && cc >= 0 && cc < n && (b[rr][cc] & 1)) s[rr + ',' + cc] = 'in';
+                    });
+                    s[r + ',' + c] = 'active';
+                    return s;
+                  })(),
+                  vars:{r:r, c:c, live:live, 'board[r][c]':b[r][c], vhl:['live']}})});
+
+        const alive = (b[r][c] & 1) === 1;
+        let marked = false;
+        if(alive && (live === 2 || live === 3)){
+          b[r][c] |= 2;
+          marked = true;
+          F.push({hl:[13,14,15], ok:15, tag:'存活 → 打标记', cls:'t-green',
+            msg:'自己现在是活的（最低位 1），live = ' + live + ' 正好落在 {2, 3} → 不挤不孤，<b>下代继续活</b>！执行 <code>|= 2</code> 在第 2 位打草稿：' + (b[r][c] - 2) + ' → <b>' + b[r][c] + '</b>（3 = 活→活）。旧状态仍住在最低位，邻居来数时 <code>&amp; 1</code> 照样读到 1。',
+            do: draw({mat:snap(), states:(function(){ const s = {}; s[r + ',' + c] = 'just'; return s; })(),
+                      vars:{r:r, c:c, live:live, 'board[r][c]':b[r][c]}})});
+        }else if(alive){
+          F.push({hl:[13,14], no:14, tag:'太挤或太孤', cls:'t-red',
+            msg:'自己是活的，但 live = ' + live + (live < 2 ? '，太孤单（活邻居不足 2 个）' : '，太拥挤（活邻居超过 3 个）') + ' → <b>下代死</b>。不打标记，数字保持 ' + b[r][c] + '：最低位还是 1（这一代它仍活着，邻居计数不受影响），但第 2 位是 0，转正 <code>&gt;&gt;= 1</code> 后自然归 0。',
+            do: draw({mat:snap(), states:(function(){ const s = {}; s[r + ',' + c] = 'stale'; return s; })(),
+                      vars:{r:r, c:c, live:live, 'board[r][c]':b[r][c]}})});
+        }else if(live === 3){
+          b[r][c] |= 2;
+          marked = true;
+          F.push({hl:[13,16,17], no:13, ok:17, tag:'复活 → 打标记', cls:'t-green',
+            msg:'自己现在是死的（最低位 0），但恰好有 <b>live = 3</b> 个活邻居——"繁殖"条件达成 → <b>下代复活</b>！执行 <code>|= 2</code> 打草稿：' + (b[r][c] - 2) + ' → <b>' + b[r][c] + '</b>（2 = 死→活）。最低位仍是 0，别的格子数它时只会数到"死的"。',
+            do: draw({mat:snap(), states:(function(){ const s = {}; s[r + ',' + c] = 'just'; return s; })(),
+                      vars:{r:r, c:c, live:live, 'board[r][c]':b[r][c]}})});
+        }else{
+          F.push({hl:[13,16], no:16, tag:'保持死亡', cls:'t-grey',
+            msg:'自己是死的，live = ' + live + ' ≠ 3，凑不齐复活条件 → 下代还是死。什么都不用改，数字保持 ' + b[r][c] + '——第 2 位是 0，转正后依然是 0。',
+            do: draw({mat:snap(), vars:{r:r, c:c, live:live, 'board[r][c]':b[r][c]}})});
+        }
+        if(marked){
+          F.push({hl:[15], tag:'草稿已记', cls:'t-ink',
+            msg:'(' + r + ',' + c + ') 格里现在躺着 <b>' + b[r][c] + '</b>，看似"变了质"，其实两位信息各管各的：<b>最低位 = 旧状态，第 2 位 = 下代草稿</b>。之后任何邻居来数它，<code>&amp; 1</code> 一屏蔽，读到的永远是旧状态——这就是敢在原数组上直接打标记的底气。',
+            do: draw({mat:snap(), states:(function(){ const s = {}; s[r + ',' + c] = 'done'; return s; })(),
+                      vars:{r:r, c:c, live:live, 'board[r][c]':b[r][c]}})});
+        }
+      }
+    }
+
+    /* ---------- 第二遍：草稿转正 ---------- */
+    F.push({hl:[18,19], tag:'第二遍 · 草稿转正', cls:'t-blue',
+      msg:'全盘 ' + (m * n) + ' 格扫完，每格都带着"旧状态 + 草稿"的合成值（0~3）。第二遍一口气 <code>&gt;&gt;= 1</code>：右移一位，第 2 位的草稿落成正式状态——<b>2、3 都变 1（下代活），0、1 都变 0（下代死）</b>。此刻草稿就是答案，再没有旧状态要保护，随便改也无妨。',
+      do: draw({mat:snap(), states:allSt('in'), vars:{阶段:'第二遍 · 转正', m:m, n:n}})});
+    for(let r = 0; r < m; r++)
+      for(let c = 0; c < n; c++) b[r][c] >>= 1;
+    F.push({hl:[20], tag:'下一代诞生', cls:'t-dark',
+      msg:'🎉 下一代诞生：<b>[' + b.map(r => '[' + r.join(',') + ']').join(', ') + ']</b>。复盘原地的全部秘密：把"旧状态"和"下一代草稿"拆进同一个整数的两个二进制位，<code>&amp; 1</code> 读旧防污染、<code>&gt;&gt;= 1</code> 转正定生死——两遍扫描，时间 O(m·n)、零额外棋盘。',
+      do: draw({mat:snap(), states:allSt('target'), vars:{阶段:'完成'}, result:b.map(r => r.slice())})});
+
+    return F;
+  }
+});
+</script>
+</body>
+</html>

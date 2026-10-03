@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P016 · 除自身以外数组的乘积 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 16, num: 238, title: '除自身以外数组的乘积', diff: '中等', cat: '普通数组',
+  method: 'productExceptSelf',
+
+  lede: '题目：返回数组 <code>ans</code>，其中 <code>ans[i]</code> 等于 <code>nums</code> 里<b>除了 nums[i]</b> 之外所有数的乘积——不许用除法，还要 O(n)。' +
+        '诀窍是把乘积拆成两半：<code>ans[i] = (i 左边全部的乘积) × (i 右边全部的乘积)</code>。' +
+        '第一遍从左到右，把"左边乘积"直接写进 <span class="var r">ans</span>；第二遍从右到左，用滚动变量 <span class="var o">right</span> 把"右边乘积"乘上去。上下两行对着看，进度一目了然。',
+
+  roles: [
+    {c:'blue',   code:'ans[i]', text:'第一遍：先装"左边全部乘积"'},
+    {c:'orange', code:'right', text:'第二遍：从右往左的滚动乘积'},
+    {c:'green',  code:'左×右', text:'ans[i] × right = 最终答案'}
+  ],
+
+  codeTitle: '两遍扫描：第一遍高亮 <code>ans[i] = ans[i-1] * nums[i-1]</code>（攒左积），第二遍 <code>ans[i] *= right</code>（补右积）。完工的格子变绿。',
+
+  legend: [
+    {c:'blue', text:'已装左积（等右积）'},
+    {c:'orange', text:'right 右侧滚动乘积'},
+    {c:'green', text:'该格已完工'},
+    {c:'violet', text:'i 当前格'}
+  ],
+
+  idea: '答案 = 左边乘积 × 右边乘积。两遍扫描，第二遍用一个滚动变量顺手把右积乘上去——不用除法，也不用额外数组。',
+
+  qa: [
+    {q:'为什么不能直接"总乘积 ÷ 自己"？',
+     a:'一是题目明令禁止除法；二是数组里可能有 0：总乘积是 0 时，除以任何数都没意义（0/0 无定义）。拆成"左积 × 右积"的办法天然免疫 0——0 只会出现在它该出现的那几格里。'},
+    {q:'ans 为什么要先填 1？',
+     a:'1 是乘法的单位元：任何数 × 1 还是自己。i=0 左边一个数都没有，"左边乘积"就是空积 1。ans 初始全 1，正好把边界也统一进递推式 ans[i] = ans[i-1] × nums[i-1]。'},
+    {q:'第二遍为什么 right 从 1 开始、放在乘完之后才更新？',
+     a:'right 始终表示"i 右边（不含 i）所有数的乘积"。i=n-1 时右边没数 → right=1；先用它算完 ans[i]，再把 nums[i] 乘进 right，给下一轮（更靠左的 i）当右积用。顺序反了就会把 nums[i] 自己乘进去。'}
+  ],
+
+  complexity: '时间 O(n)（两遍扫描）　·　空间 O(1)（输出数组不计入额外空间）',
+
+  form: [
+    {key:'nums', label:'nums', type:'arr', def:[1,2,3,4]}
+  ],
+  presets: [
+    {label:'[1,2,3,4]', values:{nums:[1,2,3,4]}},
+    {label:'[-1,1,0,-3,3]（含 0）', values:{nums:[-1,1,0,-3,3]}},
+    {label:'[2,3]（两元素）', values:{nums:[2,3]}},
+    {label:'[-1,-2,-3]（全负）', values:{nums:[-1,-2,-3]}}
+  ],
+
+  code: `class Solution:
+    def productExceptSelf(self, nums):
+        n = len(nums)
+        ans = [1] * n                # ans[i] 先存"左边全部乘积"
+        for i in range(1, n):
+            ans[i] = ans[i-1] * nums[i-1]
+        right = 1                    # 右边全部乘积(不含 i)
+        for i in range(n - 1, -1, -1):
+            ans[i] *= right          # 左积 × 右积 = 答案
+            right *= nums[i]         # 右积滚给下一格
+        return ans
+`,
+
+  sol(input){
+    const nums = input.nums;
+    const n = nums.length;
+    const ans = new Array(n).fill(1);
+    for(let i = 1; i < n; i++) ans[i] = ans[i - 1] * nums[i - 1];
+    let right = 1;
+    for(let i = n - 1; i >= 0; i--){
+      ans[i] *= right;
+      right *= nums[i];
+    }
+    return ans;
+  },
+  expected: [24,12,8,6],
+
+  quiz: [
+    {q:'为什么不能「先算总乘积,再对每个 i 除以 nums[i]」?',
+     options:['除法结果可能是小数,不好处理','题目明令禁止除法;而且数组里有 0 时总乘积是 0,0 当除数、乃至 0/0 都没有意义——左积×右积的办法天然不怕 0','只是出题人故意刁难,除法其实完全可行'],
+     answer:1,
+     explain:'除法版有两条硬伤:① 本题要求不许除;② 有 0 就崩——nums=[1,0,3] 时总乘积 0,除以 0 无定义,除法一票还会把「哪些位置该是 0」的信息抹掉。拆成 ans[i] = (i 左边全乘) × (i 右边全乘),自己从头到尾不被乘进去,0 该出现在哪格、不该在哪格都算得明明白白。',
+     jumpTo:1},
+    {q:'nums = [2,3,4,5],输出的 ans 是什么?',
+     options:['[24,12,8,6]','[60,40,30,24]','[120,60,40,30]','[40,60,30,24]'],
+     answer:1,
+     explain:'左遍:ans=[1,2,6,24](每格是它左边全体的乘积)。右遍从最右往左,right 从 1 起步:i=3:24×1=24,right→5;i=2:6×5=30,right→20;i=1:2×20=40,right→60;i=0:1×60=60。最终 [60,40,30,24]。抽查:ans[0]=3×4×5=60 对。[24,12,8,6] 是 [1,2,3,4] 的答案,别串场。',
+     jumpTo:22},
+    {q:'右遍里「right *= nums[i]」为什么必须放在 ans[i] 乘完之后?放在前面会怎样?',
+     options:['right 的含义是「i 右边(不含 i)所有数的乘积」;先乘就把 nums[i] 自己混进右积,ans[i] 会多乘一个自己','只是书写习惯,先乘后乘结果一样','放前面会数组越界'],
+     answer:0,
+     explain:'right 一路滚动,定义始终是「当前 i 右边(不含 i)的乘积」:i=n−1 时右边没数,必须是 1(空积);用它算完 ans[i],才把 nums[i] 收进 right,给更左一格当右积。顺序反了,ans[i] = 左积 × (含自己) × 右积——「除自己」变成了「含自己」,每格都错。',
+     jumpTo:12},
+  ],
+
+  steps(input){
+    const F = [];
+    const nums = input.nums.slice();
+    const n = nums.length;
+    const ans = new Array(n).fill(1);
+    let right = 1;
+
+    const leftSt = (i, cur) => {
+      const st = {};
+      for(let q = 1; q < i; q++) st[q] = 'in';
+      st[i] = cur;
+      return st;
+    };
+    const rightSt = (i, cur) => {
+      const st = {};
+      for(let q = 1; q < i; q++) st[q] = 'in';
+      for(let q = i + 1; q < n; q++) st[q] = 'done';
+      if(cur) st[i] = cur;
+      return st;
+    };
+    const allDone = () => {
+      const st = {};
+      for(let q = 0; q < n; q++) st[q] = 'done';
+      return st;
+    };
+    const mk = (i, cls) => [{name:'i', idx:i, cls:cls || 'mi', text:'▲ i'}];
+
+    const draw = (o) => (v) => {
+      v.arr('nums', nums, {
+        label:'数组 <code>nums</code>',
+        states:o.nStates || {},
+        markers:o.nMarks || []
+      });
+      v.arr('ans', o.ansArr, {
+        label:'答案数组 <code>ans</code>　·　ans[i] = 左积 × 右积',
+        states:o.aStates || {},
+        markers:o.aMarks || []
+      });
+      v.vars('vars', o.vars, {label:'变量', hl:o.vhl || []});
+      if(o.result !== undefined) v.result(o.result, {label:'除自身以外的乘积'});
+    };
+
+    F.push({hl:[1,2,3], tag:'初始化', cls:'t-grey',
+      msg:'n = ' + n + '，目标：ans[i] = 除 nums[i] 自己以外所有数的乘积。核心恒等式先立住：<code>ans[i] = (i 左边全部的乘积) × (i 右边全部的乘积)</code>——把"除了自己"拆成"绕开自己"的两半，自己从头到尾不被乘进去。为什么不用"总乘积 ÷ 自己"？一是题目明令禁除法，二是数组里有 0 时 0/0 没定义；左积×右积天然免疫 0。画面上行 nums 不动，下行 ans 是要填的答案。',
+      do: draw({nStates:{}, ansArr:ans.slice(), aStates:{},
+                vars:{i:'—', right:'—', 'ans[i]':'—'}})});
+
+    F.push({hl:[4], tag:'ans 填 1', cls:'t-grey',
+      msg:'把 ans 全部填 <b>1</b>——1 是乘法的单位元，任何数 × 1 不变。两层用意：① i=0 左边一个数都没有，它的"左边乘积"就是空积 1，边界不用特判；② 递推式 ans[i] = ans[i−1] × nums[i−1] 从头到尾统一成立。画面上 ans 行现在是 ' + ans.join(', ') + '。',
+      do: draw({nStates:{}, ansArr:ans.slice(), aStates:{},
+                vars:{i:'—', right:'—', 'ans[i]':1}})});
+
+    for(let i = 1; i < n; i++){
+      F.push({hl:[5], tag:'左遍 · 攒左积', cls:'t-ink',
+        msg:'左遍到 <code>i = ' + i + '</code>：要往 ans[' + i + '] 里写"nums[' + i + '] 左边全部的乘积"。不用从 nums[0] 重乘一遍——左边那格 ans[' + (i - 1) + '] = ' + ans[i - 1] + ' 已经存着"nums[' + (i - 1) + '] 左边的乘积"，再补乘一个 nums[' + (i - 1) + '] = ' + nums[i - 1] + ' 就行。这就是前缀递推：每格只做一次乘法，O(n) 就从这里省出来。',
+        do: draw({nStates:{[i - 1]:'active'}, ansArr:ans.slice(), aStates:leftSt(i, 'peek'),
+                  aMarks:mk(i), vars:{i:i, right:'—', 'ans[i]':ans[i]}})});
+
+      ans[i] = ans[i - 1] * nums[i - 1];
+      F.push({hl:[6], tag:'左遍 · 攒左积', cls:'t-blue',
+        msg:'<code>ans[' + i + '] = ans[' + (i - 1) + '] × nums[' + (i - 1) + '] = ' + ans[i - 1] + ' × ' + nums[i - 1] + ' = ' + ans[i] + '</code>（新格闪蓝）：nums[' + i + '] 左边的数全乘起来了。注意此刻 ans 每格都"缺一个自己"——它们只是半成品左积，等右遍来补另一半，千万别当成最终答案。',
+        do: draw({nStates:{[i - 1]:'active'}, ansArr:ans.slice(), aStates:leftSt(i, 'just'),
+                  aMarks:mk(i), vars:{i:i, right:'—', 'ans[i]':ans[i]}, vhl:['ans[i]']})});
+    }
+
+    F.push({hl:[7], tag:'左遍完成', cls:'t-grey',
+      msg:'左遍收工：<code>ans = [' + ans.join(', ') + ']</code>，全表都是"左边乘积"' + (n >= 2 ? '——末格 ans[' + (n - 1) + '] = ' + ans[n - 1] + ' 恰是 nums[0] 到 nums[' + (n - 2) + '] 的连乘' : '') + '。还差右边那一半：<code>right = 1</code> 起步（最右格右边没数，右积是空积 1），接下来从最右往左一格格补乘。',
+      do: draw({nStates:{}, ansArr:ans.slice(), aStates:leftSt(n, 'in'),
+                vars:{i:'—', right:right, 'ans[i]':'—'}, vhl:['right']})});
+
+    for(let i = n - 1; i >= 0; i--){
+      F.push({hl:[8], tag:'右遍 · 补右积', cls:'t-ink',
+        msg:'右遍到 <code>i = ' + i + '</code>（nums 行的 ▲ i 名牌）：ans[' + i + '] 目前存着左积 <b>' + ans[i] + '</b>，再乘上右积 <code>right = ' + right + '</code> 就齐了。画面导览：ans 行右边的绿格已完工，左边的蓝格还只装了左积。right 的含义始终是"i 右边（不含 i）所有数的乘积"' + (i === n - 1 ? '——此刻 i 是最右格，右边没数，right 还是空积 1' : '') + '。',
+        do: draw({nStates:{}, nMarks:mk(i, 'mi'), ansArr:ans.slice(), aStates:rightSt(i, 'peek'),
+                  aMarks:mk(i), vars:{i:i, right:right, 'ans[i]':ans[i]}})});
+
+      const before = ans[i];
+      ans[i] = before * right;
+      F.push({hl:[9], tag:'左积×右积', cls:'t-green',
+        msg:'<code>ans[' + i + '] = ' + before + ' × ' + right + ' = ' + ans[i] + '</code>' +
+            (i === n - 1 ? '（最右格右边没数，右积是空积 1，乘 1 不变）' : '') + '：左积 × 右积正式合体，nums[' + i + '] 自己全程没被乘进去——"除自己以外的乘积"就是这么绕开自己的。这一格完工变绿。',
+        do: draw({nStates:{}, nMarks:mk(i, 'mi'), ansArr:ans.slice(), aStates:rightSt(i, 'done'),
+                  aMarks:mk(i), vars:{i:i, right:right, 'ans[i]':ans[i]}, vhl:['ans[i]']})});
+
+      right *= nums[i];
+      F.push({hl:[10], tag:'右积滚动', cls:'t-orange',
+        msg:'<code>right *= nums[' + i + ']</code> → <code>right = ' + right + '</code>：往左挪一格之前，把刚用完的 nums[' + i + '] 收进"右边货物清单"，给下一格（更靠左的 i）当右积。踩坑提醒：这行必须放在 ans[i] 乘完<b>之后</b>——顺序反了，right 就含 nums[i] 自己，算出的"除自己乘积"会错一大截。',
+        do: draw({nStates:{[i]:'active'}, ansArr:ans.slice(), aStates:rightSt(i, 'done'),
+                  vars:{i:i, right:right, 'ans[i]':ans[i]}, vhl:['right']})});
+    }
+
+    F.push({hl:[11], tag:'返回', cls:'t-dark',
+      msg:'两遍扫完：<b>[' + ans.join(', ') + ']</b> 🎉 抽查两头验证：ans[0] = ' + ans[0] + ' 是除 nums[0] 外全部数的乘积，ans[' + (n - 1) + '] = ' + ans[n - 1] + ' 是除末格外全部数的乘积。复盘：第一遍攒左积、第二遍用滚动变量 right 补右积，每格恰被写两次 O(n)；额外空间只有 right 一个变量（输出数组不计），除法一次没用。',
+      do: draw({nStates:{}, ansArr:ans.slice(), aStates:allDone(),
+                vars:{i:'—', right:right, 'ans[i]':'—'}, result:ans.slice()})});
+    return F;
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P077 · 跳跃游戏 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 77, num: 55, title: '跳跃游戏', diff: '中等', cat: '贪心算法',
+  method: 'canJump',
+
+  lede: '题目：站在数组第 0 格，格子里的数字 <code>nums[i]</code> 是<b>最多</b>能往右跳几格，问能不能走到最后一格。' +
+        '不用真的去试所有跳法：从左往右扫，只维护一个数 <span class="var o">far</span>＝目前<b>最远能摸到哪一格</b>。' +
+        '扫到某格时先问"<code>i</code> 够得着吗"（i ≤ far），够得着就用 <code>i + nums[i]</code> 把 far 往远推。哪天 <code>i</code> 越过了 far，就是被深渊卡死；一路推到底就是胜利。',
+
+  roles: [
+    {c:'orange', code:'i',    text:'正在检查的格子'},
+    {c:'violet', code:'far',  text:'目前最远能跳到的格子'},
+    {c:'blue',   code:'可达',  text:'i ≤ far 的格子都站得上去'},
+    {c:'red',    code:'卡死',  text:'i 越过 far: 中间隔着跳不过去的沟'}
+  ],
+
+  codeTitle: '跟着高亮读代码——<code>if i &gt; far</code> 变<span style="color:var(--red)">红</span>＝这格够得着，继续走；一旦变<span style="color:var(--green)">绿</span>＝被卡死，立刻 return False。far 是单调不减的：格子扫到哪，蓝框就跟到哪。',
+
+  legend: [
+    {c:'blue', text:'已可达（下标 ≤ far）'},
+    {c:'orange', text:'当前检查的 i'},
+    {c:'violet', text:'far 最远可达线'},
+    {c:'red', text:'够不着（下标 > far）'}
+  ],
+
+  idea: '贪心只记一个最远可达 far：每扫过一格就把 far 往远处推（max(far, i+nums[i])）；哪天 i 越过了 far，中间必有跳不过去的沟——直接判负。',
+
+  qa: [
+    {q:'为什么只记"最远可达"就够了？',
+     a:'能不能到第 i 格，只取决于"前面有没有哪条路能伸到 i"。凡是下标 ≤ far 的格子都站得上去（总有一条路），所以 far 就是可达性的完整摘要——比它远的都到不了，比它近的都无所谓怎么走。'},
+    {q:'为什么"i > far"就一定输？',
+     a:'far 是前面所有格子能伸出的最远距离；如果连第 i 格都够不着，那 i 往后的格子更没人能搭桥——中间横着一段<b>谁也跳不过去的沟</b>，且 far 只会被已经扫过的格子更新，不可能再变大了。'},
+    {q:'跳法那么多，会不会漏解？',
+     a:'不会。我们不做选择、只做判断：任何真实跳法能达到的格子，都 ≤ 对应前缀算出的 far。所以"far 是否 ≥ 最后一格"与"是否存在一条真路"完全等价——这正是贪心成立的不变式。'}
+  ],
+
+  complexity: '时间 O(n)（每格只看一次）　·　空间 O(1)（只记一个 far）',
+
+  form: [
+    {key:'nums', label:'nums', type:'arr', def:[2,3,1,1,4]}
+  ],
+  presets: [
+    {label:'[2,3,1,1,4]（默认，能到）', values:{nums:[2,3,1,1,4]}},
+    {label:'[3,2,1,0,4]（卡死，false）', values:{nums:[3,2,1,0,4]}},
+    {label:'[1,0,1]（中途断沟）', values:{nums:[1,0,1]}},
+    {label:'[0]（起点即终点，边界）', values:{nums:[0]}}
+  ],
+
+  code: `class Solution:
+    def canJump(self, nums):
+        far = 0                        # 目前最远能跳到哪格
+        for i, step in enumerate(nums):
+            if i > far:                # 这格够不着 → 被卡死
+                return False
+            far = max(far, i + step)   # 站上这格, 把最远可达往外推
+        return True                    # 扫完没卡死 → 终点必可达
+`,
+
+  sol(input){
+    const nums = input.nums || [];
+    let far = 0;
+    for(let i = 0; i < nums.length; i++){
+      if(i > far) return false;
+      far = Math.max(far, i + nums[i]);
+    }
+    return true;
+  },
+  expected: true,
+
+  quiz: [
+    {q:'far 这一个数凭什么能代表"可达性"的全部信息?下标 ≤ far 的格子为什么都站得上去?',
+     options:['因为 far 之前的格子都被访问过一次,走过去就行','far 是前面所有格子能伸出的最远触角——凡在触角之内必有某格能一步跳到它;具体哪格、怎么绕无所谓,这题只判可达、不选路径','因为 far 是平均值,平均意义下都能到'],
+     answer:1,
+     explain:'能不能到第 i 格,只取决于"前面有没有哪条路能伸到 i"。far 取的是 max(所有已扫格子的 i+nums[i]),所以 i ≤ far 时,伸出这条触角的那个格子必能一步把你送到 i。far 因此是可达性的完整摘要:比它近的都可达,比它远的暂不可达——一个数顶一张可达表。',
+     jumpTo:3},
+    {q:'nums = [2,0,0,1,4],能走到最后一格吗?',
+     options:['true——第 0 格能跳 2 步,先到第 2 格,再一路走过去','false——扫到第 3 格时 i = 3 &gt; far = 2,中间是跳不过去的沟','false——因为数组里出现了 0,有 0 就一定到不了'],
+     answer:1,
+     explain:'推演:i=0,far=2;i=1、i=2 都 ≤ 2,但值都是 0,far 停在 2;轮到 i=3 时 3 &gt; 2 → 卡死,return false。第 0 格只够到第 1 或第 2 格,而它们值都是 0,无路可走。注意选项 2 是错的:有 0 不必然失败——[3,0,0,0] 里 0 一堆,但 far=3 直接罩住全程,照样 true。判定只看 far,不看 0 的个数。',
+     jumpTo:4},
+    {q:'跳法千千万,贪心"只推 far、不规划路线"为什么不会漏解或误判?',
+     options:['因为每步都取了能跳的最大步数,贪心一定最优','因为任何真实跳法能踩到的格子都 ≤ 对应前缀的 far——"far 摸到终点"与"存在一条真路"完全等价,做判断就够了,不用做选择','因为数组先从大到小排过序'],
+     answer:1,
+     explain:'这里没有"每步跳最远"式的贪心选择,只有可达性判断:far 是所有可能跳法的可达上界,真路能到的格子不可能超出它;反过来 far 范围内的格子又都可达(选项 1 的理由)。两个方向夹死,等价性成立——所以既不漏(有路必反映在 far 上)也不冤(摸不到才判负)。数组也根本没排序。',
+     jumpTo:17},
+  ],
+
+  steps(input){
+    const F = [];
+    const nums = (input.nums || []).filter(x => x != null);
+    let far = 0;
+    const last = nums.length - 1;
+
+    const nst = (i, st) => {
+      const o = {};
+      for(let j = 0; j < nums.length; j++) o[j] = j <= far ? 'in' : 'muted';
+      if(i != null) o[i] = st || 'active';
+      return o;
+    };
+    const mk = (i, stuck) => stuck
+      ? [{name:'i', idx:i, cls:'mi', text:'▲ i 够不着!'}]
+      : [{name:'i', idx:i, cls:'mi', text:'▲ i'}, {name:'far', idx:far, cls:'mv', text:'▲ far'}];
+
+    const draw = (o) => (v) => {
+      const opt = {
+        label:'数组 <code>nums</code>　·　数字 = 该格最多能往右跳几格',
+        states:o.nst || {},
+        labels:o.labels || {},
+        idxCls:o.idxCls || {}
+      };
+      if(o.mk && o.mk.length) opt.markers = o.mk;
+      v.arr('nums', nums, opt);
+      v.vars('vars', o.vars, {label:'当前变量', hl:o.hlv || []});
+      if(o.res !== undefined) v.result(o.res, {label:'能否到达'});
+    };
+
+    F.push({hl:[1,2,3], tag:'初始化', cls:'t-grey',
+      msg:'从第 0 格出发，<code>far = 0</code>：目前最远能摸到第 0 格（▲ far）。接下来从左往右扫，<b>不规划任何具体跳法</b>，只干两件事：① 每到一格先问"这格够得着吗"（i ≤ far？）② 够得着就用 <code>i + nums[i]</code> 把 far 往远推。核心不变式：<b>下标 ≤ far 的格子全都站得上去</b>（总有某条路能绕到，怎么绕的不重要）——far 就是可达性的完整摘要。',
+      do: draw({nst:nst(0), mk:mk(0), idxCls:{0:'on-i'},
+                vars:{far:far, '终点':last}})});
+
+    let stuck = false;
+    for(let i = 0; i < nums.length; i++){
+      const step = nums[i];
+      F.push({hl:[4], tag:'扫到第 ' + i + ' 格', cls:'t-ink',
+        msg:'轮到第 <b>' + i + '</b> 格（值 ' + step + '）。先别看它能跳多远——<b>它自己得先站得上去</b>：检查 i = ' + i + ' 是否 ≤ far = ' + far + '。画面上蓝框格（≤ far）都是已确认可达的，橙色 ▲ i 一旦落在灰区（&gt; far）就直接判负。',
+        do: draw({nst:nst(i), mk:mk(i), idxCls:{[i]:'on-i'},
+                  vars:{i:i, step:step, far:far}})});
+
+      if(i > far){
+        stuck = true;
+        F.push({hl:[5,6], ok:5, tag:'卡死了！', cls:'t-red',
+          msg:'<code>i = ' + i + ' &gt; far = ' + far + '</code> → <b>第 ' + i + ' 格够不着，卡死！</b>▲ i 落在灰区。为什么直接判负？far 已经是前面所有格子能伸出的最远距离，连 i 都够不着，i 右边的格子更没人能搭桥——中间这段就是<b>谁也跳不过去的深渊</b>；而且能推 far 的格子全在 i 左边、早扫完了，far 不可能再变大 → <code>return False</code>，一步都不用再试。',
+          do: draw({nst:nst(i, 'block'), mk:mk(i, true), idxCls:{[i]:'on-i'},
+                    vars:{i:i, far:far, 结论:'够不着'}, hlv:['结论']})});
+        break;
+      }
+
+      F.push({hl:[5], no:5, tag:'够得着', cls:'t-blue',
+        msg:'<code>i = ' + i + ' ≤ far = ' + far + '</code> → 这格站得上去（▲ i 落在蓝区内）。为什么 i ≤ far 就一定可达？far 是前面所有格子伸出去的最远触角，i 在触角之内，必有某格能一步跳到它——具体哪格无所谓，这题只判可达、不选路径。',
+        do: draw({nst:nst(i), mk:mk(i), idxCls:{[i]:'on-i'},
+                  vars:{i:i, step:step, far:far}})});
+
+      const reach = i + step;
+      const oldFar = far;
+      const push = reach > far;
+      if(push) far = reach;
+      F.push({hl:[7], ok:push ? 7 : undefined, tag:'推远 far', cls:push ? 't-green' : 't-grey',
+        msg:'站上第 ' + i + ' 格，从这最远能蹦到 <code>i + nums[i] = ' + i + ' + ' + step + ' = ' + reach + '</code>。' +
+            (push
+              ? '比旧 far = ' + oldFar + ' 远 → <b>far 推进到 ' + far + '</b>，蓝区右扩，可达范围变成第 0 ~ ' + far + ' 格' + (far >= last ? '——终点（第 ' + last + ' 格）已进蓝区，后面稳了！' : '。')
+              : '没超过现有 far = ' + far + ' → far 不动，可达范围仍是第 0 ~ ' + far + ' 格。') +
+            'far 只增不减：每多扫一格，可达范围只会单调扩大，绝不会缩。',
+        do: draw({nst:nst(i), mk:mk(i), idxCls:{[i]:'on-i'},
+                  vars:{i:i, 'i+step':reach, far:far}, hlv:['far']})});
+    }
+
+    if(!stuck){
+      F.push({hl:[6,8], no:6, tag:'返回', cls:'t-dark',
+        msg:'整趟扫完，<code>i &gt; far</code> <b>一次都没发生</b>：每格轮到时都在蓝区内 → 全部格子（含终点第 ' + last + ' 格）都可达 → <b>return True</b> 🎉 贪心为什么不出错？任何真实跳法能到的格子都 ≤ 对应前缀算出的 far，所以"far 摸到终点"和"存在一条真路"完全等价。每格只看一次 O(n)、只记一个 far，空间 O(1)。',
+        do: draw({nst:nst(null), mk:[], idxCls:{},
+                  vars:{far:far, '终点':last, 结论:'畅通'}, hlv:['结论'], res:true})});
+    }
+
+    return F;
+  }
+});
+</script>
+</body>
+</html>

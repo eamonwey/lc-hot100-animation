@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P051 · 腐烂的橘子 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 51, num: 994, title: '腐烂的橘子', diff: '中等', cat: '图论',
+  method: 'orangesRotting',
+
+  lede: '题目：网格里 <span class="var r">2</span> 是烂橘子、<span class="var r">1</span> 是新鲜橘子、0 是空格。' +
+        '每过 1 分钟，烂橘子会把<b>上下左右</b>的新鲜橘子传染烂，问几分钟后全烂完？烂不完返回 -1。' +
+        '关键直觉：<b>所有烂橘子是同一时刻一起开始扩散的</b>——这是"多源 BFS"：' +
+        '先把它们全部塞进 <span class="var v">队列 q</span>（第 0 分钟），然后一层一层往外洇，' +
+        '洇了几层就是几分钟。最后再数一眼还有没有漏网的新鲜橘子。',
+
+  roles: [
+    {c:'orange', code:'active', text:'正在扩散的烂橘子'},
+    {c:'blue',   code:'just',   text:'这一步刚被传染的'},
+    {c:'green',  code:'done',   text:'已经烂了的'},
+    {c:'grey',   code:'wall',   text:'空格子'}
+  ],
+
+  codeTitle: '跟着高亮读代码——第 20 行变<span style="color:var(--green)">绿</span>＝邻居是新鲜橘子、成功传染，' +
+             '变<span style="color:var(--red)">红</span>＝出界或不是新鲜的，跳过。',
+
+  legend: [
+    {c:'orange', text:'正在扩散的烂橘子'},
+    {c:'blue',   text:'刚被传染'},
+    {c:'green',  text:'已腐烂'},
+    {c:'grey',   text:'空格（0）'}
+  ],
+
+  idea: '多源 BFS：所有烂橘子第 0 分钟一起入队，一层 = 一分钟；出循环后 fresh 还有剩就是 -1。',
+
+  qa: [
+    {q:'为什么要"所有烂橘子先一起入队"，而不是找到一个烂的就 BFS？',
+     a:'因为传染是<b>同时</b>发生的。如果只从一个烂橘子开始扩散，距离它 2 格的橘子会被记成"第 2 分钟烂"，' +
+       '但旁边另一个烂橘子可能 1 分钟就够到了。多源 BFS 相当于在所有源头外面套一个"超级源点"，' +
+       '一层层同步往外洇，每层的时间才正确。'},
+    {q:'<code>for _ in range(len(q))</code> 这句在干嘛？',
+     a:'它把"这一分钟"和"下一分钟"切开：循环开始时队列里正好是上一分钟全部新烂的橘子，' +
+       '固定次数地把它们全弹出来处理，期间新入队的都算"下一分钟"的，绝不越层。'},
+    {q:'为什么循环结束后还要检查 fresh？',
+     a:'BFS 只能烂到"连通"的新鲜橘子。被空格或边界隔开的橘子永远等不到传染——' +
+       '这时队列空了但 fresh > 0，按题意返回 -1。'},
+    {q:'复杂度？',
+     a:'每个格子最多入队一次，时间 O(mn)；队列和网格同阶，空间 O(mn)。'}
+  ],
+
+  complexity: '时间 O(mn)（每格最多入队一次）　·　空间 O(mn)（队列）',
+
+  form: [
+    {key:'grid', label:'grid（每行一行）', type:'grid', def:[[2,1,1],[1,1,0],[0,1,1]]}
+  ],
+  presets: [
+    {label:'经典例 → 4 分钟', values:{grid:[[2,1,1],[1,1,0],[0,1,1]]}},
+    {label:'有橘子烂不到 → -1', values:{grid:[[2,1,1],[0,1,1],[1,0,1]]}},
+    {label:'一开始就没新鲜 → 0', values:{grid:[[2,2],[2,0]]}},
+    {label:'只有新鲜没烂的 → -1', values:{grid:[[1]]}}
+  ],
+
+  code: `from collections import deque
+class Solution:
+    def orangesRotting(self, grid):
+        m, n = len(grid), len(grid[0])
+        q = deque()                      # 队列: 存烂橘子的坐标
+        fresh = 0                        # 新鲜橘子计数
+        for i in range(m):               # 第一遍: 烂橘子全部入队
+            for j in range(n):
+                if grid[i][j] == 2:
+                    q.append((i, j))
+                elif grid[i][j] == 1:
+                    fresh += 1
+        minute = 0
+        while q and fresh:               # 还有烂橘子且还有新鲜的才继续
+            minute += 1                  # 新的一分钟
+            for _ in range(len(q)):      # 本分钟: 队里所有烂橘子同时扩散
+                i, j = q.popleft()
+                for di, dj in ((1,0),(-1,0),(0,1),(0,-1)):
+                    ni, nj = i + di, j + dj
+                    if 0 <= ni < m and 0 <= nj < n and grid[ni][nj] == 1:
+                        grid[ni][nj] = 2  # 被传染
+                        fresh -= 1
+                        q.append((ni, nj))
+        return minute if fresh == 0 else -1
+`,
+
+  sol(input){
+    const g = input.grid.map(r => r.slice());
+    const m = g.length, n = m ? g[0].length : 0;
+    let q = [], fresh = 0;
+    for(let i = 0; i < m; i++)
+      for(let j = 0; j < n; j++){
+        if(g[i][j] === 2) q.push([i, j]);
+        else if(g[i][j] === 1) fresh++;
+      }
+    let minute = 0;
+    const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+    while(q.length && fresh){
+      minute++;
+      const next = [];
+      for(const [i, j] of q)
+        for(const [di, dj] of dirs){
+          const ni = i + di, nj = j + dj;
+          if(ni >= 0 && ni < m && nj >= 0 && nj < n && g[ni][nj] === 1){
+            g[ni][nj] = 2; fresh--; next.push([ni, nj]);
+          }
+        }
+      q = next;
+    }
+    return fresh === 0 ? minute : -1;
+  },
+  expected: 4,
+
+  quiz: [
+    {q:'为什么要把「所有」烂橘子先一起入队、同一时刻开始扩散,而不是找到一个烂的就从它开始 BFS?',
+     options:['先把队列填满,BFS 才能启动','传染是同一时刻发生的:每格的腐烂时间 = 它到「最近」火种的距离,单源扩散会把本可更早烂掉的橘子算晚','为了省内存,队列里少放几个坐标'],
+     answer:1,
+     explain:'多源 BFS 相当于在所有火种外面套一个「超级源点」,一层层同步往外洇。若只从一个烂橘子开始,算出的是到「那一个」源的距离——比如右边另一个烂橘子本来 1 分钟就能传染到的橘子,会被错记成第 3、4 分钟才烂,答案偏大。先把全部火种入队,队列洇开的层数才正好等于真实分钟数。',
+     jumpTo:11},
+    {q:'代入算一算:grid = [[2,2,1],[1,1,1],[0,1,1]],全部烂完要几分钟?',
+     options:['2 分钟','3 分钟','4 分钟','永远烂不完,返回 -1'],
+     answer:1,
+     explain:'第 0 分钟:烂橘子在 (0,0)、(0,1),新鲜 6 个。第 1 分钟:(0,0) 传染 (1,0),(0,1) 传染 (0,2) 和 (1,1)。第 2 分钟:(0,2) 传染 (1,2),(1,1) 传染 (2,1)——注意 (1,0) 的邻居全是空格或已烂,它这轮白烧。第 3 分钟:(1,2) 传染最后一个 (2,2),fresh 归零。答案 3 分钟。选 2 的人漏了「(0,0) 这支火种第二分钟就没事干了」;选 -1 的人把没连通看岔了——这图里每个新鲜橘子都连着烂橘子。',
+     jumpTo:57},
+    {q:'解法二(逐分钟模拟)里,为什么扫描时只把新鲜橘子记进 now 名单、整轮扫完才统一变烂,而不能边扫边改?',
+     options:['纯粹为了少写一层循环','边扫边改会让本轮刚烂的橘子立刻继续传染邻居——1 分钟里偷跑连锁反应,把好几轮压成一轮,分钟数会偏小','因为网格数组不支持边遍历边修改'],
+     answer:1,
+     explain:'这一分钟的传染依据必须是「上一分钟结束时的网格状态」。边扫边改,新烂的橘子(值已变 2)马上就能感染自己的邻居,一轮 BFS 的量被压进一分钟,比如经典例会从 4 分钟算成 2 分钟。先全员记账、再统一兑现,保证一轮只向外洇一格。代价是每分钟整格重扫,复杂度 O(mn·t),比 BFS 版 O(mn) 贵,但零数据结构、代码就是题面直译。',
+     jumpTo:31},
+  ],
+
+  steps(input){
+    const F = [];
+    const grid = input.grid.map(r => r.slice());
+    const m = grid.length, n = m ? grid[0].length : 0;
+    const q = [];                        // {i, j, seq}
+    let fresh = 0, minute = 0, seq = 0;
+    const snap = () => grid.map(r => r.slice());
+    const qSnap = () => q.map(o => ({key:'q' + o.seq, val:'(' + o.i + ',' + o.j + ')'}));
+    const rotSt = (extra) => {
+      const o = {};
+      for(let r = 0; r < m; r++) for(let c = 0; c < n; c++)
+        if(grid[r][c] === 2) o[r + ',' + c] = 'done';
+      return Object.assign(o, extra || {});
+    };
+    const rc = (i, j) => i + ',' + j;
+
+    const draw = (o) => (v) => {
+      v.grid('G', o.mat, {
+        label:'网格 <code>grid</code>　·　' + (o.glabel || '第 0 分钟'),
+        wallVal:0, states:o.states
+      });
+      v.stack('Q', o.queue, {
+        label:'队列 <code>q</code>　·　底部 = 队头（先烂先出队）',
+        states:o.qStates || {}
+      });
+      if(o.vars) v.vars('vars', o.vars, {label:'变量'});
+      if(o.result !== undefined) v.result(o.result, {label:'返回值'});
+    };
+
+    /* ★ 快照原则：o.mat / o.queue / o.states 全部在 F.push 那一刻拷贝定死 */
+
+    F.push({hl:[1,2,3,4,5,6], tag:'初始化', cls:'t-grey',
+      msg:m + '×' + n + ' 的网格：<code>2</code> 烂、<code>1</code> 新鲜、<code>0</code> 空。计划分两步：第一遍扫描把<b>所有</b>烂橘子一股脑入队当「火种」、顺手数出新鲜橘子个数 fresh；然后一层层向外传染——<b>队列洇开一层就是过 1 分钟</b>。为什么所有火种要同时烧？因为传染是同一时刻发生的，只从一个源头开始算，时间就会算错（旁边另一个火种可能 1 分钟就够到了）。',
+      do: draw({mat: snap(), queue: qSnap(), states: rotSt(), vars:{minute:0, fresh:'统计中…'}})});
+
+    for(let i = 0; i < m; i++){
+      for(let j = 0; j < n; j++){
+        const v0 = grid[i][j];
+        if(v0 === 2){
+          q.push({i:i, j:j, seq:seq++});
+          F.push({hl:[7,8,9,10], ok:9, tag:'扫描入队', cls:'t-green',
+            msg:'扫到 (' + i + ',' + j + ')：值是 2，烂橘子 → 第 9 行直接入队当「火种」，队列里现在有 <b>' + q.length + '</b> 个。注意这一遍扫描<b>不</b>做任何传染——所有火种都在第 0 分钟就位，之后同时开烧，谁也不抢先。',
+            do: draw({mat: snap(), queue: qSnap(), states: rotSt(),
+                      qStates:{['q' + (seq - 1)]:'just'}, vars:{minute:0, fresh:fresh}})});
+        } else if(v0 === 1){
+          fresh += 1;
+          F.push({hl:[7,8,11,12], ok:11, tag:'扫描计数', cls:'t-ink',
+            msg:'扫到 (' + i + ',' + j + ')：值是 1，新鲜橘子 → <code>fresh = ' + fresh + '</code>，先记个数。它现在还没资格进队列，要等火种烧到它的那一刻才入队。fresh 身兼两职：循环「还要不要继续烧」的开关 + 最后判 -1 的依据。',
+            do: draw({mat: snap(), queue: qSnap(), states: rotSt({[rc(i,j)]:'active'}),
+                      vars:{minute:0, fresh:fresh}})});
+        } else {
+          F.push({hl:[7,8], no:9, tag:'扫描', cls:'t-ink',
+            msg:'扫到 (' + i + ',' + j + ')：值是 0，空格——既不是火种也不是受害者，直接看下一格。',
+            do: draw({mat: snap(), queue: qSnap(), states: rotSt(),
+                      vars:{minute:0, fresh:fresh}})});
+        }
+      }
+    }
+
+    F.push({hl:[13], tag:'第 0 分钟', cls:'t-grey',
+      msg:'扫描完毕：<code>minute = 0</code>、<code>fresh = ' + fresh + '</code>、火种 ' + q.length + ' 个（全部算第 0 分钟的烂橘子）。接下来循环的规矩：<b>队列不空 且 fresh &gt; 0</b> 才继续烧——两个条件缺一不可，比如最后一分钟把新鲜橘子烧光后，fresh = 0 就直接收工，省一轮空转。',
+      do: draw({mat: snap(), queue: qSnap(), states: rotSt(), vars:{minute:0, fresh:fresh}})});
+
+    const dirs = [[1,0,'下'], [-1,0,'上'], [0,1,'右'], [0,-1,'左']];
+    while(q.length && fresh){
+      F.push({hl:[14], ok:14, tag:'while 检查', cls:'t-blue',
+        msg:'while 检查：队列里还有 <b>' + q.length + '</b> 个烂橘子（全是上一分钟刚烂的）、还有 <b>' + fresh + '</b> 个新鲜的 → 两个条件都成立，继续传染，接下来进入第 ' + (minute + 1) + ' 分钟。哪天队列空了（没火种）或 fresh 归零（没受害者），循环就停。',
+        do: draw({mat: snap(), queue: qSnap(), states: rotSt(), vars:{minute:minute, fresh:fresh}})});
+
+      minute += 1;
+      const levelSize = q.length;
+      F.push({hl:[15,16], tag:'第 ' + minute + ' 分钟', cls:'t-violet',
+        msg:'<code>minute = ' + minute + '</code>：新的一分钟开始。本分钟<b>固定只处理</b>队列里现有的 <b>' + levelSize + '</b> 个烂橘子——它们是上一分钟刚烂的，此刻一起向外传染一圈。<code>for _ in range(len(q))</code> 就是把「这一分钟」和「下一分钟」切开的闸门：处理期间新入队的都算下一分钟，绝不越层。',
+        do: draw({mat: snap(), queue: qSnap(), states: rotSt(),
+                  glabel:'第 ' + minute + ' 分钟 · 要扩散 ' + levelSize + ' 个', vars:{minute:minute, fresh:fresh}})});
+
+      for(let l = 0; l < levelSize; l++){
+        const cur = q.shift();
+        F.push({hl:[17], tag:'出队', cls:'t-blue',
+          msg:'<code>(' + cur.i + ',' + cur.j + ')</code> 出队（网格上标橙）：它这一分钟的任务就是看一眼<b>上下左右四个邻居</b>，谁是新鲜的就感染谁。烂过的橘子不会二次入队，所以每个格子最多出队一次——这是整体 O(mn) 的根基。',
+          do: draw({mat: snap(), queue: qSnap(), states: rotSt({[rc(cur.i, cur.j)]:'active'}),
+                    glabel:'第 ' + minute + ' 分钟', vars:{minute:minute, fresh:fresh}})});
+
+        for(let d = 0; d < 4; d++){
+          const ni = cur.i + dirs[d][0], nj = cur.j + dirs[d][1];
+          const inG = ni >= 0 && ni < m && nj >= 0 && nj < n;
+          const good = inG && grid[ni][nj] === 1;
+          F.push({hl:[18,19,20], ok: good ? 20 : undefined, no: good ? undefined : 20,
+            tag:'看邻居', cls: good ? 't-green' : 't-red',
+            msg: !inG
+              ? dirs[d][2] + '边邻居 (' + ni + ',' + nj + ') 出界 → 第 20 行条件不成立，跳过。网格边缘的橘子朝外没有邻居。'
+              : (good
+                ? dirs[d][2] + '边邻居 (' + ni + ',' + nj + ') 是新鲜橘子（值 1）→ <b>传染！</b>马上把它变烂、fresh 减一、并入队——下一分钟轮到它去感染自己的邻居。'
+                : dirs[d][2] + '边邻居 (' + ni + ',' + nj + ') 是 <code>' + LCesc(grid[ni][nj]) +
+                  '</code>（空格或已烂）→ 跳过。已烂的不再处理，正是「每格最多入队一次」的保证。'),
+            do: draw({mat: snap(), queue: qSnap(),
+                      states: rotSt(inG ? {[rc(ni,nj)]:'active'} : null),
+                      glabel:'第 ' + minute + ' 分钟', vars:{minute:minute, fresh:fresh}})});
+          if(!good) continue;
+          grid[ni][nj] = 2;
+          fresh -= 1;
+          q.push({i:ni, j:nj, seq:seq++});
+          F.push({hl:[21,22,23], tag:'传染', cls:'t-green',
+            msg:'<code>(' + ni + ',' + nj + ') 变 2</code>：新鲜橘子少一个，<code>fresh = ' + fresh + '</code>，新火种入队（下一分钟由它继续烧）。为什么必须<b>立刻</b>把值改成 2？——不马上改，等会儿别的烂橘子再看它还是 1，就会把它重复感染、重复入队。蓝格 = 这一步刚被传染的。',
+            do: draw({mat: snap(), queue: qSnap(), states: rotSt({[rc(ni,nj)]:'just'}),
+                      qStates:{['q' + (seq - 1)]:'just'}, glabel:'第 ' + minute + ' 分钟',
+                      vars:{minute:minute, fresh:fresh}})});
+        }
+      }
+    }
+
+    F.push({hl:[14], no:14, tag:'循环结束', cls:'t-red',
+      msg:'停止条件触发：' + (fresh === 0 ? '<code>fresh = 0</code>——最后一分钟传染的新橘子也全部清零，没有新鲜橘子剩下，循环结束。此刻 minute 正好停在完成最后一批传染的那一分钟。'
+        : '队列空了（没有火种可烧），但 <code>fresh = ' + fresh + '</code>——还有新鲜橘子没烂到。它们被空格或边界隔开，和任何烂橘子都不连通，烧再久也轮不到它们，这就是要返回 -1 的情况。'),
+      do: draw({mat: snap(), queue: qSnap(), states: rotSt(), vars:{minute:minute, fresh:fresh}})});
+
+    const out = fresh === 0 ? minute : -1;
+    F.push({hl:[24], tag:'返回', cls:'t-dark',
+      msg: fresh === 0
+        ? '🎉 <code>return minute = ' + minute + '</code>。复盘：绿色格子就是全部烂橘子；「队列洇开一层 = 过一分钟」，洇开的层数就是总分钟数。多源 BFS 相当于给所有火种外面套了个「超级源点」，每个格子第几分钟烂，取决于它到<b>最近</b>火种的距离。'
+        : '<code>fresh = ' + fresh + '</code> 没烂完 → <b>return -1</b>。剩下的新鲜橘子被空格/边界隔开了——BFS 只能烂到「连通」的新鲜橘子，这是题目专门设的坑。复杂度：每格最多入队一次，时间 O(mn)。',
+      do: draw({mat: snap(), queue: qSnap(), states: rotSt(), result: out})});
+
+    return F;
+  },
+
+  /* ========= 解法二：力扣官方题解 · 逐分钟模拟（不用队列） ========= */
+  alt: {
+    label: '官方 · 逐分钟模拟(不用队列)',
+    method: 'orangesRotting',
+
+    lede: '同一道题，这次<b>不用队列</b>：官方题解方法二就是题面的直译——<b>逐分钟模拟</b>。' +
+          '每一分钟把整张网格<b>重扫一遍</b>，凡四邻里贴着<b>上一轮</b>烂橘子的新鲜橘子，记进本轮名单 <span class="var v">now</span>（紫格）；' +
+          '整张扫完后，名单里的格子才<b>统一变烂</b>。为什么不能边扫边改？因为这一分钟的传染依据必须是<b>上一分钟结束时的状态</b>。' +
+          '某轮名单是空的就停表；收尾再数一眼新鲜橘子，没烂完返回 -1。',
+
+    roles: [
+      {c:'violet', code:'target', text:'本轮待烂 · 已记入 now 名单'},
+      {c:'blue',   code:'just',   text:'扫描结束后正在统一腐烂的格子'},
+      {c:'green',  code:'done',   text:'已经烂了的（值 = 2）'},
+      {c:'grey',   code:'wall',   text:'空格子（0）'}
+    ],
+
+    codeTitle: '跟着高亮读代码——<code>now</code> 名单是灵魂：第 9~17 行扫描时<b>只记账、不改格</b>（紫格 = 本轮待烂），' +
+               '第 20~22 行等本轮扫完才统一腐烂。想想：为什么必须用上一轮的状态？',
+
+    legend: [
+      {c:'green', text:'已腐烂（2）'},
+      {c:'violet', text:'本轮待烂（now 名单）'},
+      {c:'blue', text:'正在统一腐烂'},
+      {c:'grey', text:'空格（0）'}
+    ],
+
+    idea: '不用队列：每分钟整格重扫一遍，四邻有上一轮烂橘子的新鲜橘子记入 now 名单，本轮扫完才统一变烂；某轮零新增即停，收尾 fresh>0 则 -1。',
+
+    complexity: '时间 O(mn·t)（t = 分钟数，每轮整格重扫一遍；BFS 版为 O(mn)）　·　空间 O(mn)（本轮名单 now）',
+
+    qa: [
+      {q:'为什么必须先记名单 now、本轮扫完才统一变烂？',
+       a:'这一分钟的传染依据必须是<b>上一分钟结束时的网格状态</b>。如果边扫边把格子改成 2，本轮刚烂的橘子会立刻传染它的邻居——1 分钟里偷偷发生了连锁反应，相当于把好几轮 BFS 压成一轮，分钟数会偏小。先收集 now、最后统一改，保证一轮只向外蔓延一圈。'},
+      {q:'和多源 BFS（解法一）怎么取舍？',
+       a:'模拟版每分钟都要<b>整张网格重扫一遍</b>，最坏 O((mn)²)（比如一条长腐烂链要烧 mn 轮）；BFS 版每格只入队一次，严格 O(mn)。模拟版胜在<b>零数据结构</b>——不用 deque、不用队列，代码几乎是题面的直译，适合理解"时间步"的本质；追求效率选 BFS。'},
+      {q:'停止条件为什么是"某轮零新增"？',
+       a:'烂橘子的传染圈每分钟最多向外扩一格。若整整一轮没有任何新鲜橘子被记入名单，说明剩下的新鲜橘子全被空格/边界隔开了，之后再模拟多少轮也不会有变化——直接 break。'},
+      {q:'收尾的 fresh 检查在防什么？',
+       a:'模拟（和 BFS 一样）只能烂到"连通"的新鲜橘子。循环退出后 fresh > 0，说明有橘子永远等不到传染，按题意返回 -1——收尾逻辑与解法一完全一致。'}
+    ],
+
+    code: `# 解法二:力扣官方题解 方法二 逐分钟模拟(不用队列)
+class Solution:
+    def orangesRotting(self, grid):
+        m, n = len(grid), len(grid[0])
+        fresh = sum(row.count(1) for row in grid)
+        minute = 0
+        while fresh:                         # 还有新鲜橘子 → 再模拟一分钟
+            minute += 1
+            now = []                         # 本轮将烂名单: 只记账, 暂不改格
+            for i in range(m):
+                for j in range(n):
+                    if grid[i][j] != 1:      # 只关心新鲜橘子
+                        continue
+                    for x, y in ((i+1,j),(i-1,j),(i,j+1),(i,j-1)):
+                        if 0 <= x < m and 0 <= y < n and grid[x][y] == 2:
+                            now.append((i, j))   # 四邻有上一轮的烂橘子
+                            break
+            if not now:                      # 本轮零新增 → 之后也烂不动了
+                break
+            for i, j in now:                 # 本轮扫描结束后, 统一腐烂!
+                grid[i][j] = 2
+                fresh -= 1
+        return minute if fresh == 0 else -1
+`,
+
+    sol(input){
+      const g = input.grid.map(r => r.slice());
+      const m = g.length, n = m ? g[0].length : 0;
+      let fresh = 0, minute = 0;
+      g.forEach(r => r.forEach(v => { if(v === 1) fresh++; }));
+      while(fresh){
+        minute++;
+        const now = [];
+        for(let i = 0; i < m; i++)
+          for(let j = 0; j < n; j++){
+            if(g[i][j] !== 1) continue;
+            for(const [di, dj] of [[1,0],[-1,0],[0,1],[0,-1]]){
+              const x = i + di, y = j + dj;
+              if(x >= 0 && x < m && y >= 0 && y < n && g[x][y] === 2){ now.push([i, j]); break; }
+            }
+          }
+        if(!now.length) break;
+        for(const [i, j] of now){ g[i][j] = 2; fresh--; }
+      }
+      return fresh === 0 ? minute : -1;
+    },
+    expected: 4,
+
+    steps(input){
+      const F = [];
+      const grid = input.grid.map(r => r.slice());
+      const m = grid.length, n = m ? grid[0].length : 0;
+      let fresh = 0, minute = 0;
+      const now = [];                    // 本轮将烂名单 [{i, j}]
+      grid.forEach(r => r.forEach(v => { if(v === 1) fresh++; }));
+
+      const snap = () => grid.map(r => r.slice());
+      const rc = (i, j) => i + ',' + j;
+      const chips = () => now.map(p => '(' + p.i + ',' + p.j + ')');
+      const nowSt = () => { const o = {}; now.forEach(p => { o[rc(p.i, p.j)] = 'target'; }); return o; };
+      const rotSt = (extra) => {
+        const o = {};
+        for(let r = 0; r < m; r++) for(let c = 0; c < n; c++)
+          if(grid[r][c] === 2) o[r + ',' + c] = 'done';
+        return Object.assign(o, extra || {});
+      };
+      const vs = () => ({minute: minute, fresh: fresh, 'now 新增': now.length});
+
+      const draw = (o) => (v) => {
+        v.grid('G', o.mat, {label:'网格 <code>grid</code>　·　轮次见变量面板　·　绿=已腐烂 紫=本轮待烂 蓝=正在腐烂', wallVal:0, states:o.states});
+        v.set('now', o.chips, {label:'本轮将烂名单 <code>now</code>　·　只记账，扫完才统一变烂', color:'v'});
+        v.vars('vars', o.vars, {label:'变量', hl:o.hlVars || []});
+        if(o.result !== undefined) v.result(o.result, {label:'返回值'});
+      };
+
+      /* ★ 快照原则：mat/states/chips/vars 全部在 F.push 那一刻求值定死 */
+      F.push({hl:[1,2,3], tag:'读题', cls:'t-grey',
+        msg:'这一版<b>不用队列</b>：官方题解方法二「逐分钟模拟」——题面怎么说就怎么演。每过 1 分钟，把整张网格<b>重扫一遍</b>，凡四邻里贴着<b>上一轮</b>烂橘子的新鲜橘子，记进本轮名单 <code>now</code>（紫格）；整张扫完后，名单里的格子才<b>统一变烂</b>。看画面：紫 = 本轮待烂、绿 = 已腐烂，某轮名单空了就停表。',
+        do: draw({mat: snap(), chips: chips(), states: rotSt(),
+                  glabel:'第 0 分钟 · 准备', vars: vs()})});
+      F.push({hl:[4,5,6], tag:'统计 fresh', cls:'t-ink',
+        msg:'先用一行 <code>sum(row.count(1) ...)</code> 数出全部新鲜橘子：<code>fresh = ' + fresh + '</code>。它身兼两职：既是 <code>while fresh</code>「还要不要继续模拟」的开关，也是收尾判 -1 的依据——循环结束时它若还大于 0，说明有橘子永远等不到传染。',
+        do: draw({mat: snap(), chips: chips(), states: rotSt(),
+                  glabel:'第 0 分钟 · 准备', vars: vs(), hlVars:['fresh']})});
+
+      const DIRS = [[1,0,'下'], [-1,0,'上'], [0,1,'右'], [0,-1,'左']];
+      while(fresh){
+        F.push({hl:[7], ok:7, tag:'while 检查', cls:'t-blue',
+          msg:'<code>while fresh</code> 检查：<code>fresh = ' + fresh + '</code> &gt; 0，还有新鲜橘子没烂 → 继续模拟下一分钟。哪天 fresh 归零，循环自然结束，直接去返回结果。',
+          do: draw({mat: snap(), chips: chips(), states: rotSt(),
+                    glabel:'第 ' + minute + ' 分钟 · 已结束', vars: vs()})});
+        minute += 1;
+        F.push({hl:[8], tag:'新的一分钟', cls:'t-violet',
+          msg:'<code>minute = ' + minute + '</code>：时间 +1。上一分钟的战果已全部兑现成网格里的绿格（值 2）；这一分钟要<b>重新扫全网格</b>找新的受害者。模拟版的代价就在这：BFS 只碰队列，这里每分钟都要把 mn 个格子过一遍。',
+          do: draw({mat: snap(), chips: chips(), states: rotSt(),
+                    glabel:'第 ' + minute + ' 分钟 · 开始扫描', vars: vs(), hlVars:['minute']})});
+        now.length = 0;
+        F.push({hl:[9], tag:'清空名单', cls:'t-grey',
+          msg:'<code>now = []</code>：本轮名单清空——上一轮记的账已经全部兑现成烂橘子了。名单在本轮的铁律：<b>只记账、不改格</b>，保证这一分钟的传染依据是上一分钟结束时的状态。',
+          do: draw({mat: snap(), chips: chips(), states: rotSt(),
+                    glabel:'第 ' + minute + ' 分钟 · 开始扫描', vars: vs()})});
+
+        for(let i = 0; i < m; i++){
+          for(let j = 0; j < n; j++){
+            const v0 = grid[i][j];
+            if(v0 !== 1){
+              F.push({hl:[10,11,12,13], ok:12, tag:'扫描', cls:'t-ink',
+                msg:'扫到 (' + i + ',' + j + ')：值是 <code>' + LCesc(v0) + '</code>（空格或已烂）→ 第 12 行 <code>continue</code>。模拟只关心新鲜橘子的死活，别的格子看一眼就走。',
+                do: draw({mat: snap(), chips: chips(),
+                          states: rotSt(Object.assign(nowSt(), {[rc(i,j)]:'active'})),
+                          glabel:'第 ' + minute + ' 分钟 · 扫描 (' + i + ',' + j + ')', vars: vs()})});
+              continue;
+            }
+            let hit = null;
+            for(const [di, dj, dn] of DIRS){
+              const x = i + di, y = j + dj;
+              if(x >= 0 && x < m && y >= 0 && y < n && grid[x][y] === 2){ hit = dn + '边邻居 (' + x + ',' + y + ')'; break; }
+            }
+            if(hit){
+              now.push({i:i, j:j});
+              F.push({hl:[10,11,12,14,15,16,17], ok:15, tag:'记入名单', cls:'t-green',
+                msg:'(' + i + ',' + j + ') 是新鲜橘子，' + hit + ' 是<b>上一轮</b>的烂橘子 → <b>记入本轮名单 now</b>（第 ' + now.length + ' 个），随后 break 不再翻其他方向。<b>只记账、不改格</b>——这一分钟它还得保持新鲜「站好最后一班岗」，等本轮扫完才统一变烂。',
+                do: draw({mat: snap(), chips: chips(),
+                          states: rotSt(Object.assign(nowSt(), {[rc(i,j)]:'active'})),
+                          glabel:'第 ' + minute + ' 分钟 · 扫描 (' + i + ',' + j + ')', vars: vs(), hlVars:['now 新增']})});
+            } else {
+              F.push({hl:[10,11,12,14,15], no:15, tag:'安全', cls:'t-red',
+                msg:'(' + i + ',' + j + ') 是新鲜橘子，但上下左右翻了一圈，没找到<b>上一轮</b>的烂橘子 → 这一分钟它安全，名单不记它。注意「上一轮」三个字：本轮刚记入名单的橘子此刻值还是 1，传染不了任何人。',
+                do: draw({mat: snap(), chips: chips(),
+                          states: rotSt(Object.assign(nowSt(), {[rc(i,j)]:'active'})),
+                          glabel:'第 ' + minute + ' 分钟 · 扫描 (' + i + ',' + j + ')', vars: vs()})});
+            }
+          }
+        }
+
+        const got = now.length;
+        F.push({hl: got === 0 ? [18,19] : [18], ok: got === 0 ? 18 : undefined, no: got > 0 ? 18 : undefined,
+          tag:'本轮战果', cls: got > 0 ? 't-green' : 't-red',
+          msg: got > 0
+            ? '整张网格扫完：名单里有 <b>' + got + '</b> 个格子将被腐烂（紫格）→ 进入「统一腐烂」环节，把它们逐个兑现成绿格。'
+            : '本轮扫描结束：名单<b>空</b>！没有任何新鲜橘子挨着烂橘子——传染圈每分钟最多外扩一格，一圈下来颗粒无收，说明剩下的新鲜橘子全被空格/边界隔开了。<code>break</code> 停表：再模拟多少轮也不会有变化。',
+          do: draw({mat: snap(), chips: chips(), states: rotSt(nowSt()),
+                    glabel:'第 ' + minute + ' 分钟 · 本轮战果 ' + got + ' 个', vars: vs()})});
+        if(got === 0) break;
+
+        for(let a = 0; a < got; a++){
+          const p = now[a];
+          grid[p.i][p.j] = 2;
+          fresh -= 1;
+          const pend = {};
+          for(let b = a + 1; b < got; b++) pend[rc(now[b].i, now[b].j)] = 'target';
+          pend[rc(p.i, p.j)] = 'just';
+          F.push({hl:[20,21,22], tag:'统一腐烂', cls:'t-green',
+            msg: a === 0
+              ? '本轮扫描<b>全部结束</b>，名单里的格子现在才统一 <code>grid[i][j] = 2</code>（蓝格 = 正在腐烂）。为什么必须攒到最后？如果边扫边改，本轮刚烂的橘子会立刻传染它的邻居——1 分钟里偷偷发生了连锁反应，相当于把好几轮压成一轮，分钟数就会偏小。'
+              : '继续兑现名单：(' + p.i + ',' + p.j + ') 变烂，<code>fresh = ' + fresh + '</code>。名单是「只记不改」的存证，统一兑现时既不会漏也不会重。',
+            do: draw({mat: snap(), chips: chips(),
+                      states: rotSt(pend),
+                      glabel:'第 ' + minute + ' 分钟 · 统一腐烂', vars: vs(), hlVars:['fresh']})});
+        }
+      }
+
+      now.length = 0;
+      if(fresh === 0){
+        F.push({hl:[7], no:7, tag:'while 检查', cls:'t-red',
+          msg:'<code>fresh = 0</code> → 一个新鲜橘子都不剩了' + (minute > 0 ? '（共模拟了 ' + minute + ' 分钟）' : '（一开始就没有新鲜橘子）') + '，<code>while fresh</code> 不再成立，模拟结束。复盘节奏：每轮「先全员记账 → 再统一变烂」，一轮正好对应题目里的一分钟。',
+          do: draw({mat: snap(), chips: chips(), states: rotSt(),
+                    glabel:'模拟结束', vars: vs()})});
+      }
+
+      const out = fresh === 0 ? minute : -1;
+      F.push({hl:[23], tag:'返回', cls:'t-dark',
+        msg: fresh === 0
+          ? '🎉 <code>return minute = ' + minute + '</code>：一共模拟了 ' + minute + ' 轮，每轮整格重扫一遍，复杂度 O(mn·t)（t = 分钟数），比 BFS 的 O(mn) 贵——但胜在零数据结构，代码就是题面的直译。绿格就是全部烂橘子。'
+          : '<code>fresh = ' + fresh + '</code> 没烂完 → <b>return -1</b>。剩下的新鲜橘子被空格/边界隔开，模拟永远够不到它们——收尾判断和解法一完全一致。',
+        do: draw({mat: snap(), chips: chips(), states: rotSt(), result: out,
+                  glabel:'结束', vars: vs()})});
+
+      return F;
+    }
+  }
+});
+</script>
+</body>
+</html>

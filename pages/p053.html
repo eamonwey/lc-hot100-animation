@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P053 · 实现 Trie (前缀树) · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 53, num: 208, title: '实现 Trie (前缀树)', diff: '中等', cat: '图论',
+  method: 'run',
+  pyCheck: false,
+
+  lede: '题目：实现一个前缀树（Trie）——<b>insert</b> 把单词逐字符"种"进树里；<b>search</b> 查<span class="var o">完整单词</span>存不存在；' +
+        '<b>startsWith</b> 查<span class="var r">前缀</span>存不存在。评测器按 ops / args 逐条调用（代码最下方的驱动就是干这个的），' +
+        '返回 [null, null, true, …] 这样的序列。动画里 <span class="var o">cur</span> 沿字符一格格往下走：橙＝当前节点，绿＝词尾（end=True）。',
+
+  roles: [
+    {c:'orange', code:'cur',   text:'当前走到的节点'},
+    {c:'blue',   code:'son',   text:'儿子表：字符 → 子节点'},
+    {c:'green',  code:'end',   text:'词尾节点（end=True）'},
+    {c:'red',    code:'✗',     text:'走断了 / 查询失败'}
+  ],
+
+  codeTitle: '跟着高亮读代码——查不到的字符那行变<span style="color:var(--red)">红</span>＝走断（查不到），return 行变<span style="color:var(--green)">绿</span>＝查询成功。最下面的 class Solution 是校验驱动：模拟评测器按 ops 序列逐条调用（LeetCode 上答案类名是 Trie）。',
+
+  legend: [
+    {c:'orange', text:'cur 当前节点'},
+    {c:'green',  text:'词尾 end=True'},
+    {c:'blue',   text:'复用已有节点（省空间）'},
+    {c:'red',    text:'走断 / 失败'}
+  ],
+
+  idea: '查单词 = 沿树走到头，再看终点是不是词尾（end）；查前缀 = 走到头就行。公共前缀共享一条路径——这就是前缀树。',
+
+  qa: [
+    {q:'search 和 startsWith 只差一行，差在哪？',
+     a:'两者都要沿树走到底，区别只在终点：search 要求终点 <b>end=True</b>（真的是个完整单词）；startsWith 只要"路走得通"就够了。所以树里有 apple 时：search("app") 是 false，startsWith("app") 是 true。'},
+    {q:'为什么用树存，不用一个哈希表装所有单词？',
+     a:'哈希表能查整词，查不了前缀。前缀树把公共前缀<b>合并成一条路径</b>（apple 和 app 共用 a→p→p 三步），插入/查询都只花 O(词长)，前缀查询更是天然免费。'},
+    {q:'儿子表用哈希还是 26 格数组？',
+     a:'都行。<code>son[26]</code> 用下标当字符，稍快但只适合小写字母；哈希表（本题写法）能放任意字符，思路完全一样。<code>setdefault</code> 一行搞定"没有就建、有就复用"。'}
+  ],
+
+  complexity: '单次操作时间 O(L)（L = 词长）　·　空间 O(所有单词字符总数)（每个节点一层儿子表）',
+
+  form: [
+    {key:'ops',  label:'ops',  type:'strlist', def:['Trie','insert','search','startsWith','insert','search']},
+    {key:'args', label:'args', type:'json', def:[[],['apple'],['apple'],['app'],['app'],['app']]}
+  ],
+  presets: [
+    {label:'官方用例 apple/app', values:{ops:['Trie','insert','search','startsWith','insert','search'], args:[[],['apple'],['apple'],['app'],['app'],['app']]}},
+    {label:'分叉树 cat/car/cas', values:{ops:['Trie','insert','insert','search','startsWith','search'], args:[[],['cat'],['car'],['cas'],['ca'],['ca']]}},
+    {label:'空树就查（边界）', values:{ops:['Trie','search','startsWith'], args:[[],['a'],['ab']]}}
+  ],
+
+  code: `class Trie:
+    def __init__(self):
+        self.son, self.end = {}, False   # 儿子表: 字符→子节点 / 词尾标记
+    def insert(self, word):              # 逐字符沿树走, 缺就挂新节点
+        cur = self
+        for ch in word:
+            cur = cur.son.setdefault(ch, Trie())
+        cur.end = True                   # 走到头: 打上"词尾"记号
+    def search(self, word):              # 查完整单词
+        cur = self
+        for ch in word:
+            if ch not in cur.son: return False   # 走断了: 不存在
+            cur = cur.son[ch]
+        return cur.end                   # 恰好停在词尾才算数
+    def startsWith(self, prefix):        # 查前缀
+        cur = self
+        for ch in prefix:
+            if ch not in cur.son: return False
+            cur = cur.son[ch]
+        return True                      # 能走到头就是前缀
+
+class Solution:                          # 校验驱动: 模拟评测器按操作序列调用
+    def run(self, ops, args):
+        t, out = None, []
+        for op, arg in zip(ops, args):
+            if op == 'Trie': t = Trie(); out.append(None)
+            else: out.append(getattr(t, op)(arg[0]))
+        return out
+`,
+
+  sol(input){
+    function mk(){
+      return {
+        son:{}, end:false,
+        insert(w){ let c = this; for(const ch of w){ if(!c.son[ch]) c.son[ch] = mk(); c = c.son[ch]; } c.end = true; },
+        search(w){ let c = this; for(const ch of w){ if(!c.son[ch]) return false; c = c.son[ch]; } return c.end; },
+        startsWith(p){ let c = this; for(const ch of p){ if(!c.son[ch]) return false; c = c.son[ch]; } return true; }
+      };
+    }
+    const arg0 = a => Array.isArray(a) ? (a.length ? String(a[0]) : '')
+      : String(a == null ? '' : a).replace(/^\s*\[+/, '').replace(/\]+\s*$/, '').replace(/^['"]+|['"]+$/g, '').trim();
+    let t = null; const out = [];
+    (input.ops || []).forEach((op, i) => {
+      if(op === 'Trie'){ t = mk(); out.push(null); }
+      else if(!t){ out.push(null); }
+      else out.push(t[op](arg0((input.args || [])[i])));
+    });
+    return out;
+  },
+  expected: [null, null, true, true, null, true],
+
+  quiz: [
+    {q:'树里只插入过 "apple"。为什么 search("app") 返回 false?',
+     options:['因为 app 比 apple 短,长度不够格','因为 a→p→p 这条路走通了,但终点 end=False——app 只是被共享的前缀,从没被盖过「词尾章」','因为 search 会先把查询词插进树里再查'],
+     answer:1,
+     explain:'search 的验收有两条:①每个字符都走得通;②终点 end=True。app 的路确实存在(apple 顺手铺的),但盖过章的只有 e 节点,p 节点 end 还是 False → false。同样的位置换 startsWith("app") 就是 true——它只验收第①条,不看 end。光有路 ≠ 完整单词,这一眼之差就是两个方法的全部区别。',
+     jumpTo:21},
+    {q:'先 insert("apple") 再 insert("app"),此刻 search("app") 的结果?',
+     options:['false:app 永远只是 apple 的前缀,不算独立单词','true:第二次 insert 沿旧路走到 p 节点,顺手给它补盖了词尾章 end=True','不确定,取决于树的实现方式'],
+     answer:1,
+     explain:'insert("app") 三步全部命中「复用旧节点」(a、p、p 都是 apple 留下的),循环走到头 cur 停在第二个 p,执行 cur.end = True——词尾标记属于节点、可以后补,补上后 search("app") 立刻变 true。这也解释了为什么前缀树不会浪费空间:第二个词只花「新出的那几步」,共享前缀一份不重复存。',
+     jumpTo:34},
+    {q:'代入算一算:依次执行 Trie() → insert("time") → search("tim") → startsWith("timber") → search("time"),输出序列是?',
+     options:['[null, null, false, false, true]','[null, null, true, false, true]','[null, null, false, true, true]','[null, null, true, true, false]'],
+     answer:0,
+     explain:'三个查询三种命:search("tim")——t、i、m 都走得通,但 m 的 end=False(time 才是词尾)→ <b>false</b>;startsWith("timber")——t、i、m 走通后查 b,儿子表里根本没有 → 半路走断 → <b>false</b>;search("time")——路走通且 e 盖过章 → <b>true</b>。注意前两个 false 机理完全不同:一个是「路通但没盖章」,一个是「路本身就不存在」。',
+     jumpTo:40},
+  ],
+
+  steps(input){
+    const F = [];
+    const ops = (input.ops || []).map(s => String(s).trim());
+    const rawArgs = input.args || [];
+    const arg0 = a => Array.isArray(a) ? (a.length ? String(a[0]) : '')
+      : String(a == null ? '' : a).replace(/^\s*\[+/, '').replace(/\]+\s*$/, '').replace(/^['"]+|['"]+$/g, '').trim();
+    const EMPTY = {nodes:[], edges:[], w:120, h:60};
+
+    /* ---- k 叉树布局: 每次调用都生成全新快照对象(铁律 5) ---- */
+    function kLayout(root){
+      if(!root) return {nodes:[], edges:[], w:120, h:60};
+      let leaf = 0, maxD = 0;
+      const nodes = [], edges = [];
+      (function place(nd, d){
+        if(d > maxD) maxD = d;
+        let col;
+        if(!nd.sons.length){ col = leaf; leaf++; }
+        else{
+          let mn = Infinity, mx = -Infinity;
+          nd.sons.forEach(s => { const c = place(s, d + 1); if(c < mn) mn = c; if(c > mx) mx = c; });
+          col = (mn + mx) / 2;
+        }
+        nodes.push({key:nd.key, val:nd.val, x:8 + col * 78, y:30 + d * 60, leaf:!nd.sons.length});
+        nd.sons.forEach(s => edges.push([nd.key, s.key]));
+        return col;
+      })(root, 0);
+      return {nodes, edges, w:Math.max(120, 16 + leaf * 78), h:38 + (maxD + 1) * 60};
+    }
+
+    let trie = null, seq = 0;
+    const endKeys = [];                 // 词尾节点 key
+    const tags = {};                    // 持久标签: 根/词尾
+    const out = [];                     // 已产出的返回值
+    const snapTags = () => Object.assign({}, tags);
+    const nodeName = nd => (!nd || nd.ch === '') ? '根' : '节点 ' + nd.ch;
+
+    // 树上状态: 词尾 done / 路径 in / 当前 active(最后写, 优先级最高)
+    const tst = (cur) => {
+      const st = {};
+      endKeys.forEach(k => { st[k] = 'done'; });
+      let nd = cur;
+      while(nd){ st[nd.key] = 'in'; nd = nd._p; }
+      if(cur) st[cur.key] = 'active';
+      return st;
+    };
+
+    const draw = (o) => (v) => {
+      v.tree('T', o.lay, {
+        label:'前缀树 Trie　·　根不算字符，从根到某节点的路径拼出一个前缀',
+        states:o.tst || {}, tags:o.tags || {}
+      });
+      if(o.word) v.arr('word', o.word, {
+        label:'本次操作的词 <code>' + o.wlabel + '</code>',
+        quotes:true, states:o.wst || {}, markers:o.mk || []
+      });
+      v.vars('vars', {op:o.opLabel, cur:o.curName, out:o.outStr},
+        {label:'当前状态', hl:o.hlVars || []});
+      if(o.res !== undefined) v.result(o.res, {label:'输出（与 LeetCode 一致）'});
+    };
+
+    function insertOp(w, oi, opLabel){
+      const word = w.split('');
+      const mkCh = ci => [{name:'ch', idx:ci, cls:'mi', text:'▲ ch'}];
+      F.push({hl:[25,27,4,5], tag:'调用 insert', cls:'t-blue',
+        msg:'第 ' + (oi + 1) + ' 条操作 <b>insert("' + LCesc(w) + '")</b>：把单词<b>逐字符</b>种进树——cur 先站上根，每读一个字符就往下探一层：儿子表里有这个字符就走旧路，没有就挂个新节点。下方 word 数组已摆好，▲ ch 指着第 1 个字符待出发；词长 ' + w.length + '，单次插入就是 O(' + w.length + ') 步。',
+        do: draw({lay:kLayout(trie), tst:tst(trie), tags:snapTags(), word, wlabel:LCesc(w),
+                  wst:{}, mk:mkCh(0), opLabel, curName:'根', outStr:JSON.stringify(out)})});
+      let cur = trie;
+      for(let ci = 0; ci < w.length; ci++){
+        const ch = w[ci];
+        F.push({hl:[6], tag:'看第' + (ci + 1) + '个字符', cls:'t-ink',
+          msg:'读第 ' + (ci + 1) + ' 个字符 <b>' + LCesc(ch) + '</b>：cur 停在' + nodeName(cur) + '，它的儿子表里有这个字符吗？这一问是 insert 的全部机关——有就复用旧节点（公共前缀免费共享），没有就花一个新节点把路补上。',
+          do: draw({lay:kLayout(trie), tst:tst(cur), tags:snapTags(), word, wlabel:LCesc(w),
+                    wst:{[ci]:'active'}, mk:mkCh(ci), opLabel, curName:nodeName(cur), outStr:JSON.stringify(out)})});
+        if(cur.byCh[ch]){
+          F.push({hl:[7], tag:'复用旧节点', cls:'t-blue',
+            msg:'有！节点 ' + LCesc(ch) + ' 是之前种下的词留下的 → <b>直接复用</b>，cur 走过去（树上蓝色格）。公共前缀合并成一条路径、只存一份——第二个词只花"新出的那几步"，绝不给重复的前缀重复买单，这就是前缀树省空间又省时间的秘诀。',
+            do: draw({lay:kLayout(trie), tst:tst(cur.byCh[ch]), tags:snapTags(), word, wlabel:LCesc(w),
+                      wst:{[ci]:'in'}, mk:mkCh(ci), opLabel, curName:nodeName(cur.byCh[ch]), outStr:JSON.stringify(out)})});
+          cur = cur.byCh[ch];
+        } else {
+          const nd = {key:'n' + (++seq), val:ch, ch, sons:[], byCh:{}, end:false, _p:cur};
+          cur.sons.push(nd); cur.byCh[ch] = nd;
+          F.push({hl:[7], tag:'挂新节点', cls:'t-orange',
+            msg:'儿子表里没有它 → <b>挂上新节点 ' + LCesc(ch) + '</b>，cur 走过去，树长出一节（橙色新格）。对应代码 setdefault(ch, Trie())：没有就建、有就复用，一行同时干两件事——这就是 insert 每一步的全部逻辑。',
+            do: draw({lay:kLayout(trie), tst:tst(nd), tags:snapTags(), word, wlabel:LCesc(w),
+                      wst:{[ci]:'in'}, mk:mkCh(ci), opLabel, curName:nodeName(nd), outStr:JSON.stringify(out)})});
+          cur = nd;
+        }
+      }
+      cur.end = true;
+      if(!endKeys.includes(cur.key)) endKeys.push(cur.key);
+      tags[cur.key] = {text:'词尾', cls:'mg'};
+      out.push(null);
+      F.push({hl:[8], tag:'打词尾标记', cls:'t-green',
+        msg:'词种完了！cur 一路走到第 ' + w.length + ' 个字符 <code>' + LCesc(w[w.length - 1]) + '</code> 的节点，给它盖<b>词尾章 end = True</b>（树上挂起绿色"词尾"标签）——这个标记是 search 的验收依据：光有路只说明前缀存在，必须停在盖了章的节点才算完整单词。out 记下 null：insert 没有返回值。',
+        do: draw({lay:kLayout(trie), tst:tst(null), tags:snapTags(), word, wlabel:LCesc(w),
+                  wst:{[w.length - 1]:'just'}, mk:[], opLabel, curName:nodeName(cur),
+                  outStr:JSON.stringify(out), hlVars:['out']})});
+    }
+
+    function searchOp(w, oi, opLabel, wantEnd){
+      const word = w.split('');
+      const mkCh = ci => [{name:'ch', idx:ci, cls:'mi', text:'▲ ch'}];
+      const mname = wantEnd ? 'search' : 'startsWith';
+      F.push({hl: wantEnd ? [25,27,9,10] : [25,27,15,16], tag:'调用 ' + mname, cls:'t-blue',
+        msg:'第 ' + (oi + 1) + ' 条操作 <b>' + mname + '("' + LCesc(w) + '")</b>：从根出发沿树走，' + w.length + ' 个字符一个都不能走断。' +
+            (wantEnd ? 'search 的门槛更高：路要走通，<b>终点还得是词尾（end=True）</b>，两关都过才算完整单词。' : 'startsWith 查的是前缀：只要路走得通就成功，<b>它不看 end 标记</b>——这正是和 search 唯一的差别。'),
+        do: draw({lay:kLayout(trie), tst:tst(trie), tags:snapTags(), word, wlabel:LCesc(w),
+                  wst:{}, mk:mkCh(0), opLabel, curName:'根', outStr:JSON.stringify(out)})});
+      let cur = trie, dead = false;
+      for(let ci = 0; ci < w.length; ci++){
+        const ch = w[ci];
+        if(cur.byCh[ch]){
+          F.push({hl: wantEnd ? [11,12,13] : [17,18,19], tag:'有·走过去', cls:'t-blue',
+            msg:'第 ' + (ci + 1) + ' 个字符 <b>' + LCesc(ch) + '</b>：cur 的儿子表里有 → 走过去（蓝色路径又延长一格）' +
+                (ci + 1 < w.length ? '，后面还有 ' + (w.length - ci - 1) + ' 个字符要接。' : '，到头了——接下来给这条路下结论。'),
+            do: draw({lay:kLayout(trie), tst:tst(cur.byCh[ch]), tags:snapTags(), word, wlabel:LCesc(w),
+                      wst:{[ci]:'in'}, mk:mkCh(ci), opLabel, curName:nodeName(cur.byCh[ch]), outStr:JSON.stringify(out)})});
+          cur = cur.byCh[ch];
+        } else {
+          dead = true;
+          F.push({hl: wantEnd ? [11,12] : [17,18], no: wantEnd ? 12 : 18, tag:'走断了', cls:'t-red',
+            msg:'第 ' + (ci + 1) + ' 个字符 <b>' + LCesc(ch) + '</b>：cur 的儿子表里<b>没有</b>它——树里根本不存在这条前缀路，后面的字符不必再看，直接 <b>return False</b>。search 和 startsWith 在这一步待遇完全一样：路断了，一切免谈。',
+            do: draw({lay:kLayout(trie), tst:tst(cur), tags:snapTags(), word, wlabel:LCesc(w),
+                      wst:{[ci]:'block'}, mk:mkCh(ci), opLabel, curName:nodeName(cur), outStr:JSON.stringify(out)})});
+          break;
+        }
+      }
+      if(!dead){
+        if(wantEnd){
+          const hit = cur.end;
+          out.push(hit);
+          F.push({hl:[14], ok: hit ? 14 : undefined, no: hit ? undefined : 14, tag:'看词尾', cls: hit ? 't-green' : 't-red',
+            msg: hit
+              ? '路走通了，终点 <b>end = True</b>（insert 时盖的词尾章还在）→ <b>return True</b> ✓。search 和 startsWith 的分水岭就在这一眼：search 必须验章，验过才算完整单词。out 记 true。'
+              : '路走通了，但终点 <b>end = False</b>：它只是别人的前缀，从没被当词尾盖过章 → <b>return False</b>。同样的位置换 startsWith 来查就会返回 true——一行之差，两种查询。out 记 false。',
+            do: draw({lay:kLayout(trie), tst:tst(cur), tags:snapTags(), word, wlabel:LCesc(w),
+                      wst:{[w.length - 1]: hit ? 'just' : 'block'}, mk:[], opLabel, curName:nodeName(cur),
+                      outStr:JSON.stringify(out), hlVars:['out']})});
+        } else {
+          out.push(true);
+          F.push({hl:[20], ok:20, tag:'前缀成立', cls:'t-green',
+            msg:'路走通了 → 前缀 "' + LCesc(w) + '" 存在，<b>return True</b>。注意全程<b>没看 end</b>：哪怕终点只是某个单词的半截路，前缀查询也算数——所以树里只种过 apple 时，startsWith("app") 是 true、search("app") 却是 false。out 记 true。',
+            do: draw({lay:kLayout(trie), tst:tst(cur), tags:snapTags(), word, wlabel:LCesc(w),
+                      wst:{[w.length - 1]:'just'}, mk:[], opLabel, curName:nodeName(cur),
+                      outStr:JSON.stringify(out), hlVars:['out']})});
+        }
+      } else {
+        out.push(false);
+      }
+    }
+
+    F.push({hl:[1,2,3,22,23,24], tag:'开始', cls:'t-grey',
+      msg:'先立住比喻：前缀树像一本<b>按首字符分架的字典</b>——根不代表任何字符，从根往下每走一条边就多拼一个字符，一条根到节点的路径就是一个前缀，公共前缀只存一份。三个方法共用同一套走法：insert 边走边把缺的路补上，search 走到头还要<b>验词尾标记 end</b>（是完整单词才算数），startsWith 走通就算成功。此刻树还没建（画布上只有状态面板），评测器马上按 ops 列表逐条调用——最下面高亮的就是驱动循环，跟着每条操作看这棵树怎么长。',
+      do: draw({lay:EMPTY, opLabel:'—', curName:'—', outStr:'[]'})});
+
+    ops.forEach((op, oi) => {
+      const w = arg0(rawArgs[oi]);
+      const opLabel = op === 'Trie' ? 'Trie()' : op + '("' + w + '")';
+      if(op === 'Trie'){
+        trie = {key:'r', val:'根', ch:'', sons:[], byCh:{}, end:false, _p:null};
+        endKeys.length = 0;
+        Object.keys(tags).forEach(k => delete tags[k]);
+        tags.r = {text:'根', cls:'mq'};
+        out.push(null);
+        F.push({hl:[25,26], tag:'创建 Trie', cls:'t-blue',
+          msg:'第 ' + (oi + 1) + ' 条操作 <b>Trie()</b>：new 一个节点当根——它只有一张空儿子表 son 和 end=False，树上此刻只有入口、没有分叉。根不代表任何字符，它只是所有插入和查询的统一出发点。out 收下一个 null：构造函数没有返回值，这正是 LeetCode 期望序列里第一个 null 的来源。',
+          do: draw({lay:kLayout(trie), tst:tst(trie), tags:snapTags(), opLabel, curName:'根',
+                    outStr:JSON.stringify(out), hlVars:['out']})});
+        return;
+      }
+      if(!trie){
+        F.push({hl:[27], no:27, tag:'还没建树', cls:'t-red',
+          msg:'还没执行 Trie() 就来了 <b>' + LCesc(op) + '</b> → 树还不存在、无从查起，这条操作只能跳过。这也是驱动循环要先认 <code>Trie</code> 的原因：根对象必须先造出来，后续调用才有落脚点。',
+          do: draw({lay:EMPTY, opLabel, curName:'—', outStr:JSON.stringify(out)})});
+        return;
+      }
+      if(op === 'insert') insertOp(w, oi, opLabel);
+      else if(op === 'search') searchOp(w, oi, opLabel, true);
+      else if(op === 'startsWith') searchOp(w, oi, opLabel, false);
+      else F.push({hl:[27], no:27, tag:'未知操作', cls:'t-red',
+        msg:'不认识的操作 <b>' + LCesc(op) + '</b>：Trie 只有 insert / search / startsWith 三个方法 → 跳过，out 不变。',
+        do: draw({lay:kLayout(trie), tst:tst(null), tags:snapTags(), opLabel, curName:'—', outStr:JSON.stringify(out)})});
+    });
+
+    F.push({hl:[28], tag:'全部操作完成', cls:'t-dark',
+      msg:'操作序列跑完，输出 <b>' + LCesc(JSON.stringify(out)) + '</b>，和 LeetCode 期望一致。复盘三句话：insert 一路补路、结尾盖章 end=True；search 走通后<b>必须验章</b>；startsWith 走通就放行——同一棵树，两种查询只差终点那一眼。树上带"词尾"标签的绿色节点，就是完整单词的结尾。',
+      do: draw({lay: trie ? kLayout(trie) : EMPTY, tst:tst(null), tags:snapTags(),
+                opLabel:'完成 ✓', curName:'—', outStr:JSON.stringify(out), res:out.slice()})});
+
+    return F;
+  }
+});
+</script>
+</body>
+</html>

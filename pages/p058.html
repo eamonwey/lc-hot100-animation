@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P058 · 括号生成 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 58, num: 22, title: '括号生成', diff: '中等', cat: '回溯',
+  method: 'generateParenthesis',
+
+  lede: '题目：给出 n 对括号，生成<b>所有</b>合法组合（n=3 时恰好 5 个）。' +
+        '合法只有两条铁律：<span class="var r">(</span> 一共只有 n 个，没用完就能放；<span class="var o">)</span> 数量不能超过已放的 (，够数就能收口。' +
+        '动画里 <code>dfs(left, right)</code> 站在岔路口：每放一个字符 <code>path</code> 长一格，凑满 2n 个就把这条串收进 <code>ans</code>，然后一步步撤销回来换路走。',
+
+  roles: [
+    {c:'blue',   code:'left',  text:'已放的 ( 个数'},
+    {c:'orange', code:'right', text:'已放的 ) 个数'},
+    {c:'green',  code:'path',  text:'当前拼出的括号串'},
+    {c:'violet', code:'撤销',   text:'一条路走完, 弹回来试别的走法'}
+  ],
+
+  codeTitle: '跟着高亮读代码——<code>if</code> 行变<span style="color:var(--green)">绿</span>＝这个括号有资格放，变<span style="color:var(--red)">红</span>＝资格不够只能跳过；凑满 2n 个时收答案那行闪绿。',
+
+  legend: [
+    {c:'blue', text:'放 ( 的分支'},
+    {c:'orange', text:'放 ) 的分支'},
+    {c:'green', text:'凑满 2n 个, 收进 ans'},
+    {c:'violet', text:'path.pop() 撤销'}
+  ],
+
+  idea: '回溯就是"每个位置都按规则试一遍，试完撤销"：left < n 就放 (，right < left 就放 )，凑满 2n 收答案——合法组合一个不漏。',
+
+  qa: [
+    {q:'为什么这样生成的一定合法、还不重复？',
+     a:'两个条件是充要的：任何时刻 ) 都不比 ( 多、总数凑满 2n——这正是"合法括号串"的定义，所以<b>生成的全合法</b>；而每个位置放什么都不重不漏，同一条 path 只会被走一次，所以<b>不会有重复</b>。'},
+    {q:'path.pop() 到底在撤销什么？',
+     a:'递归进入 deeper 层前 path.append 过一个字符；这层的两个分支都试完后，必须把这个字符<b>弹掉恢复现场</b>，上层才能接着试另一种放法。不撤销的话，path 会带着上一轮的字符继续往下拼，全乱套。'},
+    {q:'答案为什么正好是"卡特兰数"个？',
+     a:'n=1 有 1 种、n=2 有 2 种、n=3 有 5 种、n=4 有 14 种——这正是卡特兰数 C(2n,n)/(n+1)。回溯不用记公式：把每条合法路都走一遍，答案个数自然就对。'}
+  ],
+
+  complexity: '时间 O(4^n / √n)（卡特兰数个合法串，每个 O(n) 拼接）　·　空间 O(n)（递归栈 + path，不计返回值）',
+
+  form: [
+    {key:'n', label:'n', type:'num', def:3}
+  ],
+  presets: [
+    {label:'n=3（默认，5 个）', values:{n:3}},
+    {label:'n=1（边界）', values:{n:1}},
+    {label:'n=2（2 个）', values:{n:2}}
+  ],
+
+  code: `class Solution:
+    def generateParenthesis(self, n):
+        ans, path = [], []
+
+        def dfs(left, right):        # 已放 left 个 '(' 和 right 个 ')'
+            if len(path) == 2 * n:   # 2n 个字符凑齐 → 这条路合法, 收答案
+                ans.append(''.join(path))
+                return
+            if left < n:             # '(' 还有余量 → 可以放 '('
+                path.append('(')
+                dfs(left + 1, right)
+                path.pop()           # 撤销, 回到岔路口
+            if right < left:         # ')' 不比 '(' 多 → 可以收口
+                path.append(')')
+                dfs(left, right + 1)
+                path.pop()           # 撤销, 回到岔路口
+
+        dfs(0, 0)
+        return ans
+`,
+
+  sol(input){
+    const n = input.n;
+    const ans = [], path = [];
+    (function dfs(left, right){
+      if(path.length === 2 * n){ ans.push(path.join('')); return; }
+      if(left < n){ path.push('('); dfs(left + 1, right); path.pop(); }
+      if(right < left){ path.push(')'); dfs(left, right + 1); path.pop(); }
+    })(0, 0);
+    return ans;
+  },
+  expected: ['((()))','(()())','(())()','()(())','()()()'],
+
+  quiz: [
+    {q:'放 ) 的条件为什么是 <code>right &lt; left</code>,而不是 <code>right &lt; n</code>?',
+     options:['两者等价,写 right < n 更直观','right < n 挡不住") 超前":path="(" 时也能放 ),生成 ")(" 这类任何后缀都救不回的坏串;right < left 保证任何前缀里 ) 都不追平 (','因为 right 和 left 是同一个变量'],
+     answer:1,
+     explain:'括号串合法的充要条件是"每个前缀里 ) 的个数 ≤ ( 的个数,且总数各 n"。right < left 每一步都在执行前半句:已放的 ) 想再放一个,必须已有等量的 ( 给它配对——) 永远不能追平或反超 (。若只卡 right < n,"(" 后面直接放 ) 的岔路是开的,(")(" 这样的串凑满 2n 也会被收进 ans,答案全错。放在哪一步设卡,决定了要不要事后返工。',
+     jumpTo:44},
+    {q:'代入算一算:n = 2 时,按 dfs 顺序生成的两个串是?',
+     options:['"()()"、"(())"','"(())"、"()()"','"(()"、"())"','"()()"、"(())"、"(())" 三条'],
+     answer:1,
+     explain:'dfs 先把「放 (」分支走到底:path 一路长成 "((",( 用光后连放两个 )) 收出 <b>"(())"</b>;撤销回岔路口,第二个位置改走"放 )",得 "()" 再补一对 "()" 收出 <b>"()()"</b>。深度优先 = 先探索"最贪心的 ( 打头"路线,所以 "(())" 排在 "()()" 前面。n=2 恰好 2 条 = 卡特兰数 C₂。',
+     jumpTo:79},
+    {q:'代入算一算:n = 4 时 ans 里有多少个组合?',
+     options:['5 个','9 个','14 个','16 个'],
+     answer:2,
+     explain:'卡特兰数列:1, 2, 5, <b>14</b>——n=1/2/3/4 分别对应。递推式 Cₖ = Σ Cᵢ·Cₖ₋₁₋ᵢ,C₄ = 1·5 + 1·5 + 2·2 + 5·1 = 14。回溯不用背公式:两条铁律把非法路全堵死,合法路一条不漏地走一遍,答案个数自然落在卡特兰数上。选 16 的人用了 2^(2n−2) 之类的错误直觉——合法约束砍掉了大量非法串。',
+     jumpTo:79},
+  ],
+
+  steps(input){
+    const F = [];
+    const rawN = Math.round(Number(input.n) || 0);
+    const n = Math.min(3, Math.max(1, rawN));
+    const truncated = n !== rawN;
+    const path = [];                  // 字符数组 ['(', ')', …]
+    const ans = [];                   // 收集到的串
+    const stk = [];                   // 递归栈显示项
+    let fid = 0;
+
+    const pTxt = () => path.length ? path.join('') : '（空）';
+    const pSt = (idx, st) => {
+      const o = {};
+      for(let j = 0; j < path.length; j++) o[j] = 'in';
+      if(idx != null) o[idx] = st || 'active';
+      return o;
+    };
+    const stkSnap = () => stk.slice();
+    const ansSnap = () => ans.slice();
+
+    const draw = (o) => (v) => {
+      const chars = o.chars || [], stk = o.stk || [];
+      v.arr('path', chars, {
+        label:'path 当前拼出的括号串　·　' + chars.length + ' / ' + (2 * n) + ' 个字符',
+        quotes:true, states:o.pst
+      });
+      v.stack('S', stk, {label:'递归调用栈', topTag:stk.length ? '栈顶' : null});
+      v.vars('vars', o.vars, {label:'计数器', hl:o.hlv || []});
+      v.set('ans', o.chips, {label:'ans 已收集的合法组合（' + o.chips.length + ' 个）', color:'g'});
+      if(o.res !== undefined) v.result(o.res, {label:'返回结果'});
+    };
+
+    function dfs(left, right, callLine){
+      stk.push({key:'f' + (++fid), val:'dfs(' + left + ', ' + right + ')'});
+      if(path.length === 2 * n){
+        const done = path.join('');
+        ans.push(done);
+        F.push({hl:[6,7,8].concat(callLine ? [callLine] : []), ok:6, tag:'凑满了！收集', cls:'t-green',
+          msg:'path 凑满 <b>' + path.length + ' / ' + (2 * n) + '</b> 个字符 → <code>' + done + '</code> 成形，收进 ans（第 ' + ans.length + ' 条），然后 return 回上层。它不用再复查一遍合法性：一路走来 ) 从没追平或反超 (、( 恰好用满 n 个，两条铁律从头守到尾，串天然合法——这正是"在岔路口设卡"的好处。画面：这条串整条变绿，ans 区新添一枚牌子，调用栈顶这层随即退掉。',
+          do: draw({chars:path.slice(), pst:pSt(path.length - 1, 'just'), stk:stkSnap(),
+                    vars:{left:left, right:right, 'len(path)':path.length}, hlv:['len(path)'],
+                    chips:ansSnap()})});
+        stk.pop();
+        return;
+      }
+      F.push({hl:[5,6].concat(callLine ? [callLine] : []), no:6, tag:'进入 dfs', cls:'t-blue',
+        msg:'进入 <b>dfs(' + left + ', ' + right + ')</b>：先读计数器——left=' + left + '（已放的 ( 个数）、right=' + right + '（已放的 ) 个数），path = <code>' + pTxt() +
+            '</code>，还差 ' + (2 * n - path.length) + ' 个字符凑满 → 这个位置是个岔路口，要决定下一个字符放什么。先问第一问：还能不能放 (？判定只看一条：<code>left &lt; n</code>，即 ( 还没用完。',
+        do: draw({chars:path.slice(), pst:pSt(), stk:stkSnap(),
+                  vars:{left:left, right:right, 'len(path)':path.length}, chips:ansSnap()})});
+
+      if(left < n){
+        path.push('(');
+        F.push({hl:[9,10], ok:9, tag:'放 (', cls:'t-blue',
+          msg:'<b>(</b> 目前只用了 ' + left + ' / ' + n + ' 个 → <code>left &lt; n</code> 成立，放心放进一个 (：path 变成 <code>' + pTxt() +
+              '</code>（第 ' + path.length + ' 格亮蓝）。放 ( 永远安全——多一个 ( 只会让"以后能放的 )"更多，绝不会当场造成不合法。接着带着新计数执行 <code>dfs(' + (left + 1) + ', ' + right + ')</code>：left 从 ' + left + ' 加到 ' + (left + 1) + '。',
+          do: draw({chars:path.slice(), pst:pSt(path.length - 1, 'just'),
+                    vars:{left:left, right:right, '还剩 (':n - left - 1}, hlv:['还剩 ('], chips:ansSnap()})});
+        dfs(left + 1, right, 11);
+        path.pop();
+        F.push({hl:[12], tag:'撤销 (', cls:'t-violet',
+          msg:'"放 (" 这条支路的<b>所有</b>后续可能都试完了 → <code>path.pop()</code> 弹掉末尾的 (，path 恢复成 <code>' + pTxt() + '</code>，计数也回到 left=' + left + '、right=' + right + '。这一下叫<b>恢复现场</b>：岔路口的牌面必须和刚进来时分毫不差，等会试 ")" 分支才不会串味——就像走迷宫用铅笔描路，探完一条得先擦掉，再描下一条。',
+          do: draw({chars:path.slice(), pst:pSt(null), vars:{left:left, right:right},
+                    chips:ansSnap()})});
+      } else {
+        F.push({hl:[9], no:9, tag:'( 用光了', cls:'t-red',
+          msg:'<b>(</b> 已经用满 ' + left + ' / ' + n + ' 个 → <code>left &lt; n</code> 不成立（红），这个分支直接跳过。这道卡保证 ( 绝不超标：若硬放第 ' + (n + 1) + ' 个 (，串里 ( 比 n 对所需的还多，结尾必然有 ( 收不拢。接着看第二问：能不能放 )。',
+          do: draw({chars:path.slice(), pst:pSt(null),
+                    vars:{left:left, right:right, '还剩 (':0}, chips:ansSnap()})});
+      }
+
+      if(right < left){
+        path.push(')');
+        F.push({hl:[13,14], ok:13, tag:'放 )', cls:'t-orange',
+          msg:') 已放 ' + right + ' 个、( 已放 ' + left + ' 个 → <code>right &lt; left</code> 成立，<b>可以收口</b>：放进一个 )，path 变成 <code>' + pTxt() +
+              '</code>（第 ' + path.length + ' 格亮橙）。<code>right &lt; left</code> 是括号合法的命门——任何前缀里 ) 都不许追平或反超 (，否则像 "())" 那样后半截永远配不了对。接着执行 <code>dfs(' + left + ', ' + (right + 1) + ')</code>：right 从 ' + right + ' 加到 ' + (right + 1) + '。',
+          do: draw({chars:path.slice(), pst:pSt(path.length - 1, 'just'),
+                    vars:{left:left, right:right, '还差 )':left - right - 1}, hlv:['还差 )'], chips:ansSnap()})});
+        dfs(left, right + 1, 15);
+        path.pop();
+        F.push({hl:[16], tag:'撤销 )', cls:'t-violet',
+          msg:'"放 )" 的支路也试完了 → 弹掉 )，path 回到 <code>' + pTxt() + '</code>。至此 dfs(' + left + ', ' + right + ') 的两个分支全试完，这层出栈、把控制权交还上层——上层会在<b>它自己</b>的岔路口接着试别的放法。"试探 → 收回 → 换路"这样一路滚回去，就是回溯的全部。',
+          do: draw({chars:path.slice(), pst:pSt(null), vars:{left:left, right:right},
+                    chips:ansSnap()})});
+      } else {
+        F.push({hl:[13], no:13, tag:') 不能放', cls:'t-red',
+          msg:') 已放 ' + right + ' 个、( 只有 ' + left + ' 个 → <code>right &lt; left</code> 不成立（红），<b>再放 ) 立刻非法</b>：此刻 path = <code>' + pTxt() + '</code> 里 ) 已经追平 (，再放一个 ) 就成了 ) 反超的前缀——这种串无论后面怎么补都救不回来。这道卡正是"右不能超左"铁律的执行点。',
+          do: draw({chars:path.slice(), pst:pSt(null), vars:{left:left, right:right},
+                    chips:ansSnap()})});
+      }
+      stk.pop();
+    }
+
+    F.push({hl:[1,2,3,18], tag:'初始化', cls:'t-grey',
+      msg:'目标：拼出 n = ' + n + ' 对括号的<b>所有</b>合法组合，每条长 <b>2 × ' + n + ' = ' + (2 * n) + '</b> 个字符。' +
+          (truncated ? '（输入超过 3，动画按 n=3 演示）' : '') +
+          '合法只需守住两条铁律：<b>( 一共只有 n 个，没用完就能放；) 的数量绝不能超过已放的 (</b>——比如 path 是 "()" 时再放 )，就成了后半截永远配不了对的坏串。画面从上到下：path 是正在拼的串、调用栈是正在走的岔路、ans 收集成品。现在 left=0、right=0 双双清零，从 dfs(0, 0) 出发。',
+      do: draw({chars:[], pst:{}, stk:[], vars:{n:n, left:0, right:0}, chips:[]})});
+
+    dfs(0, 0, null);
+
+    F.push({hl:[19], tag:'递归结束', cls:'t-dark',
+      msg:'所有岔路走完，<code>ans</code> 收齐 <b>' + ans.length + '</b> 个合法组合：' + ans.map(s => '<code>' + s + '</code>').join('、') +
+          '。为什么一个不漏、一个不重？每个位置我们都把"放 ( / 放 )"两种可能各试了一遍（不漏），而每条 path 只被走一次（不重）。n=' + n + ' 时恰好 ' + ans.length + ' 个——这正是卡特兰数。',
+      do: draw({chars:[], pst:{}, stk:[], vars:{n:n, left:0, right:0}, chips:ansSnap(), res:ans.slice()})});
+
+    return F;
+  }
+});
+</script>
+</body>
+</html>

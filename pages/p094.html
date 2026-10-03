@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P094 · 最长回文子串 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 94, num: 5, title: '最长回文子串', diff: '中等', cat: '多维动态规划',
+  method: 'longestPalindrome',
+
+  lede: '题目：在字符串 <span class="var r">s</span> 里找出<b>最长的回文子串</b>（正着读反着读一样的连续一段）。' +
+        '思路是<b>中心扩展</b>：把每个位置都当一次回文中心，<span class="var i">L</span>、<span class="var r">R</span> 两根名牌从中心向两边同步往外伸，' +
+        '两边字符一直相等就一直扩，扩不动了量一下长度——比历史最佳长就破纪录。每个中心试两遍：<b>奇数长度</b>（中心是一个字符）和<b>偶数长度</b>（中心是中间那条缝）。',
+
+  roles: [
+    {c:'violet', code:'c',   text:'当前尝试的中心位置'},
+    {c:'blue',   code:'L',   text:'左针：往左扩'},
+    {c:'orange', code:'R',   text:'右针：往右扩'},
+    {c:'green',  code:'best',text:'绿色的格子 = 目前最佳回文'}
+  ],
+
+  codeTitle: '跟着高亮读代码——while 行变<span style="color:var(--green)">绿</span>＝两侧相等，继续外扩；变<span style="color:var(--red)">红</span>＝撞边界或字符不等，停下量长度。',
+
+  legend: [
+    {c:'violet', text:'中心 c'},
+    {c:'blue',   text:'L / R 正在比较、扩出来的窗口'},
+    {c:'green',  text:'当前最佳回文子串'}
+  ],
+
+  idea: '枚举每个中心（奇 + 偶两种），L、R 向两边扩到不能扩为止，用 r−l−1 量长度，破纪录就记下 —— O(n²) 但代码最短、最不容易写错。',
+
+  qa: [
+    {q:'为什么要分奇数、偶数两种中心？',
+     a:'奇回文（如 "aba"）中心是<b>一个字符</b>，L=R=c 起步；偶回文（如 "abba"）中心是<b>两个字符中间的缝</b>，L=c、R=c+1 起步。少试一种就会漏答案，比如 "cbbd" 的 "bb" 只有偶中心能找到。'},
+    {q:'为什么回文长度是 r−l−1？',
+     a:'while 停下来时 L、R 已经<b>多走了一步</b>（走到不相等或边界的位置），真正的回文夹在中间：s[l+1 .. r−1]，长度 = (r−1)−(l+1)+1 = r−l−1。'},
+    {q:'复杂度多少？和 DP 法比呢？',
+     a:'n 个中心 × 每个最多扩 O(n) → 时间 O(n²)、空间 O(1)。区间 DP 也是 O(n²) 时间但要 O(n²) 空间存表；中心扩展代码短、省空间，面试首选。想更快有 Manacher O(n)，但极少要求手写。'},
+    {q:'"babad" 有两个答案 "bab" 和 "aba"，算对吗？',
+     a:'都算对——题目说可以返回任意一个。本页的实现用严格大于比较，先扫到的 "bab"（中心 1）会保住王位，后面同样长的 "aba"（中心 2）不会替换它。'}
+  ],
+
+  complexity: '时间 O(n²)　·　空间 O(1)（只记最佳区间）',
+
+  form: [
+    {key:'s', label:'s', type:'str', def:'babad'}
+  ],
+  presets: [
+    {label:'babad → bab', values:{s:'babad'}},
+    {label:'cbbd → bb（偶中心）', values:{s:'cbbd'}},
+    {label:'ac → a（没有回文对）', values:{s:'ac'}},
+    {label:'a（单字符边界）', values:{s:'a'}}
+  ],
+
+  code: `class Solution:
+    def longestPalindrome(self, s):
+        n = len(s)
+        best = ''
+        for c in range(n):          # 每个位置当一次中心
+            for l, r in [(c, c), (c, c+1)]: # 奇/偶中心
+                while l >= 0 and r < n and s[l]==s[r]:
+                    l -= 1          # 两侧相等, 左针左移
+                    r += 1          # 右针右移
+                if r - l - 1 > len(best): # 更长的回文
+                    best = s[l + 1:r]   # 记下新答案
+        return best
+`,
+
+  sol(input){
+    const s = String(input.s || '');
+    const n = s.length;
+    let best = '';
+    for(let c = 0; c < n; c++){
+      for(const lr of [[c, c], [c, c + 1]]){
+        let l = lr[0], r = lr[1];
+        while(l >= 0 && r < n && s[l] === s[r]){ l--; r++; }
+        if(r - l - 1 > best.length) best = s.slice(l + 1, r);
+      }
+    }
+    return best;
+  },
+  expected: 'bab',
+
+  quiz: [
+    {q:'while 停下来量长度用的是 r−l−1,为什么不是 r−l+1?',
+     options:['写反了吧?回文明明夹在 s[l..r] 里,长度就该是 r−l+1','停下时 L、R 已经各自多走了一步(越界,或停在第一对不相等的字符上),真回文夹在中间的 s[l+1..r−1] 里,(r−1)−(l+1)+1 = r−l−1','因为回文长度一定是奇数,得减掉中心那一格'],
+     answer:1,
+     explain:'循环的节奏是"先验证相等、再各走一步":进 while 时 l、r 这对相等,随后 l−1、r+1。所以停下来时摆在 l、r 上的要么是边界外、要么是第一对对不上的字符——都不属于回文,回文本体是被夹住的 s[l+1..r−1],按闭区间数长度 = (r−1)−(l+1)+1 = r−l−1。拿最小情形验收:中心 c=0 一进 while 就扩到 l=−1、r=1 停下,r−l−1 = 1,恰好是单字符 "b" 本身。选项 A 没看见"多走了一步";选项 C 更站不住——"abba" 这种长度 4 的偶回文照样由 r−l−1 量出。',
+     jumpTo:4},
+    {q:'s = "cbbd"。以 c=1(第一个 b)为中心:奇中心、偶中心各量出多长?最长回文是什么?',
+     options:['奇中心量出 1、偶中心量出 2——"bb" 只有偶中心探得到,答案 "bb"','奇中心量出 2、偶中心量出 2——两种中心都能扩出 "bb"','奇中心量出 1、偶中心量出 0——没有偶回文,答案退回单字符'],
+     answer:0,
+     explain:'奇中心 L=R=1:第一层 s[1]==s[1] 恒真,扩到 l=0、r=2 时 s[0]="c" ≠ s[2]="b" 停下,长 2−0−1 = 1(就是 "b" 自己);偶中心 L=1、R=2:中心是两个 b 中间那条缝,s[1]==s[2] 先过一关,扩到 l=0、r=3 时 "c" ≠ "d" 停下,长 3−0−1 = 2 → "bb"。这题就是"每个中心必须试两遍"的铁证:偶回文的正中是两字符的接缝,任何单字符中心都探不到它——少试偶中心,答案就错成单字符。',
+     jumpTo:6},
+    {q:'区间 DP 和中心扩展都是 O(n²) 时间,面试手写通常更推荐哪个?为什么?',
+     options:['中心扩展——空间只要 O(1)(记两个端点),代码最短;区间 DP 还得背 O(n²) 的表,按长度填表的顺序也不能写错','区间 DP——表都建好了,时间其实只要 O(n)','必须区间 DP——中心扩展会漏掉 "bb" 这类偶回文'],
+     answer:0,
+     explain:'两者时间同为 O(n²),差距在空间与代码量:中心扩展全程只攥着"当前最佳区间"的两个端点,空间 O(1);区间 DP 要整张 n×n 布尔表(O(n²) 空间),还必须按子串长度从小到大填——乱序扫表会抄到还没算的里层格,把真回文误判成假。选项 C 是经典误解:中心扩展只要像本页这样把奇、偶两种中心都试一遍,"bb" 照样找得到,两种方法答案完全一致。区间 DP 的价值在系统性(全表可复用给回文切割、回文计数等题),论手写它不是首选。',
+     jumpTo:39},
+  ],
+
+  steps(input){
+    const F = [];
+    const s = String(input.s || '');
+    const n = s.length;
+    const chars = s.split('');
+    let best = '', bestL = 0, bestR = -1;   // best = s[bestL..bestR]
+
+    const draw = (o) => (v) => {
+      v.arr('s', chars, {label:'字符串 <code>s</code>　·　绿色 = 当前最佳回文',
+        quotes:true, states:o.st || {}, markers:o.mk || [], idxCls:o.ix || {}});
+      if(o.info) v.text('info', o.info, {label:'回文进度'});
+      if(o.vars) v.vars('vars', o.vars, {label:'当前变量', hl:o.hlv || []});
+      if(o.res !== undefined) v.result(o.res, {label:'返回结果'});
+    };
+
+    // 快照：状态染色（铁律 5）
+    const stOf = (l, r, c, extra) => {
+      const o = Object.assign({}, extra);
+      for(let k = bestL; k <= bestR; k++) if(o[k] == null) o[k] = 'done';
+      for(let k = l + 1; k <= r - 1; k++) o[k] = 'in';
+      if(c != null && c >= 0 && c < n) o[c] = 'active';
+      return o;
+    };
+    const mkOf = (l, r, c) => {
+      const a = [{name:'L', idx:l, cls:'mr', text:'▲ L'}, {name:'R', idx:r, cls:'mi', text:'▲ R'}];
+      if(c != null) a.push({name:'c', idx:c, cls:'mv', text:'▲ c'});
+      return a;
+    };
+    const palTxt = (a, b) => {
+      const p = s.slice(a, b + 1);
+      return p ? '"' + LCesc(p) + '"（长 ' + p.length + '）' : '（还没扩出）';
+    };
+    const info = (mode, l, r) => {
+      const bst = '最佳：' + (best ? '"' + LCesc(best) + '"（长 ' + best.length + '）' : '（空）');
+      if(mode === 'exp') return '已确认回文 s[' + l + '..' + r + '] = ' + palTxt(l, r) + '　·　' + bst;
+      if(mode === 'try') return '本轮起点：L=' + l + '、R=' + r + '（还没确认相等）　·　' + bst;
+      return '本轮扩出 s[' + (l + 1) + '..' + (r - 1) + '] = ' + palTxt(l + 1, r - 1) + '　·　' + bst;
+    };
+
+    F.push({hl:[1,2,3,4], tag:'初始化', cls:'t-grey',
+      msg:'best 先记空串（画面暂无绿色格子）。回文天生对称：中心一定，左右两半必然镜像——所以不用建 DP 表，直接<b>把每个位置都当一次中心</b>，L、R 两根名牌从中心向两边同步伸，最外层两个字符相等就再伸一格，伸不动就量长度，破纪录就换答案。注意每个中心要试<b>两遍</b>：奇中心（一个字符居中，如 "aba"）和偶中心（两个字符中间那条缝居中，如 "abba"）——少试一种就会漏答案，比如 "cbbd" 里的 "bb" 只有偶中心能找到。',
+      do: draw({st:{}, mk:[], info:info('done', -1, -1), vars:{c:'—', l:'—', r:'—', 最佳:'(空)'}})});
+
+    for(let c = 0; c < n; c++){
+      for(const lr of [[c, c, '奇'], [c, c + 1, '偶']]){
+        let l = lr[0], r = lr[1];
+        const kind = lr[2];
+
+        F.push({hl:[5,6], tag:'试' + kind + '中心', cls: kind === '奇' ? 't-violet' : 't-blue',
+          msg: kind === '奇'
+            ? '第 <b>' + c + '</b> 轮先试<b>奇数中心</b>：把 s[' + c + '] = <code>' + LCesc(s[c]) + '</code> 当作回文正中间的<b>那一个字符</b>，L = R = ' + c + '，两针叠在它身上。像 "aba" 这种奇回文中心就是单个字符，两针从它出发向两边镜像展开；单字符自己天然是长 1 的回文，这个起点必然成立。画面上紫色 ▲c 标出中心，蓝 L、橙 R 即将同步外扩。'
+            : '同一中心再试<b>偶数中心</b>：L = ' + l + '、R = ' + r + '，中心不再是某个字符，而是 <code>' + LCesc(s[c]) + '</code> 和 <code>' + (c + 1 < n ? LCesc(s[c + 1]) : '?') + '</code> 中间那条<b>缝</b>。像 "abba" 这种偶回文正中是两字符的接缝，没有任何单字符居中，奇中心永远探不到——这就是每个位置必须试两遍的原因。' + (c + 1 < n ? '' : 'R = ' + r + ' 已越界，while 条件一上来就不成立，本轮长度按 0 记，无害。'),
+          do: draw({st: stOf(l, r, c), mk: mkOf(l, r, c),
+                    ix:{[c]:'on-i'},
+                    info: kind === '奇' ? info('exp', l, r) : info('try', l, r),
+                    vars:{c:c, l:l, r:r, 本轮长度:'—', 最佳:best || '(空)'}})});
+
+        while(l >= 0 && r < n && s[l] === s[r]){
+          F.push({hl:[7,8,9], ok:7, tag:'两侧相等', cls:'t-green',
+            msg:'<code>s[' + l + ']</code> 和 <code>s[' + r + ']</code> 都是 <code>' + LCesc(s[l]) + '</code>——最外层这对相等，而夹在中间的 s[' + (l + 1) + '..' + (r - 1) + '] 要么是空段、要么是前几步刚确认过的回文，镜像一包，整段 s[' + l + '..' + r + '] 必然也是回文。' +
+                '于是 L 左移一格、R 右移一格，像洋葱再往外包一层，试着扩大一圈；画面上闪黄的两格就是刚验证成功的这对。',
+            do: draw({st: stOf(l, r, c, (function(){ const e = {}; e[l] = 'just'; e[r] = 'just'; return e; })()),
+                      mk: mkOf(l, r, c), ix:{[c]:'on-i'},
+                      info:info('exp', l, r),
+                      vars:{c:c, l:l, r:r, 本轮长度:r - l + 1, 最佳:best || '(空)'}})});
+          l -= 1; r += 1;
+        }
+
+        let reason;
+        if(l < 0) reason = 'L 越过左边界（l = ' + l + '），左边没有字符了';
+        else if(r >= n) reason = 'R 越过右边界（r = ' + r + '），右边没有字符了';
+        else reason = 's[' + l + ']=' + LCesc(s[l]) + ' ≠ s[' + r + ']=' + LCesc(s[r]) + '，这两个字符对不上';
+        F.push({hl:[7], no:7, tag:'扩不动了', cls:'t-red',
+          msg: reason + ' → while 停下，这轮扩展到头了。关键点：停下时 L、R 都已经<b>各多走了一步</b>（越过了真正的回文边界），回文是夹在中间的 s[' + (l + 1) + '..' + (r - 1) + ']，长度 = (r−1) − (l+1) + 1 = r − l − 1 = <b>' + (r - l - 1) + '</b>——这就是代码量长度用 r−l−1 而不是 r−l+1 的原因，也是这题最常见的踩坑点。',
+          do: draw({st: stOf(l, r, null), mk: mkOf(l, r, null),
+                    info:info('done', l, r),
+                    vars:{c:c, l:l, r:r, 本轮长度:r - l - 1, 最佳:best || '(空)'}})});
+
+        const len = r - l - 1;
+        const oldBest = best, oldLen = best.length;
+        const rec = len > oldLen;
+        if(rec){ best = s.slice(l + 1, r); bestL = l + 1; bestR = r - 1; }
+        const recSt = {};
+        if(rec){ for(let k = l + 1; k <= r - 1; k++) recSt[k] = 'done'; }
+        else{
+          for(let k = bestL; k <= bestR; k++) recSt[k] = 'done';
+          for(let k = l + 1; k <= r - 1; k++) if(recSt[k] == null) recSt[k] = 'in';
+        }
+        F.push({hl: rec ? [10,11] : [10], ok: rec ? 10 : undefined, no: rec ? undefined : 10,
+          tag: rec ? '破纪录！' : '不换', cls: rec ? 't-dark' : 't-grey',
+          msg: rec
+            ? '本轮量出长 ' + len + ' 的回文 <b>' + palTxt(l + 1, r - 1) + '</b>，比原最佳 ' +
+              (oldLen ? '"' + LCesc(oldBest) + '"（长 ' + oldLen + '）' : '（空）') +
+              ' 更长 → <b>破纪录！</b><code>best = "' + LCesc(best) + '"</code> 🎉 整个算法不需要任何表格：每个中心只记两个区间端点，空间 O(1)——画面上绿色格子换成了新的最佳回文。'
+            : '本轮只量出长 ' + len + '，不超过当前最佳（长 ' + best.length + '）→ best 保持 <code>"' + LCesc(best) + '"</code> 不变。注意比较用的是<b>严格大于</b>：同样长不替换，所以像 "babad" 会保住先扫到的 "bab"，后面等长的 "aba" 顶不掉它（题目允许返回任意一个）。画面上绿色保持原区间，本轮扩出的部分用蓝色浅标。',
+          do: draw({st: recSt, mk: mkOf(l, r, null),
+                    info:info('done', l, r),
+                    vars:{c:c, l:l, r:r, 本轮长度:len, 最佳:best || '(空)'}, hlv:['最佳']})});
+      }
+    }
+
+    F.push({hl:[12], tag:'返回', cls:'t-dark',
+      msg:'所有中心（每个都试了奇、偶两遍）扫完：<code>return best</code> = <b>"' + LCesc(best) + '"</b>（长 ' + best.length + '）🎉。复盘：n 个中心 × 每个最多扩 O(n) 步 → 时间 O(n²)，全程只存两个区间端点 → 空间 O(1)；相比区间 DP 要背 O(n²) 的表，中心扩展代码最短、最不易错，面试首选。绿色格子就是最终答案——最长回文子串。',
+      do: (function(){
+        const st = {};
+        for(let k = bestL; k <= bestR; k++) st[k] = 'done';
+        return draw({st: st, mk:[], res: best});
+      })()});
+
+    return F;
+  },
+
+  /* ========= 解法二：力扣官方 · 区间 DP ========= */
+  alt: {
+    label: '官方 · 区间 DP',
+    method: 'longestPalindrome',
+
+    lede: '同一道题换力扣官方的<b>区间动态规划</b>：开一张 n×n 的 DP 表，<code>dp[i][j]</code> 记"子串 s[左端 <span class="var i">i</span> .. 右端 <span class="var r">j</span>] 是不是回文"。转移只有一条：<b>两端字符相等，且（长度 ≤3 或 里层 dp[i+1][j−1] 也是回文）</b>。按子串<b>长度从小到大</b>填表——短串先铺好，长串才查得动里层；边填边记最长的真区间。画面上表格从主对角线出发，一条斜线一条斜线往右上铺满。',
+
+    roles: [
+      {c:'orange', code:'i', text:'▲ i：左端点名牌（正在填格子的行）'},
+      {c:'blue',   code:'j', text:'▲ j：右端点名牌（列）'},
+      {c:'green',  code:'✓', text:'dp 表绿 ✓ = s[i..j] 是回文'},
+      {c:'violet', code:'best', text:'紫色 = 当前最佳回文（串上高亮 / 表上来源格）'}
+    ],
+
+    codeTitle: '跟着高亮读代码——第 13 行变<span style="color:var(--green)">绿</span>＝两端相等（再看长度/里层）；变<span style="color:var(--red)">红</span>＝两端不等直接判死。填表轨迹：主对角线 → 一条条往右上的斜线。',
+
+    legend: [
+      {c:'orange', text:'(i,j) 正在填的格子'},
+      {c:'green',  text:'✓ 回文成立（白底 ✗ = 非回文）'},
+      {c:'violet', text:'当前最佳回文子串'},
+      {swatch:'#f0efe9', text:'灰格 = j&lt;i 死区，永远用不到'}
+    ],
+
+    idea: 'dp[i][j] = 两端相等 且（长度 ≤3 或 里层 dp[i+1][j−1] 回文）——按长度从小到大填表，短串铺路、长串查表，边填边记最长。',
+
+    qa: [
+      {q:'为什么要按「长度」枚举，而不是一行一行、一列一列扫表？',
+       a:'dp[i][j]（长 L）的判断要查 dp[i+1][j−1]——长度恰好少 2 的那个里层区间。按长度从小到大填，算到任何一格时它依赖的那格必定已填好；若按行/列乱序扫，就可能抄到一个还没算的 False，把真回文误判成假。反映在画面上：填表轨迹是从主对角线出发的一条条斜线，斜线号 = 子串长度。'},
+      {q:'j − i &lt; 3 这个边界到底什么意思？',
+       a:'区间长度 = j − i + 1。长度 1（主对角线）天生回文；长度 2 是 "xx"、长度 3 是 "xyx"——中间要么没人、要么孤零零一个字符，怎样都回文，所以<b>只要两端相等就必是回文</b>，第 16 行因 j − i &lt; 3 短路，根本不查里层。从长度 4（如 "abba"）起才需要真去查 dp[i+1][j−1]。'},
+      {q:'区间 DP 和主解法（中心扩展）怎么选？中心扩展会漏偶回文吗？',
+       a:'不会漏——主解法每个中心都试了奇、偶两遍，"cbbd" 的 "bb" 靠偶中心一样能找到；两种方法结果完全一致。真正的取舍在空间：区间 DP 时间 O(n²) 之外还要 <b>O(n²) 空间</b>背整张表，中心扩展只有 O(1)。区间 DP 赢在系统性——所有区间的真假白纸黑字摆在表上，不依赖"想到试两种中心"的灵感，这张表还能直接复用给回文切割、回文计数等题；面试手写首选中心扩展，需要全表预处理时才上 DP。'}
+    ],
+
+    complexity: '时间 O(n²)（表上每格 O(1)）　·　空间 O(n²)（整张 dp 表）',
+
+    code: `class Solution:
+    def longestPalindrome(self, s):
+        n = len(s)
+        if n < 2:                  # 空串/单字符本身就是答案
+            return s
+        dp = [[False] * n for _ in range(n)]   # dp[i][j]: s[i..j] 是否回文
+        for i in range(n):         # 地基: 长度 1 全是回文
+            dp[i][i] = True
+        max_len, begin = 1, 0      # 最佳保底: 任意单字符
+        for L in range(2, n + 1):  # 按子串长度从小到大
+            for i in range(n - L + 1):   # 该长度下枚举左端点
+                j = i + L - 1        # 右端点由 L 和 i 定死
+                if s[i] != s[j]:     # 两端不等
+                    dp[i][j] = False # 必不是回文
+                else:                # 两端相等
+                    dp[i][j] = j - i < 3 or dp[i + 1][j - 1]   # 长≤3 直接成立, 否则查里层
+                if dp[i][j] and j - i + 1 > max_len:   # 破纪录才换(等长不换)
+                    max_len, begin = j - i + 1, i
+        return s[begin:begin + max_len]
+`,
+
+    sol(input){
+      const s = String(input.s == null ? '' : input.s);
+      const n = s.length;
+      if(n < 2) return s;
+      const dp = [];
+      for(let i = 0; i < n; i++) dp.push(new Array(n).fill(false));
+      for(let i = 0; i < n; i++) dp[i][i] = true;
+      let maxLen = 1, begin = 0;
+      for(let L = 2; L <= n; L++){
+        for(let i = 0; i + L - 1 < n; i++){
+          const j = i + L - 1;
+          if(s[i] !== s[j]) dp[i][j] = false;
+          else dp[i][j] = (j - i < 3) || dp[i + 1][j - 1];
+          if(dp[i][j] && j - i + 1 > maxLen){ maxLen = j - i + 1; begin = i; }
+        }
+      }
+      return s.slice(begin, begin + maxLen);
+    },
+    expected: 'bab',
+
+    steps(input){
+      const F = [];
+      const s = String(input.s == null ? '' : input.s);
+      const n = s.length;
+      const chars = s.split('');
+      const dp = [];
+      for(let i = 0; i < n; i++) dp.push(new Array(n).fill(false));
+      const M = [];                                  // 展示矩阵: '✓'/'✗'/null=未填
+      for(let i = 0; i < n; i++) M.push(new Array(n).fill(null));
+      let maxLen = 1, begin = 0;
+
+      /* ★ 快照原则：M/dp/maxLen/begin 全部在 push 时刻切片/读数定死，do() 只读快照 o */
+      const disp = () => M.map(r => r.slice());
+      const stOf = (cur, markBest) => {
+        const st = {};
+        for(let i = 0; i < n; i++) for(let j = 0; j < n; j++){
+          const k = i + ',' + j;
+          if(j < i) st[k] = 'muted';
+          else if(M[i][j] != null && dp[i][j]) st[k] = 'done';
+        }
+        if(cur != null) st[cur] = 'active';
+        if(markBest && maxLen > 0) st[begin + ',' + (begin + maxLen - 1)] = 'target';
+        return st;
+      };
+      const bestSt = () => {
+        const st = {};
+        for(let k = begin; k < begin + maxLen && k < n; k++) st[k] = 'target';
+        return st;
+      };
+      const bestTxt = () => '最佳：<b>' + (maxLen > 0 ? LCesc(s.slice(begin, begin + maxLen)) : '（空）') +
+        '</b>（长 ' + maxLen + '，从下标 ' + begin + ' 起）';
+      const mkOf = (i, j) => [
+        {name:'i', idx:i, cls:'mi', text:'▲ i'},
+        {name:'j', idx:j, cls:'mr', text:'▲ j'}
+      ];
+      const ixOf = (i, j) => { const o = {}; o[i] = 'on-i'; o[j] = 'on-r'; return o; };
+
+      const draw = o => (v) => {
+        v.arr('s', chars, {label:'字符串 <code>s</code>　·　紫色 = 当前最佳回文子串',
+          quotes:true, states:o.sst || {}, markers:o.mk || [], idxCls:o.ix || {}});
+        v.grid('dp', o.mat, {label:'DP 表 <code>dp</code>　·　行 = 左端 i，列 = 右端 j　·　' + o.note,
+          states:o.st || {}});
+        if(o.vars) v.vars('vars', o.vars, {label:'当前变量', hl:o.hlv || []});
+        if(o.best) v.text('best', o.best, {html:true, label:'当前最佳'});
+        if(o.res !== undefined) v.result(o.res, {label:'返回结果'});
+      };
+
+      F.push({hl:[1,2,3], tag:'读题', cls:'t-grey',
+        msg:'还是这道题：找<b>最长回文子串</b>。这一版换力扣官方的<b>区间 DP</b>：开一张 <b>' + n + '×' + n + '</b> 的布尔表，<code>dp[i][j]</code> 白纸黑字记下"子串 s[i..j] 是不是回文"。只有 j ≥ i 的<b>上三角</b>对应真实区间，左下三角（j&lt;i）是"区间不存在"的死区，画面上永久灰掉。和主解法一句话说清区别：中心扩展只攥着两个端点现场往外扩，DP 把<b>每一段区间的真假</b>都存进表里——先填表，再查最长的 ✓。',
+        do: draw({mat:disp(), note:'（预告）空表未填 · 左下三角 = 死区', st:stOf(null, false),
+                  vars:{n:n, L:'—', i:'—', j:'—', max_len:'—', begin:'—'}})});
+
+      F.push({hl:[4,5], ok: n < 2 ? 4 : undefined, no: n < 2 ? undefined : 4,
+        tag:'边界检查', cls: n < 2 ? 't-green' : 't-blue',
+        msg: n < 2
+          ? 'n = ' + n + ' &lt; 2：空串/单字符本身就是回文，第 5 行直接 <code>return s</code>——连表都不用开，因为根本没有"长度 ≥ 2 的子串"可枚举。这个后门也保证了后面 max_len = 1 的保底永远合法。'
+          : 'n = ' + n + ' ≥ 2，不用走第 5 行的后门。但它必须存在：空串/单字符时下面"从长度 2 开始"的循环一枚举就扑空，提前 <code>return s</code> 才稳。',
+        do: draw({mat:disp(), note:'空表未填', st:stOf(null, false),
+                  vars:{n:n, L:'—', i:'—', j:'—', max_len:'—', begin:'—'}})});
+      if(n < 2){
+        F.push({hl:[5], tag:'直接返回', cls:'t-dark',
+          msg:'🎉 <code>return s</code> = <b>"' + LCesc(s) + '"</b>：长度不足 2 的字符串，自己就是自己的最长回文子串。',
+          do: draw({mat:disp(), note:'无需填表', st:stOf(null, false), res:s})});
+        return F;
+      }
+
+      F.push({hl:[6], tag:'建表', cls:'t-grey',
+        msg:'<code>dp</code> 开成 n×n 的全 False 空表：先假设所有区间都不是回文，接下来逐格翻案。真实区间一共只有 ' + (n * (n + 1) / 2) + ' 个（上三角格数），每格存一个布尔值——这张表就是官方解法付出的 <b>O(n²) 空间</b>，换来的是"任何一段是不是回文"随时可查。',
+        do: draw({mat:disp(), note:'全 False 空表', st:stOf(null, false),
+                  vars:{n:n, L:'—', i:'—', j:'—', max_len:'—', begin:'—'}})});
+
+      for(let i = 0; i < n; i++){ dp[i][i] = true; M[i][i] = '✓'; }
+      F.push({hl:[7,8], tag:'铺地基', cls:'t-green',
+        msg:'先把<b>主对角线</b>点亮成 ✓（<code>dp[i][i] = True</code>）：单字符自己跟自己相等，长度 1 的子串<b>天生回文</b>。这是整张表的地基——后面任何长区间的判断层层剥皮，最后都要落到这排 ✓ 上。画面上对角线一排绿；接下来填表就从这里出发，一条斜线一条斜线往右上推进。',
+        do: draw({mat:disp(), note:'地基：主对角线全 ✓', st:stOf(null, false),
+                  vars:{n:n, L:'—', i:'—', j:'—', max_len:'—', begin:'—'}})});
+
+      F.push({hl:[9], tag:'保底答案', cls:'t-violet',
+        msg:'<code>max_len = 1、begin = 0</code>：答案先保底为 s[0] = <code>' + LCesc(s[0]) + '</code>（长 1）。有这个保底，最后 <code>return s[begin:begin+max_len]</code> 永远有合法答案可交——单字符回文谁都有。串上紫色高亮就是当前最佳，每破一次纪录它就换一次位置。',
+        do: draw({mat:disp(), note:'保底：s[0..0]', st:stOf(null, true), sst:bestSt(), best:bestTxt(),
+                  vars:{L:'—', i:'—', j:'—', max_len:maxLen, begin:begin}, hlv:['max_len','begin']})});
+
+      for(let L = 2; L <= n; L++){
+        const cnt = n - L + 1;
+        const intro = L === 2
+          ? '最短的待定区间登场：像 "aa" 这样并排的两个相同字符，就算回文。'
+          : L === 3
+            ? '像 "xyx"：中间那个字符孤零零的、怎样都回文，所以这一档仍然两端相等即成立。'
+            : '从这一档起光两端相等不够了——第 16 行要真去查里层 dp[i+1][j−1]（长 ' + (L - 2) + '，住在左下第二条斜线上，上一轮刚填完），比如 "abba" 两端都是 a，还得看中间 "bb" 是不是回文。';
+        F.push({hl:[10,11], tag:'进入长度 ' + L, cls:'t-blue',
+          msg:'开始填<b>长度 ' + L + '</b>：在表上，同长度的区间恰好排成 j−i = ' + (L - 1) + ' 的<b>一条斜线</b>，共 ' + cnt + ' 格。' + intro +
+              '为什么<b>按长度从小到大</b>枚举、而不是一行一行扫表？长度 L 的真假要查长度 L−2 的里层 dp[i+1][j−1]——按长度排任务，算到任何一格时依赖的那格必定已填好；乱序扫表就可能抄到还没算的 False，把真回文误判成假。',
+          do: draw({mat:disp(), note:'长度 ' + L + ' 斜线：j−i = ' + (L - 1) + '，共 ' + cnt + ' 格',
+                    st:stOf(null, true), sst:bestSt(), best:bestTxt(),
+                    vars:{L:L, i:'—', j:'—', max_len:maxLen, begin:begin}})});
+
+        for(let i = 0; i + L - 1 < n; i++){
+          const j = i + L - 1;
+          const eq = s[i] === s[j];
+          F.push({hl:[11,12,13], ok: eq ? 13 : undefined, no: eq ? undefined : 13,
+            tag:'比 (' + i + ',' + j + ')', cls:'t-ink',
+            msg:'长度 ' + L + ' 斜线上轮到左端点 <b>i = ' + i + '</b>：右端点被公式定死 <code>j = i + L − 1 = ' + j + '</code>。比较两端字符：s[' + i + '] = <code>' + LCesc(s[i]) + '</code> vs s[' + j + '] = <code>' + LCesc(s[j]) + '</code>' +
+              (eq ? ' —— <b>相等</b>，外壳成立，s[i..j] 有戏，但还要按长度决定查不查里层。' : ' —— <b>不等</b>。回文必须两头镜像，第一层外壳就对不上，里层不用看，下一帧直接判死。') +
+              ' 表上橙格就是正在填的 (i,j)，串上 ▲i、▲j 名牌指向两端。',
+            do: draw({mat:disp(), note:'正在比较 s[' + i + '] vs s[' + j + ']', st:stOf(i + ',' + j, true),
+                      sst:bestSt(), mk:mkOf(i, j), ix:ixOf(i, j),
+                      vars:{L:L, i:i, j:j, 's[i]':s[i], 's[j]':s[j], max_len:maxLen, begin:begin}})});
+
+          const oldMax = maxLen, oldBegin = begin;
+          let val, innerTxt = '';
+          if(!eq){ val = false; }
+          else if(j - i < 3){ val = true; }
+          else {
+            val = dp[i + 1][j - 1];
+            innerTxt = '剥掉外壳的里层 dp[' + (i + 1) + '][' + (j - 1) + ']（长 ' + (L - 2) + '）= <b>' + (val ? '✓' : '✗') + '</b>，';
+          }
+          dp[i][j] = val;
+          M[i][j] = val ? '✓' : '✗';
+          const recd = val && j - i + 1 > oldMax;
+          if(recd){ maxLen = j - i + 1; begin = i; }
+          const stB = stOf(i + ',' + j, true);
+          if(!val) stB[i + ',' + j] = 'block';
+          const recTxt = recd
+            ? '第 17 行：长 ' + L + ' &gt; max_len ' + oldMax + ' → <b>破纪录！</b>begin = ' + i + '、max_len = ' + L + '，串上紫色高亮换成 <b>"' + LCesc(s.slice(i, i + L)) + '"</b> 🎉'
+            : '第 17 行：长 ' + L + ' 没超过 max_len ' + oldMax + ' → 不换。比较用的是<b>严格大于</b>，等长保先出现——和主解法保住先扫到的 "bab" 是同一个道理（题目允许返回任意一个）。';
+
+          let btag, bcls, bhl, bok, bno;
+          if(!eq){
+            btag = '判死'; bcls = 't-red'; bhl = [14,17]; bno = 17;
+          } else {
+            btag = recd ? '破纪录！' : (val ? '判真' : '判死');
+            bcls = recd ? 't-dark' : (val ? 't-green' : 't-red');
+            bhl = recd ? [15,16,17,18] : [15,16,17];
+            if(recd) bok = 17; else { bok = val ? 16 : undefined; bno = val ? 17 : 16; }
+          }
+
+          let bmsg;
+          if(!eq){
+            bmsg = '两端 <code>' + LCesc(s[i]) + '</code> ≠ <code>' + LCesc(s[j]) + '</code> → 第 14 行写入 dp[' + i + '][' + j + '] = <b>✗</b>（红闪一下 = 此路不通）。第 17 行的破纪录检查第一项 dp[i][j] 就是 False，直接短路 → max_len 保持 ' + oldMax + '、begin 保持 ' + oldBegin + '。把这些 ✗ 也白纸黑字记下来并不浪费：将来更长的区间查里层时，直接抄这张表的判决，不用重新扩一遍。';
+          } else if(j - i < 3){
+            bmsg = '两端相等，且长度 = j − i + 1 = ' + L + ' ≤ 3（j − i = ' + (L - 1) + ' &lt; 3）→ 第 16 行短路直接判 <b>✓</b>，不查里层。为什么敢：长度 2 是 "xx" 并排、长度 3 是 "xyx"，中间那个字符怎样都回文——两端一相等就万事俱备。' + recTxt;
+          } else {
+            bmsg = '两端相等，但长度 = ' + L + ' ≥ 4（j − i = ' + (L - 1) + '），光外壳对上还不算数：' + innerTxt +
+              '→ 第 16 行判 dp[' + i + '][' + j + '] = <b>' + (val ? '✓' : '✗') + '</b>。这就是区间 DP 的灵魂——<b>长区间的真假由短区间递推</b>，一层层剥皮，最终落到对角线地基上。' + recTxt;
+          }
+
+          F.push({hl:bhl, ok:bok, no:bno, tag:btag, cls:bcls,
+            msg:bmsg,
+            do: draw({mat:disp(), note:'(' + i + ',' + j + ') 判 ' + (val ? '✓' : '✗'), st:stB,
+                      sst:bestSt(), mk:mkOf(i, j), ix:ixOf(i, j),
+                      vars:{L:L, i:i, j:j, max_len:maxLen, begin:begin},
+                      hlv: recd ? ['max_len','begin'] : []})});
+        }
+      }
+
+      F.push({hl:[10], no:10, tag:'填表完成', cls:'t-grey',
+        msg:'L 涨到 ' + (n + 1) + '，超过 n = ' + n + ' → 所有长度枚举完毕，循环收尾。收官看表：上三角 ' + (n * (n + 1) / 2) + ' 格全部落定——绿 ✓ 每格都是货真价实的回文区间，白 ✗ 都被证伪，紫格是当前最佳区间的来源。下一帧把它取出来。',
+        do: draw({mat:disp(), note:'上三角全部落定', st:stOf(null, true), sst:bestSt(), best:bestTxt(),
+                  vars:{L:'—', i:'—', j:'—', max_len:maxLen, begin:begin}})});
+
+      F.push({hl:[19], tag:'返回', cls:'t-dark',
+        msg:'🎉 <code>return s[' + begin + ':' + (begin + maxLen) + ']</code> = <b>"' + LCesc(s.slice(begin, begin + maxLen)) + '"</b>（长 ' + maxLen + '）。复盘：上三角每格 O(1) → 时间 O(n²)；整张表要背着走 → <b>空间 O(n²)</b>——这是它和主解法（中心扩展，空间 O(1)）最本质的取舍。公平地说：中心扩展只要把奇、偶两种中心都试一遍（主解法正是如此），同样不会漏 "bb" 这类偶回文，两种方法答案一致；区间 DP 赢在<b>系统性</b>——所有区间的真假摆在表上，不靠"想到试两种中心"的灵感，这张表还能直接复用给回文切割、回文计数等题。',
+        do: draw({mat:disp(), note:'答案：最长 ✓ 区间', st:stOf(null, true), sst:bestSt(), best:bestTxt(),
+                  res:s.slice(begin, begin + maxLen)})});
+
+      return F;
+    }
+  }
+});
+</script>
+</body>
+</html>

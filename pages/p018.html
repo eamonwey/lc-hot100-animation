@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P018 · 矩阵置零 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 18, num: 73, title: '矩阵置零', diff: '中等', cat: '矩阵',
+  method: 'setZeroes',
+
+  lede: '题目：矩阵里某个元素是 0，就把它<b>所在的整行整列</b>都清成 0，要求原地完成。' +
+        '陷阱在于：不能边扫边清——会把还没看到的格子污染成"假 0"。' +
+        '动画分两阶段：先<b>立记号</b>（某个格子是 0，就在它的行首、列首写 0），' +
+        '再<b>按记号置零</b>；首行首列自己的命运，先抄进 <span class="var r">fr</span>、<span class="var r">fc</span> 两个布尔里。',
+
+  roles: [
+    {c:'orange', code:'active', text:'正在检查的格子'},
+    {c:'violet', code:'pivot',  text:'记号位：首行/首列上的 0'},
+    {c:'red',    code:'block',  text:'这一步刚被置零的格子'},
+    {c:'green',  code:'done',   text:'完工的 0（最终结果）'}
+  ],
+
+  codeTitle: '跟着高亮读代码——发现 0 时 if 变<span style="color:var(--green)">绿</span>＝立记号；' +
+             '第二遍里 if 变绿＝记号生效、格子要变 0，变<span style="color:var(--red)">红</span>＝这个格子保住了。',
+
+  legend: [
+    {c:'orange', text:'正在检查'},
+    {c:'violet', text:'记号位（首行/首列的 0）'},
+    {c:'red',    text:'正在置零'},
+    {c:'green',  text:'完工的 0'}
+  ],
+
+  idea: '先立记号后置零：某行有 0 → 行首记 0，某列有 0 → 列首记 0；首行首列当记号本，fr/fc 先抄底。',
+
+  qa: [
+    {q:'为什么不能扫到一个 0 就直接清它那行那列？',
+     a:'清零会"顺路污染"还没扫到的格子：之后你看到 (3,5) 是 0，分不清它是<b>本来就有</b>的 0' +
+       '（要立记号）还是<b>被传染</b>的 0（不能立记号），第二遍就彻底乱套。先记号、后执行，读写分离。'},
+    {q:'为什么挑首行和首列当记号本？',
+     a:'第 i 行有没有 0，记在 matrix[i][0]；第 j 列有没有 0，记在 matrix[0][j]——' +
+       '正好 m+n 个现成格子，一点额外空间都不用。代价是首行首列自己会被写花，' +
+       '所以先用 fr/fc 两个布尔把它们原始的"有没有 0"抄走。'},
+    {q:'为什么首行首列要留到最后才清？',
+     a:'因为记号本不能<b>边用边擦</b>：内部格子还在靠它查"我这一行/列要不要变 0"。' +
+       '等内部全处理完，才按 fr/fc 的记录整行整列地清。'},
+    {q:'复杂度？',
+     a:'第一遍立记号 + 第二遍置零，各扫一遍内部格子，加上两次首行首列的收尾，总共 O(mn)；' +
+       '额外空间只有 fr、fc 两个布尔，O(1)。'}
+  ],
+
+  complexity: '时间 O(mn)（两遍扫描）　·　空间 O(1)（只开 fr/fc 两个布尔）',
+
+  form: [
+    {key:'matrix', label:'matrix（每行一行）', type:'grid', def:[[1,1,1],[1,0,1],[1,1,1]]}
+  ],
+  presets: [
+    {label:'3×3 中心 0（经典例）', values:{matrix:[[1,1,1],[1,0,1],[1,1,1]]}},
+    {label:'首行带 0（fr 触发）', values:{matrix:[[0,1,2],[3,4,5],[6,7,8]]}},
+    {label:'两个 0 交叉传染', values:{matrix:[[1,1,1],[1,0,1],[1,1,0]]}},
+    {label:'单行矩阵（边界）', values:{matrix:[[1,0,3]]}}
+  ],
+
+  code: `class Solution:
+    def setZeroes(self, matrix):
+        m, n = len(matrix), len(matrix[0])
+        fr = any(matrix[0][j] == 0 for j in range(n))   # 首行自带 0 吗?
+        fc = any(matrix[i][0] == 0 for i in range(m))   # 首列自带 0 吗?
+        for i in range(1, m):            # 第一遍: 扫内部, 立记号
+            for j in range(1, n):
+                if matrix[i][j] == 0:
+                    matrix[i][0] = 0     # 行记号 → 首列
+                    matrix[0][j] = 0     # 列记号 → 首行
+        for i in range(1, m):            # 第二遍: 按记号置零
+            for j in range(1, n):
+                if matrix[i][0] == 0 or matrix[0][j] == 0:
+                    matrix[i][j] = 0
+        for j in range(n):               # 最后补清首行
+            if fr: matrix[0][j] = 0
+        for i in range(m):               # 最后补清首列
+            if fc: matrix[i][0] = 0
+        return matrix
+`,
+
+  sol(input){
+    const m = input.matrix.map(r => r.slice());
+    const R = m.length, C = R ? m[0].length : 0;
+    if(!R || !C) return m;
+    const fr = m[0].some(x => x === 0);
+    const fc = m.some(r => r[0] === 0);
+    for(let i = 1; i < R; i++)
+      for(let j = 1; j < C; j++)
+        if(m[i][j] === 0){ m[i][0] = 0; m[0][j] = 0; }
+    for(let i = 1; i < R; i++)
+      for(let j = 1; j < C; j++)
+        if(m[i][0] === 0 || m[0][j] === 0) m[i][j] = 0;
+    if(fr) for(let j = 0; j < C; j++) m[0][j] = 0;
+    if(fc) for(let i = 0; i < R; i++) m[i][0] = 0;
+    return m;
+  },
+  expected: [[1,0,1],[0,0,0],[1,0,1]],
+
+  quiz: [
+    {q:'为什么不能扫到一个 0 就当场把它所在的行、列全清成 0？',
+     options:['太慢了——当场清是一行行重复清，先记号后清是 O(mn)，理由在速度','清零会「顺路污染」还没扫到的格子：之后再看到 0，分不清它本来就有（该立记号）还是被传染的（不能立记号），第二遍就彻底乱套','因为题目要求必须返回原矩阵的引用，当场清会改错对象'],
+     answer:1,
+     explain:'致命的是信息被破坏：当场清零会波及后面还没读到的格子，等扫到 (3,5) 是 0 时，已无法区分它是「原始 0」还是「被前面某行/列清出来的假 0」——立记号的依据全毁。先记号、后置零是读写分离：第一遍只读内部格子、只写记号本，第二遍才执行清零，污染不可能发生。速度上两种写法都是 O(mn)，差别全在正确性。',
+     jumpTo:1},
+    {q:'输入 [[1,2,3],[4,5,6],[7,0,9]]（0 在 (2,1)），置零后的矩阵是？',
+     options:['[[1,0,3],[4,0,6],[0,0,0]]：第 2 行整行、第 1 列整列清零','[[1,0,3],[4,0,6],[7,0,9]]：只清第 1 列，第 2 行不动','[[0,0,0],[0,0,0],[0,0,0]]：一个 0 会传染全矩阵'],
+     answer:0,
+     explain:'(2,1) 是 0 → 第 2 行整行、第 1 列整列都要清零：记号立在行首 matrix[2][0] 和列首 matrix[0][1]，第二遍把行/列上的格子逐个兑现，结果 [[1,0,3],[4,0,6],[0,0,0]]。误选第二个漏了整行——行记号和列记号是同时立的，两个都要兑现；误选全零则是忘了清零只波及「这个 0 所在」的一行一列，不会继续传染。',
+     jumpTo:18},
+    {q:'fr = false（首行本来没有 0）时，收尾「补首行」什么也不清。可首行上明明留着别人立的记号 0，为什么最终结果仍然正确？',
+     options:['这些记号 0 会在第二遍被顺手清掉，首行到最后其实是干净的','记号 (0,j)=0 的含义就是「第 j 列有待清的 0」，第二遍第 j 列整列被清成 0，格 (0,j) 属于第 j 列、本来就该是 0——记号恰好和正确答案重合','纯属巧合，换个输入就会出错'],
+     answer:1,
+     explain:'首行上的 0 不是首行自己的数据，而是替某一列立的记号；那个列清零时，(0,j) 作为列上的一格本来就该变 0，所以记号留在结果里正好正确。同理 fc = false 时首列留下的记号 0 也是替某行立的，那行清零后 (i,0) 本来就该是 0。所以收尾只按开头抄底的 fr/fc 存档决定清不清整行/整列，两种情况都不会错——记号本「用完不擦」也丢不了信息。',
+     jumpTo:25},
+  ],
+
+  steps(input){
+    const F = [];
+    const m = input.matrix.map(r => r.slice());
+    const R = m.length, C = m[0] ? m[0].length : 0;
+    if(!R || !C){
+      F.push({hl:[1,2,3], tag:'空矩阵', cls:'t-grey',
+        msg:'空矩阵（m 或 n 为 0）：没有格子就没有 0 可查，两遍扫描的循环范围都是空的，直接走收尾。',
+              do: (v) => { v.text('t', '输入为空'); }});
+      F.push({hl:[19], tag:'返回', cls:'t-dark', msg:'空矩阵原样返回——没有 0 就没有行/列要清，结果仍是空。', do: (v) => { v.result([], {label:'结果'}); }});
+      return F;
+    }
+
+    /* ★ 快照原则：矩阵每帧快照；状态对象在 push 时生成 */
+    const snap = () => m.map(r => r.slice());
+    const stOf = (extra) => {
+      const o = {};
+      for(let j = 0; j < C; j++) if(m[0][j] === 0) o['0,' + j] = 'pivot';
+      for(let i = 0; i < R; i++) if(m[i][0] === 0) o[i + ',0'] = 'pivot';
+      if(extra) for(const k in extra) o[k] = extra[k];
+      return o;
+    };
+    const stZeros = (extra) => {
+      const o = {};
+      for(let i = 0; i < R; i++) for(let j = 0; j < C; j++) if(m[i][j] === 0) o[i + ',' + j] = 'done';
+      if(extra) for(const k in extra) o[k] = extra[k];
+      return o;
+    };
+    const draw = (o) => (v) => {
+      v.grid('G', o.mat, {label:'矩阵 <code>matrix</code>　·　紫框 = 首行/首列上的记号 0', states:o.states});
+      if(o.vars) v.vars('vars', o.vars, {label:'变量 / 记号'});
+      if(o.res !== undefined) v.result(o.res, {label:'置零后的矩阵'});
+    };
+
+    /* ---------- 0) 初始化 ---------- */
+    F.push({hl:[1,2,3], tag:'初始化', cls:'t-grey',
+      msg:R + '×' + C + ' 的矩阵。陷阱先说破：扫到 0 不能立刻清它那行那列——清零会"顺路污染"还没扫到的格子，之后再看到 0 就分不清是<b>本来就有</b>（该立记号）还是<b>被传染</b>（不能立记号）。' +
+          '策略是读写分离：<b>第一遍只立记号，第二遍统一置零</b>；记号本就用首行和首列这 m+n 个现成格子，额外空间为零。画面上紫框格就是首行/首列上的记号 0。',
+      do: draw({states:stOf(), vars:{m:R, n:C, fr:'?', fc:'?'}})});
+
+    /* ---------- 1) 抄底 fr / fc ---------- */
+    let fr = false;
+    for(let j = 0; j < C; j++){
+      const hit = m[0][j] === 0;
+      F.push({hl:[4], ok: hit ? 4 : undefined, no: hit ? undefined : 4, tag:'查首行', cls: hit ? 't-green' : 't-ink',
+        msg:'查首行第 ' + j + ' 格：(0,' + j + ') = ' + LCesc(m[0][j]) + (hit
+          ? ' ——是 0！<code>fr = true</code> 立刻存档（any 短路，后面不用再查）。为什么急着抄底：首行马上要被写满别人的记号、面目全非，它"本来有没有 0"现在不记下来就永远丢了，最后一遍清首行全靠 fr 说了算。'
+          : '，不是 0，继续查下一格。这一步在回答"首行自己有没有 0"，答案要抄进布尔 fr 存档——首行马上要当记号本，不先抄底就丢了原始信息。'),
+        do: draw({states:stOf({['0,' + j]:'active'}), vars:{fr: fr || hit, fc:'?'}})});
+      if(hit){ fr = true; break; }
+    }
+    F.push({hl:[4], tag:'首行结论', cls: fr ? 't-green' : 't-ink',
+      msg:'首行结论：<code>fr = ' + fr + '</code>' + (fr
+        ? '——首行本来就有 0，最后一遍整行都得清零。事实已存档（看变量面板），首行现在可以放心当记号本了。'
+        : '——首行没有自带的 0，最后不用清整行。原始状态已存档，首行现在可以放心当记号本随便写：之后它身上出现的 0 全是替别人立的记号，不会再污染判断。'),
+      do: draw({states:stOf(), vars:{fr:fr, fc:'?'}})});
+
+    let fc = false;
+    for(let i = 0; i < R; i++){
+      const hit = m[i][0] === 0;
+      F.push({hl:[5], ok: hit ? 5 : undefined, no: hit ? undefined : 5, tag:'查首列', cls: hit ? 't-green' : 't-ink',
+        msg:'查首列第 ' + i + ' 行：(' + i + ',0) = ' + LCesc(m[i][0]) + (hit
+          ? ' ——是 0！<code>fc = true</code> 存档（any 短路）。首列的命运同样先抄底——fr、fc 两个布尔合起来就是首行首列的"原始存档"，后面记号本再花也丢不了这个信息。'
+          : '，不是 0，继续查下一行。和首行同理：先问清首列"本来有没有 0"，抄进 fc 存档。'),
+        do: draw({states:stOf({[i + ',0']:'active'}), vars:{fr:fr, fc: fc || hit}})});
+      if(hit){ fc = true; break; }
+    }
+    F.push({hl:[5], tag:'首列结论', cls: fc ? 't-green' : 't-ink',
+      msg:'首列结论：<code>fc = ' + fc + '</code>' + (fc
+        ? '——首列本来就有 0，最后一遍整列都得清零。'
+        : '——首列没有自带的 0，最后不用清整列。') + ' 至今 fr=' + fr + '、fc=' + fc + '，首行首列的原始状态都存档完毕，记号本可以放心用了。接下来第一遍扫描——只看内部格子（行列下标从 1 起）。',
+      do: draw({states:stOf(), vars:{fr:fr, fc:fc}})});
+
+    /* ---------- 2) 第一遍：立记号 ---------- */
+    F.push({hl:[6,7], tag:'第一遍·立记号', cls:'t-blue',
+      msg:'第一遍开扫：只看内部格子（行列下标都从 1 开始，跳过首行首列——它们是记号本，不能边写边读自己，否则刚立的记号会被误当成真实数据）。纪律只有一条：<b>只立记号、绝不清零</b>' +
+          (R === 1 || C === 1 ? '。（这题只有一行/一列，内部区域为空——两遍扫描的循环体一次都不跑，直接等收尾清首行/首列。）' : '。发现 0 就在它的行首、列首各写一个 0，像巡查时先插书签，回头再统一处理。'),
+      do: draw({states:stOf(), vars:{fr:fr, fc:fc, i:'1…', j:'1…'}})});
+
+    for(let i = 1; i < R; i++){
+      for(let j = 1; j < C; j++){
+        const isZero = m[i][j] === 0;
+        F.push({hl:[8], ok: isZero ? 8 : undefined, no: isZero ? undefined : 8, tag:'检查', cls: isZero ? 't-green' : 't-ink',
+          msg: isZero
+            ? '<code>matrix[' + i + '][' + j + '] = 0</code>（橙色当前格）！这个 0 一句话宣判：第 ' + i + ' 行、第 ' + j + ' 列最后都得清成 0。但现在不动手，只在行首、列首立记号——先巡查完、再统一执行，才不会顾此失彼。'
+            : '<code>matrix[' + i + '][' + j + '] = ' + LCesc(m[i][j]) + '</code>，不是 0 → 什么也不做，看下一格。记住这一遍只读不写：哪怕它所在的行/列最终要被清零，也得等第二遍按记号统一执行。',
+          do: draw({states:stOf({[i + ',' + j]:'active'}), vars:{i:i, j:j, fr:fr, fc:fc}})});
+        if(isZero){
+          m[i][0] = 0; m[0][j] = 0;
+          F.push({hl:[9,10], tag:'立记号', cls:'t-violet',
+            msg:'记号入账：<code>matrix[' + i + '][0] = 0</code>（行首记号 → 第 ' + i + ' 行要清）、' +
+                '<code>matrix[0][' + j + '] = 0</code>（列首记号 → 第 ' + j + ' 列要清），画面上两个紫框就是新插的书签。此刻写 0 没有任何即时效果——它们只是"待办清单"，第二遍才逐格兑现。',
+            do: draw({states:stOf({[i + ',0']:'just', ['0,' + j]:'just'}), vars:{i:i, j:j, fr:fr, fc:fc}})});
+        }
+      }
+    }
+
+    /* ---------- 3) 第二遍：按记号置零 ---------- */
+    F.push({hl:[11,12], tag:'第二遍·置零', cls:'t-blue',
+      msg:'第二遍开扫：再过一遍内部格子。这次只<b>读</b>记号本——行首或列首有一个是 0，就说明这一行/列在待办清单上，格子变 0。第一遍忍住没清的账，现在统一结。',
+      do: draw({states:stOf(), vars:{fr:fr, fc:fc}})});
+
+    for(let i = 1; i < R; i++){
+      for(let j = 1; j < C; j++){
+        const rowMk = m[i][0] === 0, colMk = m[0][j] === 0;
+        const mark = rowMk || colMk;
+        const which = (rowMk ? '行首 matrix[' + i + '][0]' : '') +
+                      (rowMk && colMk ? ' 和 ' : '') +
+                      (colMk ? '列首 matrix[0][' + j + ']' : '');
+        F.push({hl:[13], ok: mark ? 13 : undefined, no: mark ? undefined : 13, tag:'看记号', cls: mark ? 't-green' : 't-red',
+          msg: mark
+            ? '格子 (' + i + ',' + j + ') 的' + which + ' 是 0 → 记号生效：它站在"待清行/列"上，马上变 0。'
+            : '格子 (' + i + ',' + j + ')：行首 <code>' + LCesc(m[i][0]) + '</code>、列首 <code>' + LCesc(m[0][j]) +
+              '</code> 都不是 0 → 它的行和列都不在待办清单上，保得住，不动。这就是"先记号后置零"的兑现——内部格子绝不误伤。',
+          do: draw({states:stOf({[i + ',' + j]: mark ? 'peek' : 'active'}), vars:{i:i, j:j, fr:fr, fc:fc}})});
+        if(mark){
+          m[i][j] = 0;
+          F.push({hl:[14], tag:'置零', cls:'t-orange',
+            msg:'<code>matrix[' + i + '][' + j + '] = 0</code>（红色闪格）：第 ' + i + ' 行 / 第 ' + j +
+                ' 列的记号在这里兑现了一格。整个第二遍干的就是这件事——把记号本上的待办逐格变成 0，没有一格是凭感觉清的。',
+            do: draw({states:stOf({[i + ',' + j]:'block'}), vars:{i:i, j:j, fr:fr, fc:fc}})});
+        }
+      }
+    }
+
+    /* ---------- 4) 收尾：首行首列 ---------- */
+    F.push({hl:[15], tag:'最后一步', cls:'t-violet',
+      msg:'内部全部处理完，现在才轮到记号本自己。按开头抄底的存档：<code>fr = ' + fr + '</code>、<code>fc = ' + fc +
+          '</code>，决定首行、首列要不要整行/整列清零。为什么留到最后：记号本不能<b>边用边擦</b>——内部格子一直在读它，提前清了第二遍就全乱了。',
+      do: draw({states:stOf(), vars:{fr:fr, fc:fc}})});
+
+    for(let j = 0; j < C; j++){
+      if(fr) m[0][j] = 0;
+      F.push({hl:[15,16], ok: fr ? 16 : undefined, no: fr ? undefined : 16, tag:'补首行', cls: fr ? 't-orange' : 't-grey',
+        msg: fr
+          ? 'fr = true（首行本来就有 0）→ 首行整行清零：(0,' + j + ') 写成 <b>0</b>。依据的是开头的存档，不是记号本现状——此刻首行上全是第二遍用剩的记号，不能信。'
+          : 'fr = false：首行 (0,' + j + ') = ' + LCesc(m[0][j]) + ' 保持现状——开头存档说首行没有自带的 0，不清整行' + (m[0][j] === 0 ? '（这个 0 是替第 ' + j + ' 列立的记号，而第 ' + j + ' 列确实要清，它留在结果里正好正确）' : '。'),
+        do: draw({states:stOf(fr ? {['0,' + j]:'block'} : {['0,' + j]:'active'}), vars:{fr:fr, fc:fc}})});
+    }
+    for(let i = 0; i < R; i++){
+      if(fc) m[i][0] = 0;
+      F.push({hl:[17,18], ok: fc ? 18 : undefined, no: fc ? undefined : 18, tag:'补首列', cls: fc ? 't-orange' : 't-grey',
+        msg: fc
+          ? 'fc = true（首列本来就有 0）→ 首列整列清零：(' + i + ',0) 写成 <b>0</b>。同样只认开头的存档，不认记号本现状。'
+          : 'fc = false：首列 (' + i + ',0) = ' + LCesc(m[i][0]) + ' 保持现状——首列没有自带的 0，不清整列' + (m[i][0] === 0 ? '（这个 0 是替第 ' + i + ' 行立的记号，第 ' + i + ' 行确实要清，留在结果里正好正确）' : '。'),
+        do: draw({states:stOf(fc ? {[i + ',0']:'block'} : {[i + ',0']:'active'}), vars:{fr:fr, fc:fc}})});
+    }
+
+    F.push({hl:[19], tag:'返回', cls:'t-dark',
+      msg:'🎉 置零完成，画面上每个绿格都查得到来路：要么本来是 0，要么被某行/列的记号判了清零。整场只用了 fr、fc 两个布尔存档——把 m+n 个记号塞进矩阵自己的首行首列，额外空间 O(1)，这就是本题的精髓。',
+      do: draw({states:stZeros(), res:snap()})});
+    return F;
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P038 · 对称二叉树 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 38, num: 101, title: '对称二叉树', diff: '简单', cat: '二叉树',
+  method: 'isSymmetric',
+
+  lede: '题目：判断一棵二叉树是不是<b>轴对称</b>的——沿中线对折，左边和右边要完全重合。' +
+        '关键：对称等价于"左子树和右子树互为镜像"。动画里递归每次比较的是<b>一对镜像位置</b>的节点：' +
+        '<span class="var i">a</span>（左半边）和 <span class="var r">b</span>（右半边）会<b>同时高亮</b>，' +
+        '比较方向要交叉：<b>外侧配外侧、内侧配内侧</b>。',
+
+  roles: [
+    {c:'orange', code:'a',   text:'镜像对 · 左半边的节点'},
+    {c:'blue',   code:'b',   text:'镜像对 · 右半边的节点'},
+    {c:'green',  code:'done', text:'这对镜像子树已确认对称'},
+    {c:'red',    code:'block', text:'不对称的"案发现场"'}
+  ],
+
+  codeTitle: '跟着高亮读代码——树上两个节点<b>同时</b>高亮 = 一对镜像位置在比较。if 行变<span style="color:var(--green)">绿</span>＝命中这个出口，变<span style="color:var(--red)">红</span>＝检查没过、这对还活着，继续往下比。',
+
+  idea: '对称 = 左右子树互为镜像：compare(a, b) 同时审一对镜像节点，外侧配外侧、内侧配内侧，两边都空就是出口 true。',
+
+  qa: [
+    {q:'为什么起点是 compare(root, root)？',
+     a:'根和自己凑成天然的第一对：它的左半边的镜子就是右半边。从这一对出发，每层递归都拆出两对：外侧对 (a.left, b.right) 和内侧对 (a.right, b.left)，恰好覆盖所有镜像位置。'},
+    {q:'为什么比 (a.left, b.right) 而不是 (a.left, b.left)？',
+     a:'想象对折：左子树的"最左边"要贴住右子树的"最右边"。所以必须<b>外侧对外侧、内侧对内侧</b>；同侧比同侧是在比"复印"，不是比"镜像"。'},
+    {q:'三个出口的顺序能换吗？',
+     a:'不能乱换。必须先判"都空"（return True），再判"缺一边"，最后才比值——否则 a 可能是 null，取 a.val 会直接崩；"都空"放后面也会被误判成"缺一边"。'},
+    {q:'先把整棵树翻转再比对行不行？',
+     a:'行，但要多花一趟 O(n) 空间存翻转结果。双参数递归一趟走完，只占栈深 O(h)，是最标准的写法。'}
+  ],
+
+  complexity: '时间 O(n)（每个节点只被比较一次）　·　空间 O(h)（递归栈，h 为树高）',
+
+  form: [
+    {key:'root', label:'root', type:'tree', def:[1,2,2,3,4,4,3]}
+  ],
+  presets: [
+    {label:'[1,2,2,3,4,4,3] 对称', values:{root:[1,2,2,3,4,4,3]}},
+    {label:'[1,2,2,null,3,null,3] 不对称', values:{root:[1,2,2,null,3,null,3]}},
+    {label:'[1,2,2] 对称', values:{root:[1,2,2]}},
+    {label:'空树 []', values:{root:[]}}
+  ],
+
+  code: `class Solution:
+    def isSymmetric(self, root):
+        def compare(a, b):                 # 镜像位置上的一对节点
+            if not a and not b:            # 两边都空: 对称
+                return True
+            if not a or not b:             # 只有一边空: 不对称
+                return False
+            if a.val != b.val:             # 值不同: 不对称
+                return False
+            out = compare(a.left, b.right)     # 外侧配外侧
+            inside = compare(a.right, b.left)  # 内侧配内侧
+            return out and inside
+        return compare(root, root)         # 根和自己配对, 从顶比到底
+`,
+
+  sol(input){
+    const T = Viz.parseTree(input.root || []);
+    const byKey = {}; T.nodes.forEach(n => byKey[n.key] = n);
+    function cmp(a, b){
+      if(a == null && b == null) return true;
+      if(a == null || b == null) return false;
+      if(byKey[a].val !== byKey[b].val) return false;
+      return cmp(byKey[a].left, byKey[b].right) && cmp(byKey[a].right, byKey[b].left);
+    }
+    return cmp(T.root, T.root);
+  },
+  expected: true,
+
+  quiz: [
+    {q:'比较镜像位置时为什么必须交叉——比 (a.left, b.right) 而不是 (a.left, b.left)?',
+     options:['同侧比较也行,只是多花一倍时间','纯粹习惯写法,两种方向结果一样','对折时左子树的最左要贴住右子树的最右:必须外侧对外侧、内侧对内侧;同侧比同侧是在比"复印件",不是比"镜像"'],
+     answer:2,
+     explain:'想象沿中线对折:左子树最外侧的枝杈要和右子树最外侧的重合,内侧和内侧重合。若改成同侧比同侧,[1,2,2,null,3,null,3] 这种"两边长得一样但不镜像"的树就会被误判成对称——两个 2 都把 3 挂在同一侧,复印出来相同,对折却对不齐。',
+     jumpTo:5},
+    {q:'把输入换成 [1,2,2,null,3,null,3]（左 2 的 3 是右孩子,右 2 的 3 也是右孩子）,算法返回什么?',
+     options:['true——两边对称位置上都有值 3','false——外侧配对 (左2.left, 右2.right) 是「空 对 3」,命中「缺一边」出口直接判负','返回 null,结构不同时无法比较'],
+     answer:1,
+     explain:'对称看的是镜像位置是否重合,不是"两边出现过的值相同"。左 2 的 3 挂内侧,右 2 的 3 也挂内侧:交叉比较时外侧配对 (左2.left, 右2.right) = 空 vs 3 → 出口 2 返回 false,一路传回根。整棵树不对称;若把右边改成镜像挂法([1,2,2,3,null,null,3])才返回 true。',
+     jumpTo:3},
+    {q:'三个出口「都空→缺一边→比值」的顺序为什么不能乱排?',
+     options:['只是为了代码整齐,换顺序结果不变','必须先判"都空"、再判"缺一边"、最后才比值——乱序会在 null 上取 a.val 直接崩,或把"都空"误判成"缺一边"','因为 Python 规定 if 必须按这个顺序写'],
+     answer:1,
+     explain:'出口 3 要取 a.val、b.val,此时 a、b 必须都存在——所以"都空"和"缺一边"两个出口必须排在它前面把关。而"都空"又必须排在"缺一边"之前:两个都空时"有一边空"的条件其实也成立,先判"缺一边"会把本该 true 的"都空"错杀成 false。守卫条件从宽到严层层过滤,是写多出口递归的通用套路。',
+     jumpTo:4},
+  ],
+
+  steps(input){
+    const F = [];
+    const T = Viz.parseTree(input.root || []);
+    const t = Viz.treeLayout(input.root || []);
+    const byKey = {}; T.nodes.forEach(n => byKey[n.key] = n);
+    const doneSet = new Set();     // 已确认对称的节点 key
+    const badSet = new Set();      // 判定不对称的节点 key
+    let seq = 0;
+
+    const nm = k => k == null ? '空' : '节点' + LCesc(String(byKey[k].val));
+    const sv = k => k == null ? '空' : String(byKey[k].val);   // 栈帧文字, 组件内会转义
+    const snapDone = () => Array.from(doneSet);
+    const snapBad = () => Array.from(badSet);
+
+    /* ★ 快照原则：done/bad/path/stack/vars 全部在 push 时求值定死, do() 只读快照 o */
+    const draw = o => (v) => {
+      const states = {};
+      (o.done || []).forEach(k => { states[k] = 'done'; });
+      (o.bad || []).forEach(k => { if(states[k] == null) states[k] = 'block'; });
+      (o.path || []).forEach(k => { if(states[k] == null) states[k] = 'in'; });
+      if(o.a != null) states[o.a] = 'active';
+      if(o.b != null) states[o.b] = 'active';
+      const tags = {};
+      if(o.a != null && o.a === o.b) tags[o.a] = {text:'a≡b 起点', cls:'mi'};
+      else{
+        if(o.a != null) tags[o.a] = {text:'a（左）', cls:'mi'};
+        if(o.b != null) tags[o.b] = {text:'b（右）', cls:'mr'};
+      }
+      v.tree('T', t, {label:'二叉树　·　两个同时高亮 = 一对镜像位置', states, tags});
+      const stack = o.stack || [];
+      v.stack('S', stack, {
+        label:'递归调用栈　·　每层是一对 compare(a, b)',
+        states: stack.length ? {[stack[stack.length - 1].key]:'active'} : {},
+        topTag:'栈顶'
+      });
+      if(o.vars) v.vars('vars', o.vars, {label:'当前一对的进度', hl:o.hlVars || []});
+      if(o.result != null) v.result(o.result, {label:'返回结果'});
+    };
+
+    function visit(a, b, frames, path){
+      const id = 'c' + (++seq);
+      const stack = frames.concat([{key:id, val:'compare(' + sv(a) + ', ' + sv(b) + ')'}]);
+      const pairTxt = 'compare(' + nm(a) + ', ' + nm(b) + ')';
+
+      if(a == null && b == null){
+        F.push({hl:[4,5], ok:4, tag:'两边都空', cls:'t-green',
+          msg:'调用 <code>' + pairTxt + '</code>：两边都是空位 → 命中出口 1，<b>return True</b>。这对镜像位置两边都没有节点，对折后正好双双重合。栈顶的 compare(空, 空) 帧随即弹走，把 true 交还上层。',
+          do: draw({stack, path})});
+        return true;
+      }
+      if(a == null || b == null){
+        const only = a != null ? a : b;
+        badSet.add(only);
+        F.push({hl:[6,7], ok:6, tag:'缺了一边', cls:'t-red',
+          msg:'调用 <code>' + pairTxt + '</code>：一边是空位、另一边是' + nm(only) + ' → 命中出口 2，<b>return False</b>。对折时一边有节点、一边是空的，形状怎么都对不齐——红色标记的就是"多出来的那块"。这个 false 会沿递归链一路向上：上层 <code>out and inside</code> 只要有一边是 false，整对就判负。',
+          do: draw({stack, path, a, b, bad: snapBad()})});
+        return false;
+      }
+      F.push({hl:[3], tag:'进入配对', cls:'t-blue',
+        msg:'调用 <code>' + pairTxt + '</code>：两个节点<b>同时</b>高亮——它们站在镜像位置上，命运绑在一起，要过一起过、要挂一起挂。递归的合同：compare(a, b) 负责证明"以 a、b 为根的两棵子树互为镜像"，成功返回 true。第一步先比两人的值（下方进度面板里 a、b 已就位，外侧内侧还在等结果）。',
+        do: draw({stack, path: path.concat([a, b]), a, b, done: snapDone(), bad: snapBad(),
+                  vars:{a: nm(a), b: nm(b), 外侧:'…', 内侧:'…'}})});
+
+      if(byKey[a].val !== byKey[b].val){
+        badSet.add(a); badSet.add(b);
+        F.push({hl:[8,9], ok:8, tag:'值不相等', cls:'t-red',
+          msg:'<code>a.val = ' + LCesc(String(byKey[a].val)) + '，b.val = ' + LCesc(String(byKey[b].val)) + '</code>：镜像位置连值都对不上 → 命中出口 3，<b>return False</b>！两个节点一起标红——这一对当场判负，外侧内侧不用再比了，false 会一路传回根。',
+          do: draw({stack, path: path.concat([a, b]), a, b, bad: snapBad(),
+                    vars:{a: nm(a), b: nm(b), 外侧:'—', 内侧:'—'}})});
+        return false;
+      }
+      F.push({hl:[8], no:8, tag:'值相等 ✓', cls:'t-green',
+        msg:'<code>a.val = b.val = ' + LCesc(String(byKey[a].val)) + '</code>，第 8 行条件不成立 → 这对暂时过关。但"值相等"只是第一关：它们各自的子树也必须互为镜像才算数。接下来交叉递归，先比<b>外侧</b> <code>compare(a.left, b.right)</code>——进度面板的外侧一格从 … 变成等待结果。',
+        do: draw({stack, path: path.concat([a, b]), a, b, done: snapDone(), bad: snapBad(),
+                  vars:{a: nm(a), b: nm(b), 外侧:'…', 内侧:'…'}})});
+
+      const out = visit(byKey[a].left, byKey[b].right, stack, path.concat([a, b]));
+      F.push({hl:[10], tag:'外侧比完', cls: out ? 't-green' : 't-red',
+        msg:'外侧 <code>compare(a.left, b.right)</code> 返回 <b>' + out + '</b>——两边最外侧的枝杈对折后' + (out ? '正好重合' : '重合不上') + '，结果记进进度面板。还剩内侧 <code>compare(a.right, b.left)</code> 没比：两路都 true 这对才成立，一个 false 就全盘皆输。',
+        do: draw({stack, path: path.concat([a, b]), a, b, done: snapDone(), bad: snapBad(),
+                  vars:{a: nm(a), b: nm(b), 外侧: String(out), 内侧:'…'}, hlVars:['外侧']})});
+
+      const inside = visit(byKey[a].right, byKey[b].left, stack, path.concat([a, b]));
+      F.push({hl:[11], tag:'内侧比完', cls: inside ? 't-green' : 't-red',
+        msg:'内侧 <code>compare(a.right, b.left)</code> 返回 <b>' + inside + '</b>。两路结果到齐：外侧 ' + out + '、内侧 ' + inside + '——最后一行 <code>out and inside</code> 马上把它们合成这一对的最终判决。',
+        do: draw({stack, path: path.concat([a, b]), a, b, done: snapDone(), bad: snapBad(),
+                  vars:{a: nm(a), b: nm(b), 外侧: String(out), 内侧: String(inside)}, hlVars:['内侧']})});
+
+      const res = out && inside;
+      if(res){ doneSet.add(a); doneSet.add(b); } else { badSet.add(a); badSet.add(b); }
+      F.push({hl:[12], tag: res ? '这对对称 ✓' : '这对失败 ✗', cls: res ? 't-green' : 't-red',
+        msg:'<code>' + out + ' and ' + inside + ' = ' + res + '</code> → 这对镜像子树' + (res ? '整体对称，标绿' : '不对称，标红') + '。绿色是"打包合格"：以这两个节点为根的两棵子树可以整块交给上层，上层不必再关心内部细节；红色则说明镜像在这里破防。当前帧出栈，把结果汇报给上一层。',
+        do: draw({stack: frames, path, done: snapDone(), bad: snapBad(),
+                  vars:{a: nm(a), b: nm(b), 外侧: String(out), 内侧: String(inside)}})});
+      return res;
+    }
+
+    F.push({hl:[1,2,13], tag:'读题', cls:'t-grey',
+      msg:'题目要判断整棵树是否<b>轴对称</b>：想象沿中线对折，左半边和右半边必须完全重合。做法是把"对称"翻译成"左右子树互为镜像"：从 <code>compare(root, root)</code> 出发——根和自己凑成天然的第一对，之后每层递归拆出两对：外侧对外侧、内侧对内侧，恰好覆盖所有镜像位置。这一步只是开场：等下你会看到<b>两个节点同时高亮</b>，它们就是正在比较的一对。',
+      do: draw({stack: []})});
+    F.push({hl:[4,5], ok:4, tag:'出口 1', cls:'t-grey',
+      msg:'先记住三个出口，递归全靠它们停。出口 1：<b>两边都空</b> → return True。两面空镜子对折正好重合，算对称；比到叶子之下时两边必然同时为空，没有这个出口递归就会无限追问下去。',
+      do: draw({stack: []})});
+    F.push({hl:[6,7], ok:6, tag:'出口 2', cls:'t-grey',
+      msg:'出口 2：<b>只有一边空</b> → return False。比如左边有节点、右边是空位：对折时一边鼓出来一块，形状对不齐，连值都不用比就判负。它必须排在"比值"之前——此时 a 可能是 null，先取 a.val 会直接崩。',
+      do: draw({stack: []})});
+    F.push({hl:[8,9], ok:8, tag:'出口 3', cls:'t-grey',
+      msg:'出口 3：两边都存在但<b>值不相等</b> → return False。镜像位置连数值都对不上，整棵树不可能对称了。三个出口的顺序是刻意安排的：先"都空"、再"缺一边"、最后才比值——顺序乱一步就可能在 null 上取值报错，或把"都空"误判成"缺一边"。',
+      do: draw({stack: []})});
+    F.push({hl:[10,11,12], tag:'比较方向', cls:'t-grey',
+      msg:'值相等过关后交叉递归：<b>外侧配外侧</b> <code>(a.left, b.right)</code>、<b>内侧配内侧</b> <code>(a.right, b.left)</code>。为什么必须交叉：对折时左子树的最左边要贴住右子树的最右边；同侧比同侧是在比"复印件"，不是比"镜像"，<code>[1,2,2,null,3,null,3]</code> 这种树就会被误判成对称。接下来盯住树上成对高亮的两个节点。',
+      do: draw({stack: []})});
+
+    const ans = visit(T.root, T.root, [], []);
+
+    F.push({hl:[13], tag:'递归结束', cls:'t-dark',
+      msg:'🎉 根对自己这一对最终返回 <b>' + ans + '</b>' + (ans ? '——左右子树互为镜像，整棵树轴对称！' : '——树上存在不对称的位置（红色），对折时重合不上。') + '复盘：每个节点恰好在某一对里被比较一次，时间 O(n)；递归栈深等于树高，空间 O(h)。',
+      do: draw({stack: [], done: snapDone(), bad: snapBad(), result: ans})});
+
+    return F;
+  }
+});
+</script>
+</body>
+</html>

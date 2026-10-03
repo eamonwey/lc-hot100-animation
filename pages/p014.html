@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P014 · 合并区间 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 14, num: 56, title: '合并区间', diff: '中等', cat: '普通数组',
+  method: 'merge',
+
+  lede: '题目：给一堆区间 [左,右]，把所有<b>有重叠</b>的合并成一段，返回合并后的列表。' +
+        '思路两步走：先按<b>左端点</b>排队；再从左往右扫，每个新区间 <span class="var i">it</span> 只跟结果 <span class="var r">merged</span> 的<b>最后一段</b>谈判——' +
+        '左端不超过末尾的右端就有重叠，把末尾右端撑大；否则自己另起一段。画面上行是左端、下行是右端，上下对齐看就是一条条区间。',
+
+  roles: [
+    {c:'orange', code:'it', text:'当前处理的区间'},
+    {c:'blue',   code:'merged', text:'结果区：已合并好的区间们'},
+    {c:'green',  code:'末尾右端', text:'it[0] ≤ 它 → 有重叠，延伸它'}
+  ],
+
+  codeTitle: '跟着高亮读代码——<code>if</code> 那行变<span style="color:var(--green)">绿</span>＝有重叠、末尾右端延伸；变<span style="color:var(--red)">红</span>＝不重叠、新开一段。',
+
+  legend: [
+    {c:'orange', text:'it 当前区间（列高亮）'},
+    {c:'blue', text:'merged 已合并结果'},
+    {c:'green', text:'末尾右端被延伸'},
+    {c:'red', text:'不重叠 → 新开一段'}
+  ],
+
+  idea: '排好序后，"要不要合并"只看一件小事：新来的左端 ≤ 结果末尾的右端。排序把所有可能的纠缠，都变成了"只看前一个"的线性扫描。',
+
+  qa: [
+    {q:'为什么排序后只需要跟 merged 的最后一段比？',
+     a:'按左端排好后，新区间的左端 ≥ 前面所有区间的左端。如果它和更早的某段重叠，那中间那些段必然和最后一段也重叠——它们想"跨过"最后一段够到新区间是不可能的。所以最后一段是唯一可能被延伸的，比完就扔。'},
+    {q:'[1,4] 和 [4,5] 端点相接算重叠吗？',
+     a:'算。题目把"碰到"也算重叠，所以判断条件是 it[0] &lt;= merged[-1][1]，用 ≤ 而不是 &lt;。[1,4]、[4,5] 会合成 [1,5]。'},
+    {q:'为什么延伸要用 max？',
+     a:'新区间可能完全被末尾包含（末尾 [5,9]，新来 [6,7]）。这时末尾右端绝不能缩成 7，要取 max(9,7)=9。延伸只会撑大、不会缩回，max 就是保险。'}
+  ],
+
+  complexity: '时间 O(n log n)（排序为主，扫描 O(n)）　·　空间 O(n)（存结果）',
+
+  form: [
+    {key:'intervals', label:'intervals', type:'grid', def:[[1,3],[2,6],[8,10],[15,18]]}
+  ],
+  presets: [
+    {label:'[[1,3],[2,6],[8,10],[15,18]]', values:{intervals:[[1,3],[2,6],[8,10],[15,18]]}},
+    {label:'乱序+包含 [[5,8],[1,3],[6,7],[2,4]]', values:{intervals:[[5,8],[1,3],[6,7],[2,4]]}},
+    {label:'端点相接 [[1,4],[4,5]]', values:{intervals:[[1,4],[4,5]]}},
+    {label:'大包小 [[1,10],[2,3],[4,5]]', values:{intervals:[[1,10],[2,3],[4,5]]}}
+  ],
+
+  code: `class Solution:
+    def merge(self, intervals):
+        intervals.sort(key=lambda x: x[0])   # 按左端点从小到大排
+        merged = []                          # 结果: 已合并的区间们
+        for it in intervals:
+            if merged and it[0] <= merged[-1][1]:
+                merged[-1][1] = max(merged[-1][1], it[1])  # 重叠→延伸末尾
+            else:
+                merged.append(list(it))      # 不重叠→新开一段
+        return merged
+`,
+
+  sol(input){
+    const its = (input.intervals || []).map(x => [x[0], x[1]]).sort((a, b) => a[0] - b[0]);
+    const merged = [];
+    for(const it of its){
+      if(merged.length && it[0] <= merged[merged.length - 1][1]){
+        merged[merged.length - 1][1] = Math.max(merged[merged.length - 1][1], it[1]);
+      } else {
+        merged.push([it[0], it[1]]);
+      }
+    }
+    return merged;
+  },
+  expected: [[1,6],[8,10],[15,18]],
+
+  quiz: [
+    {q:'排序后,为什么每个新区间只需要跟 merged 的「最后一段」比,更早的段看都不看?',
+     options:['因为更早的段都已经被删掉了','按左端排好后,新区间若和更早的某段重叠,中间那些段必然垫在中间、和最后一段也重叠——最后一段是唯一可能被延伸的','更早的段和新区间永远不相交,比了白比'],
+     answer:1,
+     explain:'新区间的左端 ≥ 前面所有区间的左端。若它跨进了某段早期区间的范围,夹在中间的区间(左端更大)必然把它和最后一段连成一片——所以「要不要并」只取决于末尾右端。这个「只看前一个」是排序送的性质,也是本题能从 O(n²) 两两比较降到 O(n log n)(排序为主、扫描 O(n))的原因。',
+     jumpTo:2},
+    {q:'[1,4] 和 [4,5] 端点恰好相接,会被合并成一段吗?',
+     options:['不会——4 和 4 只是挨着,没有真正的重叠,应分成两段','会——题目把「碰到」也算重叠,判断条件是 it[0] <= 末尾右端,用 ≤ 不能用 <,合并成 [1,5]','会,但合并成 [1,4]'],
+     answer:1,
+     explain:'本题的约定是端点相接即重叠:[1,4] 和 [4,5] 共享端点 4,在数轴上是连续的一段,合并为 [1,5]。所以代码写 it[0] <= merged[-1][1]——漏了等号,这种「手拉手」的区间就会被拆成两段,答案错。只有当题目改成「严格重叠才合并」时,才需要换成 <。',
+     jumpTo:8},
+    {q:'intervals = [[1,4],[0,2],[3,5]],合并结果是什么?',
+     options:['[[0,2],[1,4],[3,5]]','[[0,5]]','[[0,4],[3,5]]','[[1,5]]'],
+     answer:1,
+     explain:'先按左端排序:[0,2]、[1,4]、[3,5]。[0,2] 新开一段;[1,4] 左端 1 ≤ 末尾右端 2 → 末尾撑大为 [0,4];[3,5] 左端 3 ≤ 4 → 末尾撑大为 [0,5]。三段全叠成一整条 [[0,5]]。输入是乱序的——不先排序,[1,4] 和 [0,2] 的关系就理不清,「先排序」是整题的地基。',
+     jumpTo:9},
+  ],
+
+  steps(input){
+    const F = [];
+    const raw = (input.intervals || []).map(x => [x[0], x[1]]);
+    const its = raw.slice().sort((a, b) => a[0] - b[0]);
+    const merged = [];
+    const same = raw.length === its.length && raw.every((r, i) => r[0] === its[i][0] && r[1] === its[i][1]);
+
+    const L = arr => arr.map(x => x[0]);
+    const R = arr => arr.map(x => x[1]);
+    const mS = () => merged.map(m => m[0]);
+    const mE = () => merged.map(m => m[1]);
+    const fmt = it => '[' + it[0] + ',' + it[1] + ']';
+    const mk = i => [{name:'it', idx:i, cls:'mi', text:'▲ it'}];
+
+    const draw = (o) => (v) => {
+      v.arr('L', o.L, {
+        label:'区间左端 <code>it[0]</code>（按它排序）',
+        states: o.lStates || {},
+        idxCls: o.idxCls || {},
+        markers: o.marks || []
+      });
+      v.arr('R', o.R, {
+        label:'区间右端 <code>it[1]</code>　·　上下同列 = 一个区间',
+        states: o.rStates || {},
+        idxCls: o.idxCls || {}
+      });
+      if(o.mS){
+        v.arr('mS', o.mS, {label:'<code>merged</code> 左端', states:o.msStates || {}});
+        v.arr('mE', o.mE, {label:'<code>merged</code> 右端（末尾会被撑大）', states:o.meStates || {}});
+      }
+      if(o.result !== undefined) v.result(o.result, {label:'合并结果'});
+    };
+
+    F.push({hl:[1,2], tag:'输入', cls:'t-grey',
+      msg:'收到 ' + raw.length + ' 个区间：' + raw.map(fmt).join(' ') + '。画面读法：上行是每段的左端 it[0]、下行是右端 it[1]，<b>上下同列就是同一个区间</b>。任务是把有重叠的段融成一段；两两互比要 O(n²)，所以先按左端点"排队整理"——重叠的区间排完序<b>必然变成邻居</b>，纠缠全部简化成"只看前一个"，这是整道题的地基。',
+      do: draw({L:L(raw), R:R(raw)})});
+
+    F.push({hl:[3], tag:'按左端排序', cls:'t-blue',
+      msg:'<code>sort</code> 之后：' + its.map(fmt).join(' ') + '。' + (same ? '这组用例本来就有序，顺序没变。' : '乱序的都归位了，左端从小到大。') + '为什么排序是题眼：排好后任何新区间的左端都 ≥ 前面所有左端，它若和更早的某段重叠，中间那些段必然垫在中间、和最后一段也重叠——所以"要不要合并"永远只需跟最后一段谈判，比完即扔。画面上两行数组此刻仍是上下同列的区间对照。',
+      do: draw({L:L(its), R:R(its)})});
+
+    F.push({hl:[4], tag:'结果初始化', cls:'t-grey',
+      msg:'<code>merged</code> 现在是空的（下方两行还没有格子）。接下来逐个装入，纪律只有一条：每个新区间 <code>it</code> 只跟 <code>merged</code> 的<b>最后一段</b>谈判，前面的段看都不看——排序已经保证了更早的段不可能再和后面沾边。这条"只看末尾"的纪律，正是扫描能压到 O(n) 的原因。',
+      do: draw({L:L(its), R:R(its)})});
+
+    for(let i = 0; i < its.length; i++){
+      const a = its[i][0], b = its[i][1];
+      const icls = {i:'on-i'};
+      const last = merged.length ? merged[merged.length - 1] : null;
+
+      F.push({hl:[5], tag:'取下一个区间', cls:'t-ink',
+        msg:'轮到第 ' + i + ' 个区间 <code>it = ' + fmt(its[i]) + '</code>（▲ it 名牌、下标橙色）' +
+            (last ? '，merged 末尾是 <code>' + fmt(last) + '</code>（紫色高亮段）。谈判只问一件事：it 的左端 ' + a + ' 有没有伸进末尾段右端 ' + last[1] + ' 的势力范围？伸进去就融合，没伸进去就另起炉灶——判断只需这一次比较。' : '，merged 还是空的——没得比，它将直接成为第一段地基，后面的区间都拿"末尾"跟它比。'),
+        do: draw({L:L(its), R:R(its), idxCls:icls, marks:mk(i),
+                  mS: merged.length ? mS() : undefined, mE: merged.length ? mE() : undefined,
+                  msStates: last ? {[merged.length - 1]:'pivot'} : {},
+                  meStates: last ? {[merged.length - 1]:'pivot'} : {}})});
+
+      const overlap = !!last && a <= last[1];
+      F.push({hl:[6], ok:overlap ? 6 : undefined, no:overlap ? undefined : 6,
+        tag:'重叠?', cls:overlap ? 't-green' : 't-red',
+        msg: !last
+          ? 'merged 为空 → 没得比，<code>' + fmt(its[i]) + '</code> 直接作为第一段入列。它是第一块地基，之后每个区间都拿"merged 末尾"跟它及它的继任者比。'
+          : overlap
+            ? '<code>it[0] = ' + a + ' ≤ 末尾右端 ' + last[1] + '</code> → 有重叠！两段在数轴上咬合，要融成一段。踩坑提醒：端点相接也算重叠——题目规定 [1,4] 和 [4,5] 要合成 [1,5]，所以条件必须用 ≤ 而不是 &lt;，漏了等号这里就错了。'
+            : '<code>it[0] = ' + a + ' &gt; 末尾右端 ' + last[1] + '</code> → 左端完全落在末尾段右边，跟它沾不上边。又因为按左端排过序，更早段的右端只会更靠左、更够不着——放心新开一段。',
+        do: draw({L:L(its), R:R(its), idxCls:icls, marks:mk(i),
+                  mS: merged.length ? mS() : undefined, mE: merged.length ? mE() : undefined,
+                  msStates: last ? {[merged.length - 1]:'active'} : {},
+                  meStates: last ? {[merged.length - 1]:'active'} : {}})});
+
+      if(overlap){
+        const oldEnd = last[1];
+        last[1] = Math.max(oldEnd, b);
+        F.push({hl:[7], tag:'末尾延伸', cls:'t-green',
+          msg:'末尾 <code>' + fmt([last[0], oldEnd]) + '</code> 的右端撑大到 <code>max(' + oldEnd + ', ' + b + ') = ' + last[1] + '</code>' +
+              (last[1] === oldEnd ? '——' + fmt(its[i]) + ' 整个被末尾包住，右端原地不动。' : '，两段融成一段 ' + fmt(last) + '（绿色闪动的格子）。') +
+              '为什么用 max 而不是直接赋值？防"大包小"：末尾 [5,9] 遇到 [6,7] 时直接赋值会把 9 缩成 7，右端缩水后再跟后面的区间比就会漏并——延伸只会撑大、绝不能缩，max 就是保险丝。',
+          do: draw({L:L(its), R:R(its), idxCls:icls, marks:mk(i),
+                    mS:mS(), mE:mE(),
+                    msStates:{[merged.length - 1]:'in'},
+                    meStates:{[merged.length - 1]:'just'}})});
+      } else {
+        merged.push([a, b]);
+        F.push({hl:[8,9], tag:'新开一段', cls:'t-orange',
+          msg:'<code>' + fmt(its[i]) + '</code> 和前面不重叠 → 在 merged 末尾<b>新开一段</b>（新段闪动）。现在 merged：' + merged.map(fmt).join(' ') + '。细节踩坑：存的时候要 <code>list(it)</code> 复制一份——直接引用原区间的话，之后 max 延伸会顺手改坏输入数组，这是很隐蔽的 bug。',
+          do: draw({L:L(its), R:R(its), idxCls:icls, marks:mk(i),
+                    mS:mS(), mE:mE(),
+                    msStates:{[merged.length - 1]:'just'},
+                    meStates:{[merged.length - 1]:'just'}})});
+      }
+    }
+
+    F.push({hl:[10], tag:'返回', cls:'t-dark',
+      msg:'全部装完！合并结果：<b>' + merged.map(fmt).join(' ') + '</b> 🎉 复盘：排序 O(n log n) 是大头，之后每个区间只做一次 O(1) 判断（比末尾、撑右端或入列），整体 O(n log n)、空间 O(n)。回头看画面：merged 的右端只在"重叠"时变大——这正是"扫一遍、只维护局部末尾"的直觉。',
+      do: draw({L:L(its), R:R(its), mS:mS(), mE:mE(),
+                msStates:{}, meStates:{},
+                result: merged.map(m => m.slice())})});
+    return F;
+  }
+});
+</script>
+</body>
+</html>

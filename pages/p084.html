@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P084 · 零钱兑换 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 84, num: 322, title: '零钱兑换', diff: '中等', cat: '动态规划',
+  method: 'coinChange',
+
+  lede: '题目：给定硬币面额 <span class="var r">coins</span>（每种无限枚）和金额 <span class="var i">amount</span>，凑出 amount 最少要<b>几枚硬币</b>？凑不出返回 −1。' +
+        '动画里开一张 f 表，<span class="var o">f[x]</span> = "凑出 x 元最少几枚"，从 1 元一路凑到 amount 元：' +
+        '凑 x 时把每种硬币轮流当<b>"最后一枚"</b>试——拿走它，剩下 x−c 元查表。凑不出的格子一直标 <b>∞</b>（灰色）。',
+
+  roles: [
+    {c:'orange', code:'f[x]',    text:'正在凑的金额 x：最少几枚硬币'},
+    {c:'blue',   code:'c',       text:'正在试的硬币面额'},
+    {c:'blue',   code:'f[x−c]',  text:'拿走这枚后，剩下 x−c 元的最优解'},
+    {c:'green',  code:'更新',    text:'更省了 → f[x] 刷新'},
+    {c:'grey',   code:'∞',       text:'凑不出来的格子'}
+  ],
+
+  codeTitle: '跟着高亮读代码——if 那行变<span style="color:var(--green)">绿</span>＝这枚硬币能凑出更省的方案；变<span style="color:var(--red)">红</span>＝塞不下或不划算，跳过。',
+
+  legend: [
+    {c:'orange', text:'f[x] 正在凑'},
+    {c:'blue',   text:'f[x−c] 被参考的格子'},
+    {c:'green',  text:'更新成功'},
+    {c:'grey',   text:'∞ 凑不出'}
+  ],
+
+  idea: 'f[x] = min(f[x−c]) + 1：把每种硬币轮流当"最后一枚"，剩下的钱用最优解，再加这一枚。全表从 ∞ 起步，谁也救不回来的格子最后返回 −1。',
+
+  qa: [
+    {q:'为什么"最后一枚"这个想法是对的？',
+     a:'最优方案总能拆成"某枚硬币 c + 一个凑出 x−c 的最优方案"。只要把每种 c 都试一遍取最小，就覆盖了所有可能——这就是最优子结构。f[x−c] 一定是少一枚的子答案，不能直接用任意方案。'},
+    {q:'贪心（先拿最大面额）为什么不行？',
+     a:'用 [1,5,6,9] 凑 11：贪心先拿 9，剩 2 只能 1+1，共 3 枚；最优其实是 5+6 两枚。大面额可能把余数带进死胡同，所以必须让 DP 把每种"最后一枚"都试一遍。'},
+    {q:'∞ 是干嘛的？最后怎么变 −1？',
+     a:'∞ 表示"目前凑不出"。用 ∞ 当初值，min 比较时永远输给可行方案；转移时若 f[x−c] 是 ∞，加 1 还是 ∞，不会污染结果。全部填完若 f[amount] 仍是 ∞，说明真凑不出 → 返回 −1。'},
+    {q:'复杂度？',
+     a:'外层 amount 轮 × 内层硬币数 k，时间 O(amount·k)；f 表长 amount+1，空间 O(amount)。'}
+  ],
+
+  complexity: '时间 O(amount × 硬币种数)　·　空间 O(amount)（f 表）',
+
+  form: [
+    {key:'coins', label:'coins', type:'arr', def:[1,2,5]},
+    {key:'amount', label:'amount', type:'num', def:11}
+  ],
+  presets: [
+    {label:'[1,2,5] 凑 11 → 3', values:{coins:[1,2,5], amount:11}},
+    {label:'[2] 凑 3 → -1（凑不出）', values:{coins:[2], amount:3}},
+    {label:'[1,5,6,9] 凑 11 → 2（贪心会错）', values:{coins:[1,5,6,9], amount:11}},
+    {label:'[1] 凑 0 → 0（边界）', values:{coins:[1], amount:0}}
+  ],
+
+  code: `class Solution:
+    def coinChange(self, coins, amount):
+        f = [0] + [float('inf')] * amount   # f[x]: 凑出 x 最少要几枚硬币
+        for x in range(1, amount + 1):      # 从 1 元一路凑到 amount 元
+            for c in coins:                 # 每种硬币都试当"最后一枚"
+                if c <= x and f[x - c] + 1 < f[x]:
+                    f[x] = f[x - c] + 1     # 用这枚收尾更省
+        return f[amount] if f[amount] < float('inf') else -1
+`,
+
+  sol(input){
+    const coins = input.coins || [];
+    const amount = Math.max(0, Math.floor(+input.amount || 0));
+    const f = [0];
+    for(let x = 1; x <= amount; x++) f[x] = Infinity;
+    for(let x = 1; x <= amount; x++)
+      for(const c of coins)
+        if(c <= x && f[x - c] + 1 < f[x]) f[x] = f[x - c] + 1;
+    return f[amount] === Infinity ? -1 : f[amount];
+  },
+  expected: 3,
+
+  quiz: [
+    {q:'贪心"每次都拿最大面额"在 coins = [1,5,6,9]、amount = 11 上怎么翻车?',
+     options:['贪心先拿 9,剩 2 只能 1+1,共 3 枚;最优是 5+6 两枚——大面额把余数带进了死胡同','贪心得出 4 枚,比 DP 多 1 枚','贪心会死循环,永远停不下来'],
+     answer:0,
+     explain:'对 11 贪心:拿 9 剩 2,只能 1+1,合计 3 枚;但 11 = 5+6 只要 2 枚。贪心的"最后一枚"押了大票,余数的结构就失控了。DP 的 f[x] = min(f[x−c]) + 1 把每种面额轮流当最后一枚试一遍、min 挑最省——所有可能的收尾全被覆盖,不会押错。',
+     jumpTo:45},
+    {q:'coins = [1,3,4]、amount = 6,最少几枚硬币?',
+     options:['3','2','4'],
+     answer:1,
+     explain:'递推:f[1]=1、f[2]=2、f[3]=1、f[4]=1、f[5]=2(1+4 或 3+1+1 里取 2)、f[6] = min(f[5]+1, f[3]+1, f[2]+1) = min(3,2,3) = 2——凑法 3+3。选 3 的是贪心思路 4+1+1;选 4 的是把 6 拆成 4+1+1 后又多算了一枚。注意 f[3]=1 这格:3 元本身一枚搞定,它是 f[6] 能压到 2 的关键——小格子的最优直接垫起大格子。',
+     jumpTo:22},
+    {q:'coins = [2]、amount = 3 时,f 表最后长什么样?返回什么?',
+     options:['f[3] = 1——拿一枚 2 再找零 1 元','-1——f[1]、f[3] 始终是 ∞:面额怎么组合都变不出奇数,全表填完仍是 ∞ 才返回 −1','程序报错,因为 x − c 会变成负数'],
+     answer:1,
+     explain:'f[1]:唯一的硬币 2 > 1,塞不下 → ∞;f[2] = 1;f[3]:试 c=2,剩 1 元,f[1] 是 ∞——∞ + 1 还是 ∞,这条路堵死但不污染别人 → f[3] = ∞。返回前查一眼:仍是 ∞ → return −1。两个细节都是这套写法的安全阀:①先判 c ≤ x,防止 x−c 变负下标;②用 ∞ 当"凑不出"的哨兵,min 比较时它永远输给可行方案,传染也被 ∞+1 = ∞ 吸收。',
+     jumpTo:46},
+  ],
+
+  steps(input){
+    const F = [];
+    const coins = input.coins || [];
+    const amount = Math.max(0, Math.floor(+input.amount || 0));
+
+    // 真实跑一遍（与 Python 同逻辑）
+    const f = [0];
+    for(let x = 1; x <= amount; x++) f[x] = Infinity;
+
+    // 跑完的终版表（仅供收尾解说回查一枚组合用，不参与动画）
+    const fdone = [0];
+    for(let x = 1; x <= amount; x++) fdone[x] = Infinity;
+    for(let x = 1; x <= amount; x++)
+      for(const c of coins)
+        if(c <= x && fdone[x - c] + 1 < fdone[x]) fdone[x] = fdone[x - c] + 1;
+
+    // 画面最多画 14 格：0..shown
+    const shown = Math.min(amount, 13);
+    const fmt = x => x === Infinity ? '∞' : x;
+    const disp = () => { const a = []; for(let x = 0; x <= shown; x++) a.push(fmt(f[x])); return a; };
+
+    // 收尾解说：回查 fdone 表还原一枚组合
+    const parts = [];
+    (function walk(x){
+      if(x <= 0 || fdone[x] === Infinity) return;
+      for(const c of coins){
+        if(x - c >= 0 && fdone[x - c] + 1 === fdone[x]){ parts.push(c); walk(x - c); return; }
+      }
+    })(amount);
+
+    /* ---- 绘制（o 全是帧生成时的快照，铁律 5） ---- */
+    const draw = (o) => (v) => {
+      v.arr('coins', coins, {
+        label:'硬币面额 <code>coins</code>　·　每种无限枚',
+        states:o.cst || {}, markers:o.cmk || []
+      });
+      v.arr('f', o.disp, {
+        label:'DP 表 <code>f</code>　·　<code>f[x]</code> = 凑出 x 元最少几枚硬币',
+        cw:40, states:o.st || {}, markers:o.mk || [], idxCls:o.ix || {}
+      });
+      if(o.vars) v.vars('vars', o.vars, {label:'当前变量', hl:o.hlv || []});
+      if(o.res !== undefined) v.result(o.res, {label:'返回结果'});
+    };
+    const mx = i => ({name:'x', idx:i, cls:'mi', text:'▲ x'});
+    const mc = i => ({name:'x-c', idx:i, cls:'mr', text:'▲ x-c'});
+    const csnap = ci => [{name:'c', idx:ci, cls:'mi', text:'▲ c'}];
+
+    F.push({hl:[1,2,3], tag:'初始化', cls:'t-grey',
+      msg:'面额 [' + coins.join(', ') + ']（每种<b>无限枚</b>），要凑出 <b>' + amount + '</b> 元且硬币数最少。开一张 DP 表 f：f[x] 表示"凑出 x 元最少要几枚"。地基是 <code>f[0] = 0</code>——0 元什么都不用拿；其余格子先全记 <b>∞</b>，意思是"还没找到任何凑法"，等下面的填表一格格把它们救活（灰格就是 ∞）。' +
+          (amount > shown ? '（表太长，画面只画前 14 格，后面的照常口算）' : ''),
+      do: draw({disp:disp(), cst:{}, cmk:[], st:{0:'done'}, mk:[mx(0)],
+                vars:{amount:amount, 'f[0]':0, 其余:'∞'}})});
+
+    for(let x = 1; x <= amount; x++){
+      F.push({hl:[4], tag:'凑 x=' + x, cls:'t-orange',
+        msg:'轮到凑 <b>x = ' + x + '</b> 元（▲ 指着 f 表这一格，目前 ' + fmt(f[x]) + '）。核心想法：x 元的任一凑法里总有<b>一枚"最后一枚"硬币</b> c——把 c 拿走，剩下的 x−c 元也必然是最少枚凑法，所以"用 c 收尾"的总代价 = f[x−c] + 1。把每种面额轮流当最后一枚试一遍、取最省，就覆盖了所有可能。这也解释了为什么从 1 元小步填到 ' + amount + ' 元：算 f[' + x + '] 时，更小的 f[x−c] 必须已经算好。',
+        do: draw({disp:disp(), cst:{}, cmk:[], st:{[x]:'active'}, mk:[mx(x)], ix:{[x]:'on-i'},
+                  vars:{x:x, c:'—', 'f[x]':fmt(f[x])}})});
+
+      for(let ci = 0; ci < coins.length; ci++){
+        const c = coins[ci];
+        if(c > x){
+          F.push({hl:[5,6], no:6, tag:'试 c=' + c, cls:'t-red',
+            msg:'硬币 <b>' + c + '</b> 元比要凑的 ' + x + ' 元还大，一枚就超预算 → 跳过，看下一种面额（coins 里这枚被高亮）。必须先判 c ≤ x：否则 x−c 是负数，f[x−c] 会查到表外的负下标，直接出错。',
+            do: draw({disp:disp(), cst:{[ci]:'active'}, cmk:csnap(ci),
+                      st:{[x]:'active'}, mk:[mx(x)], ix:{[x]:'on-i'},
+                      vars:{x:x, c:c, 'f[x-c]+1':'—', 'f[x]':fmt(f[x])}})});
+        } else {
+          const src = x - c;
+          const cand = f[src] + 1;
+          const before = f[x];
+          const better = cand < before;
+          if(better) f[x] = cand;
+          F.push({hl: better ? [5,6,7] : [5,6], ok: better ? 6 : undefined, no: better ? undefined : 6,
+            tag:'试 c=' + c, cls: better ? 't-green' : 't-ink',
+            msg:'拿 <b>' + c + '</b> 元当最后一枚：拿走它剩 ' + src + ' 元，查表 <code>f[' + src + '] = ' + fmt(f[src]) + '</code>（▲ x−c 指着这格——它是前几轮算好的现成答案，直接复用不重算），加 1 = <code>' + fmt(cand) + '</code>' +
+                (better
+                  ? (before === Infinity
+                      ? '，而 f[' + x + '] 还是 ∞（' + x + ' 元还没有任何凑法）→ <b>更新 f[' + x + '] = ' + cand + '</b>，这格第一次被救活（画面高亮刷新）！'
+                      : '，比当前 f[' + x + '] = ' + fmt(before) + ' 更省 → <b>更新 f[' + x + '] = ' + cand + '</b>（画面高亮刷新）。')
+                  : (f[src] === Infinity
+                      ? '，f[' + src + '] 是 ∞：尾数 ' + src + ' 元都凑不出，这条路堵死——∞ + 1 还是 ∞，不会污染答案 → 不换。'
+                      : '，不比当前 f[' + x + '] = ' + fmt(before) + ' 省 → 不换。')),
+            do: draw({disp:disp(), cst:{[ci]:'active'}, cmk:csnap(ci),
+                      st: better ? {[x]:'active', [src]:'in'} : {[x]:'active', [src]:'muted'},
+                      mk:[mx(x), mc(src)], ix:{[x]:'on-i', [src]:'on-r'},
+                      vars:{x:x, c:c, 'f[x-c]+1':fmt(cand), 'f[x]':fmt(f[x])},
+                      hlv: better ? ['f[x]'] : []})});
+        }
+      }
+    }
+
+    const okFin = f[amount] !== Infinity;
+    F.push({hl:[8], ok: okFin ? 8 : undefined, no: okFin ? undefined : 8,
+      tag:'返回', cls: okFin ? 't-dark' : 't-red',
+      msg: okFin
+        ? '表填完了：f[' + amount + '] = <b>' + f[amount] + '</b>，不是 ∞ → <code>return ' + f[amount] + '</code> 🎉 ' +
+          (parts.length ? '拆开看这 ' + f[amount] + ' 枚是什么：<b>' + amount + ' = ' + parts.slice().sort((a,b)=>b-a).join(' + ') + '</b>——沿 f 表从 ' + amount + ' 一步步回跳就能还原方案。' : '') +
+          '复杂度：外层 ' + amount + ' 个金额 × 内层 ' + coins.length + ' 种硬币 = O(amount × k)，远快于枚举所有组合。'
+        : '表填完了：f[' + amount + '] 还是 <b>∞</b>——每种"最后一枚"都试过了，剩下的尾数个个凑不出，说明这些面额怎么组合都变不出 ' + amount + ' 元 → <code>return -1</code>。注意 ∞ 会"传染"：尾数 f[x−c] = ∞，加 1 还是 ∞，一路堵到最后，所以这一格始终是灰色。',
+      do: draw({disp:disp(), cst:{}, cmk:[],
+                st:{[shown]: okFin ? 'target' : 'muted'},
+                mk:[{name:'ans', idx:shown, cls: okFin ? 'mg' : 'mq', text:'▲ 答案'}],
+                res: okFin ? f[amount] : -1})});
+
+    return F;
+  }
+});
+</script>
+</body>
+</html>

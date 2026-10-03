@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P072 · 柱状图中最大的矩形 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 72, num: 84, title: '柱状图中最大的矩形', diff: '困难', cat: '栈',
+  method: 'largestRectangleArea',
+
+  lede: '题目：柱状图里每根柱子宽 1，找一块<b>矩形面积最大</b>的区域——矩形的高受限于区内最矮的柱子。' +
+        '枚举所有左右边界是 O(n²)；用<span class="var o">单调递增栈</span>存下标：一旦来了一根<span class="var i">更矮的柱子</span>，' +
+        '栈顶柱子的"左右边界"就都齐了——<b>当场结算</b>它可张成的最大矩形（宽 = i − 新栈顶 − 1）。' +
+        '末尾垫一根 0 当<span class="var v">哨兵</span>，把栈里剩下的柱子全部逼出来结算。橙色高亮块就是正在结算的矩形。',
+
+  roles: [
+    {c:'orange', code:'i',       text:'当前柱子（右边界候选）'},
+    {c:'blue',   code:'st',      text:'单调递增栈：还没结算的下标'},
+    {c:'red',    code:'j / ht',  text:'被弹出结算的柱子'},
+    {c:'violet', code:'哨兵 0',  text:'末尾垫的 0：负责清栈收尾'}
+  ],
+
+  codeTitle: '跟着高亮读代码——while 那行变<span style="color:var(--green)">绿</span>＝栈顶不比当前柱矮、右边界已到，弹出结算；变<span style="color:var(--red)">红</span>＝栈顶更矮，还要继续等。橙色半透明块 = 刚结算出的矩形。',
+
+  legend: [
+    {c:'orange', text:'i 当前柱（右边界）'},
+    {c:'blue',   text:'栈里待结算的柱子'},
+    {c:'red',    text:'弹出结算的柱子 j'},
+    {swatch:'rgba(201,84,31,.28)', text:'正在结算的矩形（高 ht × 宽 w）'},
+    {swatch:'var(--violet-soft)', text:'末尾 0 = 哨兵'}
+  ],
+
+  idea: '单调递增栈 + 哨兵：柱子只比栈顶高就进栈排队；一来根更矮的，栈顶的左右边界就齐了——高 = 它自己，宽 = i − 新栈顶 − 1，弹一根结一笔。哨兵 0 保证最后一根也不漏。',
+
+  qa: [
+    {q:'为什么弹栈时能保证矩形两边都"卡死"在边界上？',
+     a:'栈里从底到顶高度<b>严格递增</b>（弹完栈顶后）……换个说法：栈顶 j 能留在栈里，说明它左边的栈元素比它矮，右边的都被更矮的挡着。所以弹出 j 时：<b>左边界 = 新栈顶</b>（左边第一根比 j 矮的），<b>右边界 = i</b>（右边第一根比 j 矮的）。夹在中间的柱子都 ≥ h[j]，高为 h[j] 的矩形能完整张开。'},
+    {q:'宽为什么是 i − left − 1？',
+     a:'能站进矩形的是<b>开区间</b> (left, i)：left 和 i 本身都更矮、进不来。夹在中间的柱子数为 i − left − 1。left 取 −1（栈弹空）时宽正好是 i，即从最左端贴到 i 前一格。'},
+    {q:'等高的柱子怎么办？',
+     a:'条件用的 <b>≥</b>：等高也先弹。先弹那根算出的宽会偏小，但它弹出后左边那根等高柱会替它把宽"补回来"——最终至少有一根等高柱算出完整宽度，答案不受影响。'},
+    {q:'哨兵 0 是干嘛的？',
+     a:'数组本身递增时，扫描完栈里还压着一堆没结算的柱子。在末尾垫一根 0（比谁都矮），循环会把它当普通柱子处理——把栈里所有柱子<b>全部弹出结算</b>，省掉收尾循环。'}
+  ],
+
+  complexity: '时间 O(n)（每根柱子至多进栈/出栈各一次）　·　空间 O(n)（栈）',
+
+  form: [
+    {key:'heights', label:'heights', type:'arr', def:[2,1,5,6,2,3]}
+  ],
+  presets: [
+    {label:'官方用例 [2,1,5,6,2,3]', values:{heights:[2,1,5,6,2,3]}},
+    {label:'一路递增 [1,2,3,4,5]', values:{heights:[1,2,3,4,5]}},
+    {label:'全等高 [3,3,3]', values:{heights:[3,3,3]}},
+    {label:'两根柱 [2,4]（边界）', values:{heights:[2,4]}}
+  ],
+
+  code: `class Solution:
+    def largestRectangleArea(self, heights):
+        h = heights + [0]             # 哨兵: 末尾垫个 0, 逼栈里全部结算
+        st, best = [], 0              # 单调递增栈: 存下标
+        for i, x in enumerate(h):
+            while st and h[st[-1]] >= x:
+                ht = h[st.pop()]      # 栈顶右边界到了, 出栈结算
+                left = st[-1] if st else -1   # 左边界 = 弹完后的新栈顶
+                best = max(best, ht * (i - left - 1))  # 宽 × 高
+            st.append(i)              # 自己进栈
+        return best
+`,
+
+  sol(input){
+    const h = (input.heights || []).slice();
+    h.push(0);
+    const st = [];
+    let best = 0;
+    for(let i = 0; i < h.length; i++){
+      while(st.length && h[st[st.length - 1]] >= h[i]){
+        const ht = h[st.pop()];
+        const left = st.length ? st[st.length - 1] : -1;
+        best = Math.max(best, ht * (i - left - 1));
+      }
+      st.push(i);
+    }
+    return best;
+  },
+  expected: 10,
+
+  quiz: [
+    {q:'来了一根更矮的新柱,为什么就要当场弹出栈顶结算,不能让它继续等?',
+     options:['因为栈空间有限,必须腾位置给新柱','因为更矮的新柱就是栈顶的右边界:矩形高受最矮柱限制,栈顶的矩形再也伸不过去了,此刻左右边界恰好都齐','因为矮柱子的矩形面积一定更大,先算它划算'],
+     answer:1,
+     explain:'矩形的高由区内最矮柱决定。新柱 x 比栈顶矮,意味着栈顶以自身高度往右铺的行情到 i 前一格为止——再过去就被 x 卡死。此刻它的右边界 = i、左边界 = 弹完后的新栈顶(左边第一根比它矮的),两边都卡死在矮柱上,宽 = i − left − 1,现在不结算就永远算不出真实面积了。栈空间和"谁面积大"都无关。',
+     jumpTo:18},
+    {q:'heights = [3,1,3,2,2],最大矩形面积是多少?',
+     options:['5','3','6'],
+     answer:2,
+     explain:'推演:3 进栈;来 1 把 3 弹出(3×1=3);1 和 3 进栈;来 2 弹出 3(3×1=3);两个 2 等高,≥ 也弹(2×1=2,这笔算小了没关系);哨兵 0 清栈:弹第二个 2 时宽 = i − 1 − 1 = 3,面积 2×3=6——左边那根等高柱替第一根把宽补回来了;最后弹 1,1×5=5。最大是 6(下标 2~4 那段,高 2 宽 3)。选 5 是只想到全宽矮条,选 3 是只算了最高的单根。',
+     jumpTo:30},
+    {q:'为什么要在末尾垫一根 0 当哨兵?不垫会怎样?',
+     options:['不垫的话,一路递增的柱子会一直赖在栈里没人给它们算面积;0 比谁都矮,扫描到它就把栈里所有柱子全部逼出来清账','为了让栈的高度递增,好看','为了把数组长度凑成偶数,方便两两配对'],
+     answer:0,
+     explain:'若输入本身一路递增,扫描完栈里压着一整排没结算的柱子,它们谁都没等到更矮的右边界——最大矩形可能就藏在这里头(比如官方用例里 5、6 那段,全靠哨兵 0 收尾才结出 2×3)。垫 0 后循环把它当普通柱子处理,一根不漏地把栈清空,省掉单独的收尾循环。等高柱同理靠 ≥ 弹出后由左侧同高柱补宽。',
+     jumpTo:29},
+  ],
+
+  steps(input){
+    const F = [];
+    const hs = input.heights || [];
+    const h = hs.concat([0]);        // 带哨兵的展示数组
+    const n = h.length;              // 含哨兵
+    const st = [];                   // 栈 items {key:'j'+下标, val:高度, fx:'#下标'}
+    let best = 0, bestInfo = '—';
+
+    /* ---- 快照绘制（铁律 5） ---- */
+    const draw = (o) => (v) => {
+      v.bars('H', h, {
+        label:'柱状图 <code>heights</code>　·　末尾 0 是哨兵（虚位柱）',
+        states:o.hst || {}, markers:o.mk || [], fill:o.fill, chartH:140,
+        labels:o.labels || {}
+      });
+      v.stack('st', o.stk, {label:'单调栈 <code>st</code>　·　存下标，高度从底到顶递增',
+        states:o.sst || {}, topTag:o.stk.length ? '栈顶' : null});
+      v.vars('vars', {i:o.i, x:o.x, ht:o.ht, left:o.left, best:o.best},
+        {label:'当前状态', hl:o.hlv || []});
+      if(o.res !== undefined) v.result(o.res, {label:'最大矩形面积'});
+    };
+    const snap = (i, extra) => Object.assign({
+      hst: i == null ? {} : {[i]:'active'},
+      mk: i == null ? [] : [{name:'i', idx:i, cls:'mi', text:'▲ i'}],
+      stk: st.slice(), sst:{},
+      i: i == null ? '—' : i, x: i == null ? '—' : h[i],
+      ht:'—', left:'—', best:best, hlv:[]
+    }, extra);
+    const stkStates = () => {
+      const s = {};
+      st.forEach(it => { s[it.key] = 'in'; });
+      return s;
+    };
+
+    F.push({hl:[1,2,3,4], tag:'开始', cls:'t-grey',
+      msg:'先在末尾垫一根 <b>0</b> 当哨兵（下标 ' + (n - 1) + '，画面最右边的虚位柱）：它高度 0、不高于任何柱子，扫描到它时会把栈里还没结算的柱子<b>全部逼出来清账</b>——不然一路递增的柱子会一直赖在栈里，永远没人给它们算面积。栈 st 存<b>下标</b>而不是高度（结算宽度要靠下标做减法），且从底到顶高度<b>递增</b>；best = 0 记全局最大面积。现在栈还空着，从第 0 根开始扫。',
+      do: draw(snap(null))});
+
+    for(let i = 0; i < n; i++){
+      const x = h[i];
+      const sentinel = i === n - 1;
+      F.push({hl:[5], tag:'看第 ' + i + ' 根', cls: sentinel ? 't-violet' : 't-ink',
+        msg: sentinel
+          ? 'i = ' + i + ' 走到<b>哨兵 0</b>（▲ 指着最右边的虚位柱，高度 0）：它不高于任何柱子，等于宣布——栈里 ' + st.length + ' 根没结算柱子的矩形<b>右边界全都到头了</b>（最多伸到 i 的前一格）。接下来 while 会把它们<b>挨个弹出、逐一结算</b>，一根不漏。这就是哨兵的意义：把"收尾清栈"并进主循环，不用另写收尾代码。'
+          : 'i = ' + i + '，新柱子 x = <b>' + x + '</b>（▲ 橙色名牌指着它；st 里现在是 [' + st.map(t => t.key.slice(1)).join(', ') + ']）。规矩：进栈前先<b>清场</b>——把栈里所有不比它矮（高度 ≥ ' + x + '）的柱子当场结算。为什么不等等？因为它们以自身高度往右伸的行情到 i 附近就到头了，此刻左右边界正好凑齐，<b>现在结账才能算出真实面积</b>。',
+        do: draw(snap(i))});
+
+      while(st.length && h[+st[st.length - 1].key.slice(1)] >= x){
+        const jk = st[st.length - 1].key;
+        const j = +jk.slice(1);
+        F.push({hl:[6], ok:6, tag:'右边界到了', cls:'t-green',
+          msg:'栈顶 j = <b>' + j + '</b>，高 <code>' + h[j] + '</code> ≥ 新柱 x = ' + x + ' → 新柱比它矮（或等高）：对 j 来说<b>右边界就是 i = ' + i +
+              '</b>——高 ' + h[j] + ' 的矩形往右最多伸到 i 的前一格，再过去就被 x 卡住了。左边界马上由新栈顶给出，账已凑齐，<b>弹出结算</b>！' +
+              (h[j] === x ? '（等高也先弹：这笔宽会算小，但左边同高的柱子随后会把宽补回来，答案不亏）' : ''),
+          do: draw(snap(i, {sst:Object.assign(stkStates(), {[jk]:'active'})}))});
+
+        st.pop();
+        const ht = h[j];
+        F.push({hl:[7], tag:'弹出 j=' + j, cls:'t-red',
+          msg:'<code>ht = h[' + j + '] = ' + ht + '</code>，下标 ' + j + ' 出栈（画面上它黯淡出局）。为什么必须出栈？它这笔账马上就结，再占着栈顶会挡住后面柱子的清场。现在只差一件事：以 ' + ht + ' 为高的矩形能铺多宽？左边界就在弹完后的<b>新栈顶</b>——下一步量给你看。',
+          do: draw(snap(i, {hst:{[i]:'active', [j]:'stale'}, ht:ht, mk:[{name:'i', idx:i, cls:'mi', text:'▲ i'}]}))});
+
+        const left = st.length ? +st[st.length - 1].key.slice(1) : -1;
+        const w = i - left - 1;
+        const area = ht * w;
+        const isBest = area > best;
+        best = Math.max(best, area);
+        if(isBest) bestInfo = '高 ' + ht + '（j=' + j + '）× 宽 ' + w;
+        F.push({hl:[8,9], tag:'结算矩形', cls:'t-green',
+          msg:'左边界 = 弹完后的新栈顶 <b>' + left + '</b>（' + (left === -1 ? '栈已空，取 −1 表示"左边再没有柱子了"' : '下标 ' + left + '、高 ' + h[left] + '，是左边第一根比 ' + ht + ' 矮的') +
+              '）→ 宽 = i − left − 1 = ' + i + ' − ' + left + ' − 1 = <b>' + w + '</b>：减 1 是因为 left 和 i 这两根矮柱自己都进不了矩形，能站进去的只有中间 ' + w + ' 格（橙色半透明块就是它）。面积 = ' + ht + ' × ' + w + ' = <b>' + area + '</b>' +
+              (isBest ? '，超过旧 best → <b>刷新 best = ' + best + '</b>！' : '，不超当前 best（' + best + '），best 不动。'),
+          do: draw(snap(i, {
+            hst:Object.assign({[i]:'active'}, stkStates()),
+            fill:{from:left + 1, to:i - 1, h:ht, color:'rgba(201,84,31,.3)'},
+            ht:ht, left:left, hlv: isBest ? ['best'] : []
+          }))});
+      }
+
+      if(st.length){
+        const jk = st[st.length - 1].key;
+        const j = +jk.slice(1);
+        F.push({hl:[6], no:6, tag:'栈顶更矮', cls:'t-red',
+          msg:'栈顶 j = <b>' + j + '</b>，高 <code>' + h[j] + '</code> &lt; 新柱 x = ' + x + ' → 清场结束，<b>while 停</b>。为什么不把它也弹了？它比新柱还矮，x <b>挡不住</b>它的矩形继续往右伸——右边界还没到，它还得等更好的行情。这正是栈保持"从底到顶递增"的意义：比新柱矮的继续排队，不比它矮的当场结账。',
+          do: draw(snap(i, {sst:{[jk]:'active'}}))});
+      } else {
+        F.push({hl:[6], no:6, tag:'栈空', cls:'t-red',
+          msg:'栈空 → 没有要清账的柱子，while 直接跳过。空栈还说明：x = ' + x + ' 是目前"活着"的柱子里最矮的（比它高的早已结完账离场）——它的矩形暂时只能自己起步，右边界在哪还不知道，先进栈等着。',
+          do: draw(snap(i))});
+      }
+
+      st.push({key:'j' + i, val:x, fx:'#' + i});
+      F.push({hl:[10], tag:'i 进栈', cls:'t-blue',
+        msg:'<code>st.append(' + i + ')</code>：x = ' + x + ' 进栈排队，栈里现在是 [' + st.map(t => t.key.slice(1)).join(', ') + ']（从底到顶递增）。为什么不当场算它的面积？它的<b>右边界还没出现</b>——只要后面的柱子不比它矮，它的高矩形就能一直往右伸，宽度只会越等越大，<b>现在算一定吃亏</b>；不如进栈，等一根更矮的柱子来逼它结账。',
+        do: draw(snap(i, {sst:Object.assign(stkStates(), {['j' + i]:'just'}), labels:{[n - 1]:'哨兵'}}))});
+    }
+
+    F.push({hl:[11], tag:'返回', cls:'t-dark',
+      msg:'扫描结束 → <b>return ' + best + '</b> 🎉 最大矩形是 <b>' + bestInfo + '</b>。复杂度复盘：每根柱子一生至多进栈一次、出栈一次，所有 while 结算摊到每根柱子头上都是常数次，' + hs.length + ' 根柱子全程 O(n)——对比枚举左右边界的 O(n²)，柱子越多优势越明显。',
+      do: draw(snap(null, {res:best}))});
+
+    return F;
+  }
+});
+</script>
+</body>
+</html>

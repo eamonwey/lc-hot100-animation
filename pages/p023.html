@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P023 · 反转链表 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 23, num: 206, title: '反转链表', diff: '简单', cat: '链表',
+  method: 'reverseList',
+
+  lede: '题目：把单链表<b>整个掉头</b>：1→2→3→4→5 变成 5→4→3→2→1，返回新表头。' +
+        '动画里每个箭头就是节点的 <span class="var r">next</span> 指针。<span class="var o">prev</span> 是"已经反转好"那段的头，' +
+        '<span class="var i">cur</span> 是正在处理 的节点，<span class="var r">nxt</span> 负责在掉头前替你记住后面的路。' +
+        '核心就一个念头：<b>让 cur 的箭头反过来指向 prev，然后三个人整体右移一格</b>。',
+
+  roles: [
+    {c:'green',  code:'prev', text:'已反转部分的头（最终答案）'},
+    {c:'orange', code:'cur',  text:'正在处理的节点'},
+    {c:'blue',   code:'nxt',  text:'先存下下一个，防止断链'},
+    {c:'blue',   code:'next', text:'箭头方向 = 节点的 next'}
+  ],
+
+  codeTitle: '跟着高亮读代码——绿色箭头是已经反转好的部分；while 那行变<span style="color:var(--green)">绿</span>＝还有节点要处理。',
+
+  legend: [
+    {c:'orange', text:'cur 当前节点'},
+    {c:'green', text:'prev 已反转部分'},
+    {c:'blue', text:'nxt 预备队'},
+    {swatch:'var(--violet-soft)', text:'虚线弧：反转后的新箭头走这里'}
+  ],
+
+  idea: '一边走一边把箭头掉头：save next → 反指 → prev、cur 各进一步，走完时 prev 就是新头。',
+
+  qa: [
+    {q:'为什么必须先存 nxt？不存会怎样？',
+     a:'一旦执行 cur.next = prev，原来指向后面节点的箭头就<b>永久丢了</b>，后半段链表再也找不到。所以顺序是死的：先存 nxt，再反指，再平移。'},
+    {q:'循环不变式是什么？',
+     a:'每一轮开始时都保证：<b>prev 开头的链表已经全部反转好，cur 开头的还是原样</b>，两段之间没有箭头相连。循环结束时 cur = None，prev 正好是原链表的最后一个节点——也是新链表的头。'},
+    {q:'递归版本呢？',
+     a:'递归写法更短但不好画：先递归到底，回溯时让 head.next.next = head。空间 O(n)（栈），面试时能讲清迭代版通常更加分。'}
+  ],
+
+  complexity: '时间 O(n)　·　空间 O(1)（只动三个指针）',
+
+  form: [
+    {key:'head', label:'head', type:'list', def:[1,2,3,4,5]}
+  ],
+  presets: [
+    {label:'1→2→3→4→5', values:{head:[1,2,3,4,5]}},
+    {label:'1→2', values:{head:[1,2]}},
+    {label:'单节点 7', values:{head:[7]}},
+    {label:'1→2→3', values:{head:[1,2,3]}}
+  ],
+
+  code: `class Solution:
+    def reverseList(self, head):
+        prev, cur = None, head
+        while cur:              # 还有节点没处理
+            nxt = cur.next      # 先记住下一个
+            cur.next = prev     # 箭头掉头, 指向 prev
+            prev = cur          # prev 前进一格
+            cur = nxt           # cur 前进一格
+        return prev             # 新表头
+`,
+
+  sol(input){
+    let vals = (input.head || []).filter(x => x != null);
+    return vals.slice().reverse();
+  },
+  expected: [5,4,3,2,1],
+
+  quiz: [
+    {q:'每轮为什么必须先存 nxt = cur.next，才能执行 cur.next = prev？',
+     options:['为了少用一个临时变量','箭头一掉头，cur 指向原后方的路就永久断了——不先存，后半段链表当场失踪，后面再也走不到','因为 Python 不允许直接修改 next'],
+     answer:1,
+     explain:'cur.next 是通向「还没反转部分」的唯一入口，执行 cur.next = prev 的瞬间它就被覆盖成回指 prev 的箭头。先把 nxt 存下来，掉头后才知道下一步该去哪。这题的头号踩坑点就是顺序写反：先反指再想存 next，链表从 cur 后面直接断成两截，while 下一轮直接崩。口诀：先存、再翻、后平移。',
+     jumpTo:3},
+    {q:'对 1→2→3→4→5 反转：第 3 轮 while 检查开始时，prev 和 cur 各站在哪个节点？哪些箭头已经掉头？',
+     options:['prev = 节点2，cur = 节点3；1→2、2→3 两根已掉头（2 指向 1，3 还指着 4）','prev = 节点3，cur = 节点4；前三根箭头都掉头了','prev = 节点1，cur = 节点2；只有 1→2 掉头'],
+     answer:0,
+     explain:'逐轮数：第 1 轮处理节点 1，它反指 None（prev = None），轮末 prev=1、cur=2；第 2 轮处理节点 2，2 反指 1，轮末 prev=2、cur=3。所以第 3 轮检查时 prev 站在节点 2、cur 站在节点 3，绿段是 None←1←2，不变式「prev 开头那段已全部反转、cur 开头那段还是原样，两段之间没有连线」每轮都成立。',
+     jumpTo:12},
+    {q:'循环结束时 cur = None，为什么返回的是 prev 而不是 cur 或 head？',
+     options:['返回 prev 只是惯例，返回 head 结果一样','head 仍是原链头（它的 next 已被改掉，成了新链的尾巴），cur 是空——每轮 prev 都接手刚反转完的节点，最后接手的正是原链最后一个节点，反转后它就是新表头','因为 cur 在循环里被销毁了'],
+     answer:1,
+     explain:'循环条件 while cur 决定退出时 cur 必为 None，它什么都指不了；head 在第一轮就丢了「表头」身份——原头节点反指 None 后成了新链的尾巴。prev 的轨迹是 None→1→2→…→原尾节点，恰好是「已反转段」的头。原链 1→2→3→4→5 时，最终 prev 站在原节点 5 上，return prev 即 5→4→3→2→1。',
+     jumpTo:27},
+  ],
+
+  steps(input){
+    const F = [];
+    const hs = (input.head || []).filter(x => x != null);
+    const nodes = hs.map((v, i) => ({key:'n' + i, val:v}));
+    const N = nodes.length;
+
+    let edges = [];                       // 当前画面上的所有箭头 [from,to]
+    for(let i = 0; i < N - 1; i++) edges.push(['n' + i, 'n' + (i + 1)]);
+    let prev = null, cur = N ? 'n0' : null, nxt = null;
+
+    const nv = k => k == null ? 'None' : '节点' + nodes[+k.slice(1)].val;
+    /* ★ 快照原则：指针/箭头必须在"帧生成那一刻"求值定死；
+       绝不能在 do(v) 执行时才读外层可变变量——那时循环早已跑完，全是最终值 */
+    const ptr = () => {
+      const arr = [];
+      if(prev != null) arr.push({key:prev, text:'▼ prev', cls:'mg'});
+      if(cur != null) arr.push({key:cur, text:'▼ cur', cls:'mi'});
+      if(nxt != null) arr.push({key:nxt, text:'▼ nxt', cls:'mr'});
+      return arr;
+    };
+    const draw = (o) => (v) => {
+      v.list('L', nodes, {
+        label:'链表　·　箭头 = 节点的 <code>next</code> 指向',
+        states: o.states || {},
+        edges: o.edges,                 // 帧生成时的箭头快照
+        pointers: o.pointers || [],     // 帧生成时的指针快照
+        headTag: N ? {key:'n0', text:'旧 head', cls:'mq'} : null
+      });
+      if(o.vars) v.vars('vars', o.vars, {label:'变量'});
+      if(o.result) v.result(o.result, {label:'返回结果'});
+    };
+
+    F.push({hl:[1,2,3], tag:'初始化', cls:'t-grey',
+      msg:'<code>prev = None</code>（反转好的部分还空着），<code>cur = ' + nv(cur) + '</code> 准备从头处理，nxt 空缺待命；画面上所有箭头还都指向右边。' +
+          '接下来每轮只做三件事：<b>存 next → 箭头掉头 → prev/cur 右移</b>。全程不变式：prev 开头那段已全部反转（最终答案的雏形），cur 开头那段还是原样，两段之间没有连线——每一轮结束时依然成立。',
+      do: draw({edges: edges.slice(), pointers: ptr(), vars:{prev:'None', cur:nv(cur), nxt:'—'}})});
+
+    while(cur != null){
+      const ci = +cur.slice(1);
+      F.push({hl:[4], ok:4, tag:'while 检查', cls:'t-blue',
+        msg:'<code>cur</code> 指着 ' + nv(cur) + '，不为空 → 还有节点没反转，继续这一轮；此刻 prev 站在 ' + nv(prev) +
+            '，绿格 = 已经掉头的部分，绿段的头就是 prev。循环条件只看 cur：它是"待处理段"的边界，等它走到 None，原链每个节点都已被收编进绿段。',
+        do: draw({edges: edges.slice(), pointers: ptr(), states:{[cur]:'active'},
+                  vars:{prev:nv(prev), cur:nv(cur), nxt:nv(nxt)}})});
+
+      nxt = (ci + 1 < N) ? 'n' + (ci + 1) : null;
+      F.push({hl:[5], tag:'存 next', cls:'t-blue',
+        msg:'<code>nxt = cur.next</code>：' + (nxt ? '把后面的 ' + nv(nxt) + ' 存在手里。' : '后面没有了，把「空」记下存在手里。') +
+            '<b>这步是保命符</b>——下一步箭头一掉头，cur 指向原后方的路就永久断了，不先存下来，后半段链表当场失踪（本题头号踩坑点）。' +
+            '画面上被记住的' + (nxt ? nv(nxt) : '空位') + '就是替我们攥着的"后路"。',
+        do: draw({edges: edges.slice(), pointers: ptr(),
+                  states:{[cur]:'active', [nxt || '__none']:'peek'},
+                  vars:{prev:nv(prev), cur:nv(cur), nxt:nv(nxt)}})});
+
+      edges = edges.filter(([a]) => a !== cur);
+      if(prev != null) edges.push([cur, prev]);
+      F.push({hl:[6], tag:'箭头掉头', cls:'t-orange',
+        msg:'<code>cur.next = prev</code>：' + nv(cur) + ' 的箭头不再指后面，改指 ' + nv(prev) +
+            '（prev 为 None 就是不指任何人——它暂时是新链的末尾）。<b>这一下就是"反转"本体</b>：画面上旧箭头消失、新箭头掉头向左。' +
+            '敢放心反指，是因为 prev 那段已经全部反转好，接上去正好构成更长的逆序段。',
+        do: draw({edges: edges.slice(), pointers: ptr(),
+                  states:{[cur]:'block', [prev || '__none']:'done'},
+                  vars:{prev:nv(prev), cur:nv(cur), nxt:nv(nxt)}})});
+
+      prev = cur;
+      F.push({hl:[7], tag:'prev 右移', cls:'t-green',
+        msg:'<code>prev = cur</code>：' + nv(prev) + ' 加入已反转段并成为它的带头人——绿段向前扩了一格，"绿段全部反转好"的不变式依然成立。' +
+            'cur 那头还没动，两段依旧互不相连。',
+        do: draw({edges: edges.slice(), pointers: ptr(), states:{[prev]:'done'},
+                  vars:{prev:nv(prev), cur:nv(cur), nxt:nv(nxt)}})});
+
+      cur = nxt;
+      F.push({hl:[8], tag:'cur 右移', cls:'t-ink',
+        msg:'<code>cur = nxt</code>：轮到' + (cur ? nv(cur) : 'None（后面没有了）') + '。三人组整体右移一格回到循环开头——刚才存 next 的伏笔在这里兑现：靠它才没断链。',
+        do: draw({edges: edges.slice(), pointers: ptr(),
+                  states:{[prev]:'done', [cur || '__none']:'active'},
+                  vars:{prev:nv(prev), cur:nv(cur), nxt:nv(nxt)}})});
+    }
+
+    F.push({hl:[4], no:4, tag:'while 结束', cls:'t-red',
+      msg:'<code>cur = None</code>：一个节点不剩，循环结束。为什么答案在 prev？每轮 prev 都接手"刚反转完的节点"，最后接手的正是原链表的最后一个节点——反转后它就是新表头。',
+      do: draw({edges: edges.slice(), pointers: ptr(), states:{[prev || '__none']:'done'},
+                vars:{prev:nv(prev), cur:'None', nxt:'—'}})});
+
+    const revEdges = [];
+    for(let i = N - 1; i > 0; i--) revEdges.push(['n' + i, 'n' + (i - 1)]);
+    edges = revEdges;
+    F.push({hl:[9], tag:'返回', cls:'t-dark',
+      msg:'<code>return prev</code> 🎉 新链表从 ' + (N ? nv('n' + (N - 1)) : 'None') + ' 开始，所有箭头全部掉头：' +
+          '<b>' + (N ? hs.slice().reverse().join('→') : '空表') + '</b>。全程只动了 prev/cur/nxt 三个指针，空间 O(1)。',
+      do: draw({edges: edges.slice(), pointers: ptr(), states:{},
+                result: N ? hs.slice().reverse() : []})});
+
+    return F;
+  }
+});
+</script>
+</body>
+</html>

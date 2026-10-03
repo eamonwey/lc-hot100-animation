@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P081 · 杨辉三角 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 81, num: 118, title: '杨辉三角', diff: '简单', cat: '动态规划',
+  method: 'generate',
+
+  lede: '题目：给定行数 <span class="var v">numRows</span>，生成杨辉三角的前 numRows 行。' +
+        '三角的规矩只有两条：<b>每行两端是 1</b>；<b>中间每个数 = 上一行相邻两数之和</b>。' +
+        '动画逐行构造：新行先全放 1 占位，再从左到右用上一行的"两个爹"（<span class="var o">左爹</span> + <span class="var b">右爹</span>）把中间格算出来，算完一行挂一行。',
+
+  roles: [
+    {c:'orange', code:'左爹',  text:'tri[r−1][j−1]：上一行左邻'},
+    {c:'blue',   code:'右爹',  text:'tri[r−1][j]：上一行右邻'},
+    {c:'violet', code:'row',   text:'正在造的新行'},
+    {c:'green',  code:'tri',   text:'已完工的行'}
+  ],
+
+  codeTitle: '跟着高亮读代码——新行先全放 1（蓝框是两端，灰虚框等覆盖）；算中间格时，上一行的两个爹被<span style="color:var(--orange)">橙圈</span>和<span style="color:var(--violet)">紫圈</span>圈出来。',
+
+  legend: [
+    {c:'green',  text:'已完工的行'},
+    {c:'blue',   text:'新行里已确定的数'},
+    {swatch:'var(--green-soft)', text:'灰虚框 = 先放 1 占位、等会儿被覆盖'},
+    {c:'orange', text:'正在算的格子'}
+  ],
+
+  idea: '逐行 DP：第 r 行只有 r+1 个数，两端恒为 1，中间 row[j] = 上一行相邻两数之和——每个数只依赖上一行，从上往下滚一遍即可。',
+
+  qa: [
+    {q:'为什么中间数恰好等于"上一行相邻两数之和"？',
+     a:'把杨辉三角看成"每步向下左/下右走"的路径计数：走到第 r 行第 j 列，上一步只可能来自上一行的 j−1 或 j 两个位置——两条来路不重不漏，路径数相加。这和爬楼梯的 f(i)=f(i−1)+f(i−2) 是同一个加法原理，只是从"一条线"变成了"一张三角网"。'},
+    {q:'为什么第 r 行要先整行放 1？',
+     a:'<code>row = [1] * (r + 1)</code> 一行代码干两件事：把长度撑到 r+1，并且把<b>两端</b>（它们没有两个爹，本来就是 1）直接放对。中间位置的 1 只是占位，马上会被相邻和覆盖——所以动画里它们显示成灰色虚框。'},
+    {q:'内层循环为什么是 range(1, r)？',
+     a:'第 r 行有下标 0..r 共 r+1 格。下标 0 和 r 是两端（已经是 1，不用算）；只有中间 1..r−1 需要两个爹相加。r=0、r=1 的行没有中间格，内层循环自然一次都不跑——前两行天生全是 1。'},
+    {q:'算第 r 行时需要更早的行吗？',
+     a:'不需要。row[j] 只看 <b>tri[r−1]</b>（紧邻的上一行），再往上的行再也不会被访问。所以空间可以优化成"只留上一行"，本题按题意要返回整个三角，就整表保留。'}
+  ],
+
+  complexity: '时间 O(numRows²)（格子总数）　·　空间 O(1)（不计返回的三角本身）',
+
+  form: [
+    {key:'numRows', label:'numRows', type:'num', def:5}
+  ],
+  presets: [
+    {label:'numRows=5', values:{numRows:5}},
+    {label:'numRows=1（边界）', values:{numRows:1}},
+    {label:'numRows=2（边界）', values:{numRows:2}},
+    {label:'numRows=8', values:{numRows:8}}
+  ],
+
+  code: `class Solution:
+    def generate(self, numRows):
+        tri = []                       # 整个三角
+        for r in range(numRows):       # 一行一行造
+            row = [1] * (r + 1)        # 新行先全是 1
+            for j in range(1, r):      # 中间格: 相邻两数之和
+                row[j] = tri[r-1][j-1] + tri[r-1][j]
+            tri.append(row)            # 这一行完工, 挂上三角
+        return tri
+`,
+
+  sol(input){
+    const numRows = input.numRows;
+    const tri = [];
+    for(let r = 0; r < numRows; r++){
+      const row = new Array(r + 1).fill(1);
+      for(let j = 1; j < r; j++) row[j] = tri[r - 1][j - 1] + tri[r - 1][j];
+      tri.push(row);
+    }
+    return tri;
+  },
+  expected: [[1],[1,1],[1,2,1],[1,3,3,1],[1,4,6,4,1]],
+
+  quiz: [
+    {q:'内层循环为什么写成 range(1, r),两端不用算吗?',
+     options:['两端其实是随机的,程序懒得算','不用算——两端贴边,走到那里只有一条路径,天生是 1;只有中间 1..r−1 各有左右两条来路,才需要上一行的两个爹相加','要算,但 max 和 min 恰好都等于 1'],
+     answer:1,
+     explain:'把三角看成"向左下/右下走"的路径图:第 r 行的下标 0 和 r 只有一条贴边来路,路径数恒为 1;<code>row = [1] × (r+1)</code> 先把这两端放对、顺带撑好长度,中间格再逐个覆盖。r=0、r=1 的行没有中间格,内层循环一次都不跑——前两行天生全是 1。',
+     jumpTo:9},
+    {q:'numRows = 6 时,最后一行(第 5 行)是?',
+     options:['[1,4,6,4,1]','[1,5,10,10,5,1]','[1,5,10,5,1]'],
+     answer:1,
+     explain:'从 [1,4,6,4,1](第 4 行)往下推:两端 1;中间逐格取上一行相邻和——1+4=5、4+6=10、6+4=10、4+1=5,得 [1,5,10,10,5,1],共 6 格。选 [1,4,6,4,1] 是停在上一行少算了一层;选 [1,5,10,5,1] 是漏了中间第 3 格(6+4=10 那次相加)——第 r 行永远恰好 r+1 格,数一数长度就能自查。',
+     jumpTo:22},
+    {q:'整个算法的时间复杂度为什么是 O(numRows²)?每个数不是只做一次加法吗?',
+     options:['因为加法对大数特别慢,要按 O(n²) 算','因为格子总数是 1+2+…+numRows ≈ numRows²/2,每个格子 O(1) 处理,总开销正好铺满整个三角','因为要先排序再去重,多花了一个 n²'],
+     answer:1,
+     explain:'总工作量 = 格子数:第 0 行 1 格、第 1 行 2 格……第 numRows−1 行 numRows 格,合计 numRows(numRows+1)/2 ≈ numRows²/2,每格只做一次加法和一次写回。三角本身就是答案的一部分(本题要返回整表),空间上额外只花常数——这也是"逐行 DP"的典型代价:输出多大,时间就多大。',
+     jumpTo:23},
+  ],
+
+  steps(input){
+    const F = [];
+    const numRows = Math.max(0, Math.floor(Number(input.numRows) || 0));
+    const tri = [];                    // 已完工的行
+    let row = null;                    // 正在造的行
+
+    const CW = 32, HALF = 16;
+    const cellHtml = (val, bg, bd, fg, dashed) =>
+      '<span style="display:inline-block;width:' + CW + 'px;height:30px;margin:1px;font-family:var(--mono);' +
+      'font-size:15px;font-weight:600;line-height:26px;text-align:center;background:' + bg +
+      ';border:1.5px ' + (dashed ? 'dashed' : 'solid') + ' ' + bd + ';color:' + fg + ';border-radius:8px">' + val + '</span>';
+
+    /* ---- 三角 html：push 那一刻拼好（快照） ---- */
+    const triHtml = (o) => {
+      let h = '';
+      for(let ri = 0; ri < numRows; ri++){
+        let rowHtml = '';
+        if(ri < o.doneRows){
+          const done = o.rows[ri];
+          for(let j = 0; j < done.length; j++){
+            let bg = 'var(--green-soft)', bd = 'var(--green-mid)', fg = 'var(--green)';
+            if(o.parents && ri === o.r - 1){
+              if(j === o.parents[0]){ bg = 'var(--orange-soft)'; bd = 'var(--orange)'; fg = 'var(--orange)'; }
+              else if(j === o.parents[1]){ bg = 'var(--violet-soft)'; bd = 'var(--violet)'; fg = 'var(--violet)'; }
+            }
+            rowHtml += cellHtml(done[j], bg, bd, fg, false);
+          }
+        } else if(ri === o.r && o.curRowVals){
+          const rw = o.curRowVals;
+          for(let j = 0; j < rw.length; j++){
+            let bg = '#fff', bd = 'var(--line)', fg = '#b3afa2', dashed = true;
+            if(j === 0 || j === rw.length - 1){ bg = 'var(--blue-soft)'; bd = 'var(--blue-mid)'; fg = 'var(--blue)'; dashed = false; }
+            else if(o.curJ != null && j < o.curJ){ bg = 'var(--blue-soft)'; bd = 'var(--blue-mid)'; fg = 'var(--blue)'; dashed = false; }
+            else if(o.curJ != null && j === o.curJ){ bg = 'var(--orange-soft)'; bd = 'var(--orange)'; fg = 'var(--orange)'; dashed = false; }
+            rowHtml += cellHtml(rw[j], bg, bd, fg, dashed);
+          }
+        } else {
+          for(let j = 0; j <= ri; j++) rowHtml += cellHtml('', '#fbfaf5', 'var(--line)', '#d8d4c8', true);
+        }
+        h += '<div style="padding-left:' + ((numRows - 1 - ri) * HALF) + 'px;white-space:nowrap">' + rowHtml + '</div>';
+      }
+      return h;
+    };
+
+    /* ---- 快照绘制（铁律 5） ---- */
+    const draw = (o) => (v) => {
+      v.text('tri', o.html, {html:true, label:'杨辉三角　·　逐行生长（左爹 + 右爹）'});
+      v.vars('vars', o.vars, {label:'变量', hl:o.hl || []});
+      if(o.res !== undefined) v.result(o.res, {label:'前 ' + numRows + ' 行杨辉三角'});
+    };
+    const snap = (extra) => Object.assign({
+      html:'', rows:tri.map(r => r.slice()), doneRows:tri.length, r:tri.length,
+      curRowVals:null, curJ:null, parents:null, vars:{}, hl:[], res:undefined
+    }, extra);
+
+    F.push({hl:[1,2,3], tag:'初始化', cls:'t-grey',
+      msg:'目标：生成前 <b>' + numRows + '</b> 行杨辉三角。两条规矩都有来历——把三角看成"每步向左下 / 右下走"的路径图：走到第 r 行第 j 格，上一步<b>只可能</b>来自上一行的左邻 (r−1, j−1) 或右邻 (r−1, j)，两条来路不重不漏、路径数相加，这就是"中间数 = 上一行相邻两数之和"；而最左、最右两格只有一条贴边走法，所以恒为 1。三角从顶端那颗 1 开始，一行一行往下长。',
+      do: draw(snap({html:triHtml({}), vars:{r:'—', row:'—', '已完工':0}}))});
+
+    for(let r = 0; r < numRows; r++){
+      F.push({hl:[4], tag:'第 ' + r + ' 行开工', cls:'t-blue',
+        msg:'<code>r = ' + r + '</code>：第 ' + r + ' 行共有 r + 1 = <b>' + (r + 1) + '</b> 格——每往下一行就多出一格，三角才越长越宽' +
+            (r >= 2 ? '。两端贴边、只有一条路，天生是 1；中间 ' + (r - 1) + ' 格各有左右两条来路，要靠上一行算出来。'
+                    : (r === 0 ? '，就是顶上那颗 1：起点本身，路径数就是 1。' : '，两个 1 肩并肩——都贴边，各只有一条路。')),
+        do: draw(snap({html:triHtml({rows:tri.map(x => x.slice()), doneRows:tri.length, r:r, curRowVals:null}),
+                       vars:{r:r, row:'—', '已完工':tri.length}}))});
+
+      row = new Array(r + 1).fill(1);
+      F.push({hl:[5], tag:'先放 1', cls:'t-ink',
+        msg:'<code>row = [1] × ' + (r + 1) + '</code>：一行代码干两件事——把新行撑到 ' + (r + 1) + ' 格，并把<b>两端</b>直接放成最终值（蓝框：贴边只有一条路径，本来就是 1，不用算）。中间的灰虚框只是占位，马上逐个用"两爹之和"覆盖掉。',
+        do: draw(snap({html:triHtml({rows:tri.map(x => x.slice()), doneRows:tri.length, r:r, curRowVals:row.slice()}),
+                       vars:{r:r, row:JSON.stringify(row), '已完工':tri.length}}))});
+
+      for(let j = 1; j < r; j++){
+        const lv = tri[r - 1][j - 1], rv = tri[r - 1][j];
+        row[j] = lv + rv;
+        F.push({hl:[6,7], tag:'两爹相加', cls:'t-violet',
+          msg:'<code>row[' + j + '] = tri[' + (r - 1) + '][' + (j - 1) + '] + tri[' + (r - 1) + '][' + j + ']</code>：走到本格的每条路，最后一步要么从上一行的<span style="color:var(--orange);font-weight:700">左爹 ' + lv + '</span> 斜下来、要么从<span style="color:var(--violet);font-weight:700">右爹 ' + rv + '</span> 斜下来——按最后一步分类不重不漏，路径数相加 = <b>' + row[j] + '</b>。画面上两个爹被橙圈、紫圈圈出，新算出的格子变橙实框。',
+          do: draw(snap({html:triHtml({rows:tri.map(x => x.slice()), doneRows:tri.length, r:r,
+                                       curRowVals:row.slice(), curJ:j, parents:[j - 1, j]}),
+                         vars:{r:r, j:j, row:JSON.stringify(row), '已完工':tri.length}, hl:['row']}))});
+      }
+
+      tri.push(row);
+      row = null;
+      F.push({hl:[8], tag:'第 ' + r + ' 行完工', cls:'t-green',
+        msg:'第 ' + r + ' 行 [' + tri[r].join(', ') + '] 整行确定，<code>tri.append</code> 挂上三角——已完工 <b>' + tri.length + '</b> 行（绿格）。下一行算中间数时只会读这一行：每个数只依赖紧邻的上一行，这就是"逐行 DP"，从上往下滚一遍即可。',
+        do: draw(snap({html:triHtml({rows:tri.map(x => x.slice()), doneRows:tri.length, r:tri.length}),
+                       vars:{r:r, row:'—', '已完工':tri.length}, hl:['tri']}))});
+    }
+
+    F.push({hl:[9], tag:'返回', cls:'t-dark',
+      msg:'<code>return tri</code> 🎉 ' + numRows + ' 行全部造好。复盘规矩的来历：两端 1 = 贴边只有一条路；中间数 = 左右两条来路的路径数之和——整个三角就是一张"路径计数网"。格子总数约 numRows²/2，时间 O(numRows²) 正好花在每个格子上。',
+      do: draw(snap({html:triHtml({rows:tri.map(x => x.slice()), doneRows:tri.length, r:tri.length}),
+                     vars:{row:'—', '已完工':tri.length}, res:tri.map(r => r.slice())}))});
+
+    return F;
+  }
+});
+</script>
+</body>
+</html>

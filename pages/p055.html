@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P055 · 子集 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 55, num: 78, title: '子集', diff: '中等', cat: '回溯',
+  method: 'subsets',
+
+  lede: '题目：返回 nums 的所有<b>子集</b>（幂集，含空集）。妙招：站在每个元素面前只做一个二选一——<b>选它</b> or <b>不选它</b>。' +
+        'n 个元素就是 n 层二叉决策，2<sup>n</sup> 条路走完，每条路落下的 <span class="var r">path</span> 就是一个子集。' +
+        '决策树向两边分叉：<span class="var r">∅</span>＝不选，数字＝选；走到叶子（标着"收"）就把 path 复制进 <span class="var o">ans</span>。',
+
+  roles: [
+    {c:'orange', code:'i',    text:'正在决定选/不选的元素下标'},
+    {c:'blue',   code:'path', text:'已选中的元素'},
+    {c:'violet', code:'撤销', text:'两个分支都试完，恢复现场'},
+    {c:'green',  code:'ans',  text:'收集到的子集'}
+  ],
+
+  codeTitle: '跟着高亮读代码——<code>if i == len(nums)</code> 变<span style="color:var(--green)">绿</span>＝走到叶子（收集子集），变<span style="color:var(--red)">红</span>＝还没决定完，继续分叉：先走"不选"，再走"选"。',
+
+  legend: [
+    {c:'orange', text:'本层在决定 nums[i]'},
+    {c:'blue',   text:'path 上已选的'},
+    {c:'violet', text:'撤销回溯'},
+    {swatch:'var(--green-soft)', text:'叶子节点：收集当前 path 为子集'}
+  ],
+
+  idea: '每个元素只有两种命运：选、不选。把 2^n 条"选/不选"路都走一遍，走到叶子的 path 就是一个子集——天然不重不漏。',
+
+  qa: [
+    {q:'为什么子集不能像排列那样"每层试所有数"？',
+     a:'子集不看顺序：{1,2} 和 {2,1} 是同一个。约定"第 i 层只决定 nums[i] 选不选"后，每个子集恰好被生成一次，天然不重不漏。要是每层随便挑，会生成一堆重复组合。'},
+    {q:'空集 [] 是怎么来的？',
+     a:'一路"不选"到底：1、2、3 全不要，走到叶子时 path 为空——空集也是子集之一。所以第一次收集就发生在最左边的叶子上，ans 从此不为空。'},
+    {q:'复杂度是多少？',
+     a:'共 2<sup>n</sup> 个子集，每个收进 ans 要 O(n) 复制，时间 O(n·2<sup>n</sup>)；递归栈和 path 只占 O(n)。指数个答案摆在那，这已是理论下限。'}
+  ],
+
+  complexity: '时间 O(n·2^n)（2^n 个子集，每个 O(n) 复制）　·　空间 O(n)（递归栈 + path，不计返回值）',
+
+  form: [
+    {key:'nums', label:'nums', type:'arr', def:[1,2,3]}
+  ],
+  presets: [
+    {label:'[1,2,3]（默认）', values:{nums:[1,2,3]}},
+    {label:'[1,2]（小一点）', values:{nums:[1,2]}},
+    {label:'[2]（单元素）', values:{nums:[2]}},
+    {label:'[]（空数组，边界）', values:{nums:[]}}
+  ],
+
+  code: `class Solution:
+    def subsets(self, nums):
+        ans, path = [], []
+
+        def dfs(i):                   # 轮到决定 nums[i] 选不选
+            if i == len(nums):        # n 个元素全决定完
+                ans.append(path[:])   # 此刻的 path 就是一个子集
+                return
+            dfs(i + 1)                # 分支①: 不选 nums[i]
+            path.append(nums[i])      # 分支②: 选 nums[i]
+            dfs(i + 1)
+            path.pop()                # 撤销, 恢复现场
+
+        dfs(0)
+        return ans
+`,
+
+  sol(input){
+    const nums = input.nums || [];
+    const ans = [], path = [];
+    (function dfs(i){
+      if(i === nums.length){ ans.push(path.slice()); return; }
+      dfs(i + 1);
+      path.push(nums[i]);
+      dfs(i + 1);
+      path.pop();
+    })(0);
+    return ans;
+  },
+  expected: [[],[3],[2],[2,3],[1],[1,3],[1,2],[1,2,3]],
+
+  quiz: [
+    {q:'子集的 dfs(i) 为什么「第 i 层只决定 nums[i] 选不选」,而不像全排列那样每层从 i=0 把没用过的数都试一遍?',
+     options:['单纯为了省几圈循环','子集不看顺序:{1,2} 和 {2,1} 是同一个;固定"第 i 层只管第 i 个元素"每个子集才恰好生成一次,不重不漏','因为题目保证输入已排序'],
+     answer:1,
+     explain:'排列讲顺序,所以每层要从头试;子集不讲顺序,若每层都随便挑,{1,2} 和 {2,1} 会被当成两个答案重复收进 ans。给每个元素编号、第 i 层只表决 nums[i] 的去留,一个子集就对应唯一一条"选/不选"路径——2^n 条路一条不多一条不少,这正是幂集恰好有 2^n 个成员的原因。',
+     jumpTo:2},
+    {q:'代入算一算:nums = [5,7] 时,ans 按收集先后排出来是什么?',
+     options:['[], [7], [5], [5,7]','[], [5], [7], [5,7]','[5], [7], [5,7], []','[], [5], [5,7], [7]'],
+     answer:0,
+     explain:'代码先走「不选」分支:一路不选到底,最先收到<b>空集 []</b>;接着在最后一层补上"选 7"→ 收到 <b>[7]</b>;回到第 0 层改选 5,先试"不选 7"→ <b>[5]</b>,再"选 7"→ <b>[5,7]</b>。所以顺序是 [[],[7],[5],[5,7]]——注意第二个是 [7] 而不是 [5]:先"不选"后"选"让收集顺序和字典序正好相反。选 [5] 打头的人是把两分支的先后记反了。',
+     jumpTo:38},
+    {q:'「选」分支递归回来后那句 path.pop() 如果漏写,ans 里会出什么乱子?',
+     options:['没有影响,pop 只是走个形式','上层还没走的分支会带着这个多出来的数继续走,后面收进 ans 的子集全被污染(凭空多元素)','只有最后一个子集会错'],
+     answer:1,
+     explain:'递归的铁律:进这一层时 path 长什么样,交还控制权时必须一模一样。不 pop,nums[i] 就一直赖在 path 里——上层后续所有分支都在被污染的 path 上继续走,收到 ans 的子集凭空多出元素、还可能翻倍重复。「做选择 → 递归 → 撤销」三拍必须配对,撤销就是给递归"还现场"。',
+     jumpTo:11},
+  ],
+
+  steps(input){
+    const F = [];
+    let nums = (input.nums || []).filter(x => x != null);
+    let truncated = false;
+    if(nums.length > 3){ nums = nums.slice(0, 3); truncated = true; }
+    const n = nums.length;
+    const onPath = new Array(n).fill(false);
+    const path = [];
+    const ans = [];
+    const chips = [];
+    const tags = {};
+    const collected = [];
+    const tree = {key:'r', val:'始', sons:[], _p:null};
+    let seq = 0, fid = 0;
+    let callNode = tree;
+    const stack = [];
+
+    /* ---- 二叉决策树布局: 每次调用都生成全新快照对象(铁律 5) ---- */
+    function kLayout(root){
+      let leaf = 0, maxD = 0;
+      const nodes = [], edges = [];
+      (function place(nd, d){
+        if(d > maxD) maxD = d;
+        let col;
+        if(!nd.sons.length){ col = leaf; leaf++; }
+        else{
+          let mn = Infinity, mx = -Infinity;
+          nd.sons.forEach(s => { const c = place(s, d + 1); if(c < mn) mn = c; if(c > mx) mx = c; });
+          col = (mn + mx) / 2;
+        }
+        nodes.push({key:nd.key, val:nd.val, x:8 + col * 78, y:30 + d * 60, leaf:!nd.sons.length});
+        nd.sons.forEach(s => edges.push([nd.key, s.key]));
+        return col;
+      })(root, 0);
+      return {nodes, edges, w:Math.max(120, 16 + leaf * 78), h:38 + (maxD + 1) * 60};
+    }
+
+    const snapTags = () => Object.assign({}, tags);
+    const tst = (cur, extra) => {
+      const st = {};
+      collected.forEach(k => { st[k] = 'done'; });
+      let nd = cur;
+      while(nd){ st[nd.key] = 'in'; nd = nd._p; }
+      if(cur) st[cur.key] = 'active';
+      if(extra) Object.assign(st, extra);
+      return st;
+    };
+    const nst = (idx, state) => {
+      const st = {};
+      for(let j = 0; j < n; j++) if(onPath[j]) st[j] = 'in';
+      if(idx != null) st[idx] = state || 'active';
+      return st;
+    };
+    const mkI = i => [{name:'i', idx:i, cls:'mi', text:'▲ i'}];
+    const pathHtml = (flash) => '<code>path</code> = [' +
+      path.map((x, j) => '<span class="' + (flash && j === path.length - 1 ? 'mk-a' : 'mk-b') + '">' + x + '</span>').join(', ') + ']';
+
+    const draw = (o) => (v) => {
+      v.tree('T', o.lay, {label:'二叉决策树　·　左 ∅ = 不选，右数字 = 选；叶子收集子集', states:o.tst, tags:o.tags});
+      v.arr('nums', nums, {label:'数组 <code>nums</code>　·　蓝 = 已选进 path', states:o.nst, markers:o.mk || []});
+      v.text('path', o.pHtml, {label:'当前路径', html:true});
+      v.stack('S', o.stk, {label:'递归调用栈', topTag:'栈顶'});
+      v.set('ans', o.chips, {label:'ans 已收集的子集（' + o.chips.length + ' 个）', color:'g'});
+      if(o.res !== undefined) v.result(o.res, {label:'返回结果'});
+    };
+
+    function dfs(i){
+      stack.push({key:'f' + (++fid), val:'dfs(' + i + ') [' + path.join(',') + ']'});
+      if(i === n){
+        const snap = path.slice();
+        ans.push(snap);
+        const chip = '{' + snap.join(',') + '}';
+        chips.push(chip);
+        tags[callNode.key] = {text:chip, cls:'mg'};
+        collected.push(callNode.key);
+        F.push({hl:[5,6,7,8], ok:6, tag:'收集子集！', cls:'t-green',
+          msg:'i=' + i + '：' + n + ' 个元素全表决完了。此刻的 <code>path</code> = [' + snap.join(', ') + '] 本身就是一个子集——复制一份收进 <code>ans</code>（第 ' + ans.length + ' 个），return 交回上一层换下一种选法。' + (snap.length ? '' : '（一路"不选"走到底，path 为空——空集也是正经子集。）'),
+          do: draw({lay:kLayout(tree), tst:tst(callNode), nst:nst(), mk:[], pHtml:pathHtml(true),
+                    stk:stack.slice(), chips:chips.slice(), tags:snapTags()})});
+        stack.pop();
+        return;
+      }
+      F.push({hl:[5,6], no:6, tag:'进入 dfs', cls:'t-blue',
+        msg:'进入 dfs(' + i + ')：此刻 path=[' + path.join(', ') + ']——前 ' + i + ' 个元素已表态，轮到 <b>nums[' + i + '] = ' + nums[i] + '</b> 了。本层只做一个二选一：不选 or 选；按代码顺序先走"不选"分支，所以最左边的叶子收到的正是空集。',
+        do: draw({lay:kLayout(tree), tst:tst(callNode), nst:nst(i), mk:mkI(i), pHtml:pathHtml(false),
+                  stk:stack.slice(), chips:chips.slice(), tags:snapTags()})});
+
+      // 分支① 不选
+      const childL = {key:'t' + (++seq), val:(i + 1 === n) ? '收' : '∅', sons:[], _p:callNode};
+      callNode.sons.push(childL);
+      const parent = callNode;
+      F.push({hl:[9], tag:'不选 ' + nums[i], cls:'t-grey',
+        msg:'分支①：<b>不选 ' + nums[i] + '</b>——path 保持 [' + path.join(', ') + '] 一个不动，直接递归 dfs(' + (i + 1) + ') 去表决下一个元素。不选也是一种选择：树上沿 ∅ 边往下走，这条路照样要走到叶子收子集，一个都不会漏。',
+        do: draw({lay:kLayout(tree), tst:tst(callNode, {[childL.key]:'peek'}), nst:nst(i, 'stale'), mk:mkI(i),
+                  pHtml:pathHtml(false), stk:stack.slice(), chips:chips.slice(), tags:snapTags()})});
+      callNode = childL;
+      dfs(i + 1);
+      callNode = parent;
+
+      // 分支② 选
+      path.push(nums[i]);
+      onPath[i] = true;
+      const childR = {key:'t' + (++seq), val:(i + 1 === n) ? '收' : String(nums[i]), sons:[], _p:callNode};
+      callNode.sons.push(childR);
+      F.push({hl:[10,11], tag:'选 ' + nums[i], cls:'t-orange',
+        msg:'"不选"的世界全部走完，回到 dfs(' + i + ')。现在走分支②：<b>选 ' + nums[i] + '</b>——path 追加它变成 [' + path.join(', ') + ']，再递归 dfs(' + (i + 1) + ')。push 这步不能省：不把元素真放进 path，"选"分支就和"不选"走出完全相同的路，子集会重复。',
+        do: draw({lay:kLayout(tree), tst:tst(callNode, {[childR.key]:'peek'}), nst:nst(i), mk:mkI(i),
+                  pHtml:pathHtml(true), stk:stack.slice(), chips:chips.slice(), tags:snapTags()})});
+      callNode = childR;
+      dfs(i + 1);
+      callNode = parent;
+
+      // 撤销
+      path.pop();
+      onPath[i] = false;
+      F.push({hl:[12], tag:'撤销', cls:'t-violet',
+        msg:'"选"与"不选"两岔都走完了，dfs(' + i + ') 收工前恢复现场：<code>path.pop()</code> 弹出 <b>' + nums[i] + '</b>。上层调用时的 path 长什么样，交还时必须一模一样——不弹的话，上层后续分支会平白多出这个数，收进 ans 的子集全被污染。',
+        do: draw({lay:kLayout(tree), tst:tst(callNode), nst:nst(i, 'stale'), mk:mkI(i), pHtml:pathHtml(false),
+                  stk:stack.slice(), chips:chips.slice(), tags:snapTags()})});
+      stack.pop();
+    }
+
+    F.push({hl:[1,2,3,14], tag:'初始化', cls:'t-grey',
+      msg:'幂集 = 所有"选/不选"组合的清单：[' + nums.join(', ') + '] 每个元素都要表态一次，共 2<sup>' + n + '</sup> = ' + Math.pow(2, n) + ' 个子集（含空集）。和排列不同，这里<b>第 i 层只决定 nums[i] 的去留、绝不回头</b>——靠这条纪律，每个子集恰好被生成一次，天然不重不漏。接下来每个 dfs(i) 都干同一件事：先走"不选"、再走"选"，两岔各自走到叶子。' +
+          (truncated ? '（输入超过 3 个元素，动画只演示前 3 个）' : ''),
+      do: draw({lay:kLayout(tree), tst:tst(tree), nst:nst(), mk:[], pHtml:'<code>path</code> = []',
+                stk:[], chips:[], tags:snapTags()})});
+
+    dfs(0);
+
+    F.push({hl:[15], tag:'递归结束', cls:'t-dark',
+      msg:'2<sup>' + n + '</sup> 条路全部走完，<code>ans</code> 收齐了 ' + ans.length + ' 个子集：' + chips.join('、') +
+          '。复盘：每个 dfs(i) 先代"不选"、再代"选"，两岔各自走到底，pop 撤销保证两岔互不串味——所以每个子集恰好出现一次。对照决策树：每个叶子对应一个子集，一条路就是一种"选/不选"方案。',
+      do: draw({lay:kLayout(tree), tst:tst(null), nst:nst(), mk:[], pHtml:pathHtml(false),
+                stk:[], chips:chips.slice(), tags:snapTags(), res:ans.slice()})});
+
+    return F;
+  }
+});
+</script>
+</body>
+</html>

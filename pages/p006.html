@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P006 · 三数之和 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 6, num: 15, title: '三数之和', diff: '中等', cat: '双指针',
+  method: 'threeSum',
+
+  lede: '题目：找出数组里<b>所有</b>三个数之和为 0 的三元组，答案不许有重复组（位置不同、数值相同也算重复）。' +
+        '套路是“排序 + 固定一个 + 双指针夹逼”：先排好队，逐个固定 <span class="var v">nums[i]</span> 当基准，' +
+        '再让 <span class="var r">l</span>、<span class="var i">r</span> 在它右侧相向找两个数凑 0。' +
+        '<b>i、l、r 三处去重</b>是本题的防重影关键，动画里一步一步看它们怎么跳。',
+
+  roles: [
+    {c:'violet', code:'i', text:'基准数 nums[i]（固定）'},
+    {c:'blue',   code:'l', text:'左指针：和偏小时右移换大数'},
+    {c:'orange', code:'r', text:'右指针：和偏大时左移换小数'},
+    {c:'green',  code:'hit', text:'凑出 0 的三格'}
+  ],
+
+  codeTitle: '跟着高亮读代码——<code>s &lt; 0</code> 左针右移、<code>s &gt; 0</code> 右针左移；<code>s = 0</code> 变<span style="color:var(--green)">绿</span>＝命中一组，接着看三处去重怎么跳过重影。',
+
+  legend: [
+    {c:'violet', text:'i 基准'},
+    {c:'blue', text:'l 左针'},
+    {c:'orange', text:'r 右针'},
+    {c:'green', text:'命中的一组（三格高亮）'}
+  ],
+
+  idea: '排序后固定 i，l、r 夹逼：和小 l 右移、和大 r 左移；命中后 i、l、r 三处各跳过重复值，一组不多、一组不少。',
+
+  qa: [
+    {q:'为什么必须先排序？',
+     a:'两件事全靠有序：① 相同的数会<b>挨在一起</b>，去重只需看邻居；② 夹逼的单调性——“和偏小就 l 右移（变大）、和偏大就 r 左移（变小）”只有有序数组才成立。没有排序，双指针无从下手。'},
+    {q:'三处去重分别在防什么？',
+     a:'① <b>i 去重</b>：同一个基准只当一次头，否则 [-1,-1,…] 会以两个 -1 各产出一套重复组；②③ <b>l/r 去重</b>：命中一组后，若 l 的下一格（或 r 的上一格）值和刚用过的相同，不跳过就会立刻再记一组一模一样的。跳完 l、r 还要<b>双双再内缩一步</b>，彻底离开这组用过的值。'},
+    {q:'命中后为什么 l、r 一起内缩，不怕漏解吗？',
+     a:'这组 [nums[i], a, b] 已记录。固定 a 只动 r：和只会变小，不可能再命中；固定 b 只动 l：和只会变大，也不可能。也就是说<b>同时含 a、b 的组合已经榨干</b>，两侧跳过重复值后一起内缩，剩下的交给新的 (l, r) 组合——不会漏。'},
+    {q:'复杂度？',
+     a:'排序 O(n log n)，外层 i 一圈、内层 l/r 每圈最多扫 n 步，总共 <b>O(n²)</b>。比暴力三重循环 O(n³) 少一个 n；空间只有排序栈 O(log n)（不算答案）。'}
+  ],
+
+  complexity: '时间 O(n²)（排序 + 一层双指针）　·　空间 O(log n)（排序递归栈，不算答案）',
+
+  form: [
+    {key:'nums', label:'nums', type:'arr', def:[-1,0,1,2,-1,-4]}
+  ],
+  presets: [
+    {label:'[-1,0,1,2,-1,-4]', values:{nums:[-1,0,1,2,-1,-4]}},
+    {label:'[0,0,0,0]（全 0，极端去重）', values:{nums:[0,0,0,0]}},
+    {label:'[3,0,-2,-1,1,2]（多组答案）', values:{nums:[3,0,-2,-1,1,2]}},
+    {label:'[1,2,-2]（凑不出 0）', values:{nums:[1,2,-2]}}
+  ],
+
+  code: `class Solution:
+    def threeSum(self, nums):
+        nums.sort()                     # 先排好队: 相同的数会挨在一起
+        res = []
+        for i in range(len(nums) - 2):  # 固定第一个数 nums[i]
+            if i > 0 and nums[i] == nums[i - 1]:  # 去重①: 该基准刚用过
+                continue
+            l, r = i + 1, len(nums) - 1  # 左右指针从两端向中间夹逼
+            while l < r:                # 没碰头就继续找
+                s = nums[i] + nums[l] + nums[r]
+                if s < 0:               # 和偏小 -> 左针右移
+                    l += 1
+                elif s > 0:             # 和偏大 -> 右针左移
+                    r -= 1
+                else:                   # 和正好为 0, 记录!
+                    res.append([nums[i], nums[l], nums[r]])
+                    while l < r and nums[l] == nums[l + 1]: l += 1  # 去重②: 跳过重复左数
+                    while l < r and nums[r] == nums[r - 1]: r -= 1  # 去重③: 跳过重复右数
+                    l += 1; r -= 1      # 双双内缩, 找下一组
+        return res
+`,
+
+  sol(input){
+    const nums = (input.nums || []).slice().sort((a, b) => a - b);
+    const res = [];
+    for(let i = 0; i < nums.length - 2; i++){
+      if(i > 0 && nums[i] === nums[i - 1]) continue;
+      let l = i + 1, r = nums.length - 1;
+      while(l < r){
+        const s = nums[i] + nums[l] + nums[r];
+        if(s < 0) l++;
+        else if(s > 0) r--;
+        else{
+          res.push([nums[i], nums[l], nums[r]]);
+          while(l < r && nums[l] === nums[l + 1]) l++;
+          while(l < r && nums[r] === nums[r - 1]) r--;
+          l++; r--;
+        }
+      }
+    }
+    return res;
+  },
+  expected: [[-1,-1,2],[-1,0,1]],
+
+  quiz: [
+    {q:'s = nums[i]+nums[l]+nums[r] 偏小(s < 0)时,为什么是 l 右移,而不是 r 左移?',
+     options:['l 指针闲着,先动它','有序数组里 l 右边全是更大的数,和要变大只能找更大的补;r 左边全是更小的数,动 r 只会把和压得更低,南辕北辙','r 已经到头了,不能动'],
+     answer:1,
+     explain:'排序后数组从左到右递增:l 右移换到更大的数,r 左移换到更小的数。和偏小说明缺「更大的数」,只有挪 l 对症;挪 r 反而把候选挪小,和更低。口诀:缺大数找 l,缺小数找 r。每挪一针都严格朝目标修正,夹逼才走得动、走得完。',
+     jumpTo:7},
+    {q:'nums = [-2,0,1,1,2] 能凑出几组和为 0 的三元组(不许重复)?',
+     options:['1 组','2 组','3 组','4 组'],
+     answer:1,
+     explain:'排序后是 [-2,0,1,1,2]。基准 -2:l、r 夹出 (-2,0,2) 和 (-2,1,1) 两组——第二个 1 靠「去重②」跳掉,不会重复记。基准 0:0+1+2=3 偏大、0+1+1=2 偏大,凑不出。基准 1(第二个 1 被去重①跳过):1+1+2=4 偏大。共 2 组:[-2,0,2] 和 [-2,1,1]。',
+     jumpTo:43},
+    {q:'去重①为什么只比较「nums[i] 和左邻居 nums[i−1]」就够了?不翻 res 逐条对比,靠谱吗?',
+     options:['排序保证同值必连成一片,同一个值当第二次基准时左邻居必然同值,看一眼就够;不跳过的话同一基准会把右边整段重夹一遍,产出一整套重影组','不靠谱,必须逐条翻 res 对比才稳','因为 res 太大,翻不动'],
+     answer:0,
+     explain:'排序是去重的地基:相同的数挨在一起,「这个值当过基准没有」只需和左边邻居对一眼。若让同一个值当两次基准,两次夹逼搜的是同一片右边区域,产出的三元组必然完全重合——所以每个值只许当一次头。翻 res 对比既慢又容易漏,邻居比较才是标准做法。',
+     jumpTo:19},
+  ],
+
+  steps(input){
+    const F = [];
+    const nums = (input.nums || []).slice().sort((a, b) => a - b);
+    const n = nums.length;
+    const res = [];
+
+    /* ★ 快照：states / marks / res 文本都在 F.push 那一刻用当时的 i、l、r 算死 */
+    const mk = (i0, l0, r0) => {
+      const m = [];
+      if(i0 != null && i0 >= 0 && i0 < n) m.push({name:'i', idx:i0, cls:'mv', text:'▲ i'});
+      if(l0 != null && l0 >= 0 && l0 < n) m.push({name:'l', idx:l0, cls:'mr', text:'▲ l'});
+      if(r0 != null && r0 >= 0 && r0 < n) m.push({name:'r', idx:r0, cls:'mi', text:'▲ r'});
+      return m;
+    };
+    const stAt = (i0, l0, r0, hit) => {
+      const st = {};
+      if(i0 != null && i0 >= 0) st[i0] = 'pivot';
+      if(l0 != null && l0 >= 0) st[l0] = hit ? 'target' : 'in';
+      if(r0 != null && r0 >= 0) st[r0] = hit ? 'target' : 'in';
+      return st;
+    };
+    const resHtml = () => 'res = ' + (res.length === 0 ? '[]' :
+      res.map((t, ti) => (ti === res.length - 1 ? '<b>[' + t.join(', ') + ']</b>' : '[' + t.join(', ') + ']')).join(', '));
+
+    const draw = (o) => (v) => {
+      v.arr('nums', nums, {label:'排序后的 <code>nums</code>',
+        states:o.states || {}, markers:o.marks || []});
+      if(o.vars) v.vars('vars', o.vars, {label:'变量'});
+      if(o.resTxt != null) v.text('res', o.resTxt, {html:true});
+      if(o.result != null) v.result(o.result, {label:'所有三元组'});
+    };
+
+    F.push({hl:[1,2,3,4], tag:'初始化 · 排序', cls:'t-grey',
+      msg:'第一步先排好队：原数组 [' + (input.nums || []).join(', ') + '] 经 <code>nums.sort()</code> 变成 <b>[' + nums.join(', ') + ']</b>——画面上看到的就是排完的样子。为什么排序是一切的地基？两件事全靠它：① 相同的数会挨在一起，去重只需看一眼邻居；② 数组有序，”和偏小就 l 右移变大、和偏大就 r 左移变小”的夹逼才走得动。此刻面板上 i、l、r 三个名牌都还没上岗、res = []，接下来逐个固定基准，让两根针在它右侧夹出凑 0 的组合。',
+      do: draw({states:{}, marks:[], resTxt:resHtml(), vars:{i:'—', l:'—', r:'—', s:'—', '组数':0}})});
+
+    for(let i = 0; i < n - 2; i++){
+      F.push({hl:[5], tag:'固定基准', cls:'t-violet',
+        msg:'固定第 <b>' + i + '</b> 格当基准：<code>nums[i] = ' + nums[i] + '</code>（紫色格，此刻 l、r 还没上岗）。基准一定，"找三个数凑 0"立刻降级成"在它右边找两个数凑 ' + (-nums[i]) + '"——回到两数之和的老套路。为什么只搜右边？数组有序，基准必是三个数里最小的（允许并列），每组只按"基准 + 两个不小于它的数"记一遍；若基准左右都搜，同一组会被正反各记一次，全是镜像重复。',
+        do: draw({states:stAt(i, null, null), marks:mk(i, null, null), resTxt:resHtml(),
+                  vars:{i:i, l:'—', r:'—', s:'—', '组数':res.length}})});
+
+      const dup = i > 0 && nums[i] === nums[i - 1];
+      if(dup){
+        F.push({hl:[6,7], ok:6, tag:'去重①', cls:'t-red',
+          msg:'画面上紫色格 <code>nums[i] = ' + nums[i] + '</code> 和左边邻居 <code>nums[' + (i - 1) + ']</code> 相同 → 这个基准<b>刚当过一次头</b>。排序保证同值必挨在一起，去重看邻居一眼就够，不用翻 res 逐组对比。不跳过会怎样？同一个基准会把右边整段重新夹一遍，产出一整套一模一样的重影组——<code>continue</code> 直接换下一个基准。',
+          do: draw({states:stAt(i, null, null), marks:mk(i, null, null), resTxt:resHtml(),
+                    vars:{i:i, l:'—', r:'—', s:'—', '组数':res.length}})});
+        continue;
+      }
+      F.push({hl:[6], no:6, tag:'去重①', cls:'t-ink',
+        msg: i === 0
+          ? 'i = 0 是第一个基准，前面没有格子，谈不上和谁重复，直接上岗——去重条件里的 <code>i &gt; 0</code> 正是在防"看 i−1"时越界。往后每个基准上岗前都要过这道检查。'
+          : '<code>nums[i] = ' + nums[i] + '</code> 与前一个 <code>' + nums[i - 1] + '</code> 不同 → 新面孔基准，放心用。去重①只干一件事：同一个值只许当一次基准——同值当两次基准，两次夹出的三元组必然完全重合，纯属重影劳动。',
+        do: draw({states:stAt(i, null, null), marks:mk(i, null, null), resTxt:resHtml(),
+                  vars:{i:i, l:'—', r:'—', s:'—', '组数':res.length}})});
+
+      let l = i + 1, r = n - 1;
+      F.push({hl:[8], tag:'张网', cls:'t-blue',
+        msg:'<code>l = ' + l + '，r = ' + r + '</code>：两根指针站上基准右侧的最左和最右（▲蓝 l、▲橙 r 名牌），把全部候选夹在中间。只搜 i 右边，是因为数组已排好——这段里任何数都不小于基准，能凑 0 的候选一个不落全在里面。接下来每轮只算一个和 s，按它和 0 的大小决定挪哪根针。',
+        do: draw({states:stAt(i, l, r), marks:mk(i, l, r), resTxt:resHtml(),
+                  vars:{i:i, l:l, r:r, s:'—', '组数':res.length}})});
+
+      while(l < r){
+        F.push({hl:[9], ok:9, tag:'夹逼检查', cls:'t-blue',
+          msg:'<code>l = ' + l + '，r = ' + r + '</code>，没碰头 → 这一对（加上基准）还有得试，把三个数加起来算个和。为什么用 <code>&lt;</code> 而不是 <code>&lt;=</code>？两针一碰头，中间连同两针自己就没有任何新组合可试了，再算只会把 l == r 的同一格用两次——所以碰头即收网，换下一个基准。',
+          do: draw({states:stAt(i, l, r), marks:mk(i, l, r), resTxt:resHtml(),
+                    vars:{i:i, l:l, r:r, s:'—', '组数':res.length}})});
+
+        const s = nums[i] + nums[l] + nums[r];
+        F.push({hl:[10], tag:'求和', cls:'t-blue',
+          msg:'<code>s = nums[i] + nums[l] + nums[r] = ' + nums[i] + ' + ' + nums[l] + ' + ' + nums[r] + ' = <b>' + s + '</b></code>（基准 + 左针 + 右针三个数）。接下来按 s 与 0 的大小关系走三岔口：偏小挪 l、偏大挪 r、正好命中。三岔口为什么可靠？数组有序，l 右移和只会变大、r 左移和只会变小——每挪一针都严格朝目标方向修正，绝不来回震荡。',
+          do: draw({states:stAt(i, l, r), marks:mk(i, l, r), resTxt:resHtml(),
+                    vars:{i:i, l:l, r:r, s:s, '组数':res.length}, hlV:['s']})});
+
+        if(s < 0){
+          F.push({hl:[11,12], ok:11, tag:'偏小', cls:'t-orange',
+            msg:'<code>s = ' + s + ' &lt; 0</code>，和偏小 → <b>l 右移一格</b>（画面上 ▲l 名牌右移，刚试过的格子出局）。为什么挪 l 而不是 r？和太小需要更大的数：有序数组里 l 右边全是更大的数，挪 r 换来的只会是更小的数，把和压得更低，南辕北辙。一句话：缺大数找 l，缺小数找 r。',
+            do: draw({states:stAt(i, l + 1, r), marks:mk(i, l + 1, r), resTxt:resHtml(),
+                      vars:{i:i, l:l + 1, r:r, s:s, '组数':res.length}})});
+          l++;
+        } else if(s > 0){
+          F.push({hl:[13,14], ok:13, tag:'偏大', cls:'t-orange',
+            msg:'<code>s = ' + s + ' &gt; 0</code>，和偏大 → <b>r 左移一格</b>（画面上 ▲r 名牌左移）。镜像逻辑：和太大需要更小的数，r 左边全是更小的数；这时动 l 只会换更大的数，和越发收不住。每挪一针都淘汰一批组合，区间只缩不涨，夹逼一定走得完。',
+            do: draw({states:stAt(i, l, r - 1), marks:mk(i, l, r - 1), resTxt:resHtml(),
+                      vars:{i:i, l:l, r:r - 1, s:s, '组数':res.length}})});
+          r--;
+        } else {
+          F.push({hl:[15,16], ok:15, tag:'命中', cls:'t-green',
+            msg:'🎉 <code>s = 0</code>！<b>[' + nums[i] + ', ' + nums[l] + ', ' + nums[r] + ']</b> 凑成一组，记进 res（画面上三格染金，面板里最新一组加粗）。先别急着挪针——数组里同一值可能连成一片，这一对的"邻居"很可能还是同样的数，直接挪针会漏掉重影检查。接下来去重②③就是把同值的左数、右数各跳干净，保证一组不多记。',
+            do: draw({states:stAt(i, l, r, true), marks:mk(i, l, r), resTxt:resHtml(),
+                      vars:{i:i, l:l, r:r, s:0, '组数':res.length + 1}})});
+          res.push([nums[i], nums[l], nums[r]]);
+
+          const dupL = l < r && nums[l] === nums[l + 1];
+          F.push({hl:[17], ok: dupL ? 17 : undefined, no: dupL ? undefined : 17, tag:'去重②', cls:'t-blue',
+            msg: dupL
+              ? '下一格 <code>nums[l+1] = ' + nums[l + 1] + '</code> 和刚用过的 <code>' + nums[l] + '</code> 相同 → 不跳过的话，l、r 随便怎么动都会再用同样的数拼出同一组，立刻产出重影。l 继续右移，把左数的重影整片甩开。'
+              : '下一格 <code>nums[l+1] = ' + (l + 1 < n ? nums[l + 1] : '—') + '</code> 和刚用的 <code>' + nums[l] + '</code> 不同 → 左数没有重影，l 原地待命。踩坑提醒：去重②、③只在命中之后检查——命中前跳重会把还没试过的组合提前扔掉，反而漏解。',
+            do: draw({states:stAt(i, l, r, true), marks:mk(i, l, r), resTxt:resHtml(),
+                      vars:{i:i, l:l, r:r, s:0, '组数':res.length}})});
+          while(l < r && nums[l] === nums[l + 1]){
+            l++;
+            F.push({hl:[17], ok:17, tag:'左针跳重', cls:'t-blue',
+              msg:'<code>nums[l] = ' + nums[l] + '</code> 还是老值 → l 跳到 <b>' + l + '</b>，连续同值就连续跳，直到下一格换值为止。踩坑提醒：跳重循环里带着 <code>l &lt; r</code> 护栏——极端情况（如 [0,0,0,0]）两针会一路互相贴上，没这道护栏 l 就冲出数组了。',
+              do: draw({states:stAt(i, l, r, true), marks:mk(i, l, r), resTxt:resHtml(),
+                        vars:{i:i, l:l, r:r, s:0, '组数':res.length}})});
+          }
+
+          const dupR = l < r && nums[r] === nums[r - 1];
+          F.push({hl:[18], ok: dupR ? 18 : undefined, no: dupR ? undefined : 18, tag:'去重③', cls:'t-blue',
+            msg: dupR
+              ? '上一格 <code>nums[r-1] = ' + nums[r - 1] + '</code> 和刚用的 <code>' + nums[r] + '</code> 相同 → 刚记录的组里右数已用过这个值，r 继续左移，把右数的重影也甩干净。'
+              : '上一格 <code>nums[r-1] = ' + (r - 1 > i ? nums[r - 1] : '—') + '</code> 和刚用的 <code>' + nums[r] + '</code> 不同 → 右数没有重影，r 原地待命。左右各查一个邻居就够：排序后同值必然连成一片，看完邻居就等于看完了全部。',
+            do: draw({states:stAt(i, l, r, true), marks:mk(i, l, r), resTxt:resHtml(),
+                      vars:{i:i, l:l, r:r, s:0, '组数':res.length}})});
+          while(l < r && nums[r] === nums[r - 1]){
+            r--;
+            F.push({hl:[18], ok:18, tag:'右针跳重', cls:'t-blue',
+              msg:'<code>nums[r] = ' + nums[r] + '</code> 还是老值 → r 跳到 <b>' + r + '</b>，和左针一样把连续同值一口气跳完。同样有 <code>l &lt; r</code> 护栏兜底：两针贴上就停，绝不越过界——跳重永远只甩掉"用过的重影"，不碰任何新组合。',
+              do: draw({states:stAt(i, l, r, true), marks:mk(i, l, r), resTxt:resHtml(),
+                        vars:{i:i, l:l, r:r, s:0, '组数':res.length}})});
+          }
+
+          l++; r--;
+          F.push({hl:[19], tag:'双双内缩', cls:'t-violet',
+            msg:'这组收工：<code>l = ' + l + '，r = ' + r + '</code> 双双再内缩一步，彻底离开刚用过的两个值（跳重只跳到最后一个重影，人还没离开它）。敢一起缩是因为含这两个数的组合已榨干——固定左边只动 r 和只会变小、固定右边只动 l 和只会变大，都不可能再命中，一起缩绝不漏解。',
+            do: draw({states:stAt(i, l, r), marks:mk(i, l, r), resTxt:resHtml(),
+                      vars:{i:i, l:l, r:r, s:0, '组数':res.length}})});
+        }
+      }
+
+      F.push({hl:[9], no:9, tag:'此基准收网', cls:'t-grey',
+        msg:'<code>l = r = ' + l + '</code>，两针碰头 → 基准 <code>nums[i] = ' + nums[i] + '</code> 能配的组合已全部找完，目前累计 <b>' + res.length + '</b> 组。轮到下一个基准，重复"去重① → 张网 → 夹逼 → 去重②③"的全流程——外层 i 一圈、内层两针最多扫一遍，这就是 O(n²) 的来历。',
+        do: draw({states:stAt(i, l, r), marks:mk(i, l, r), resTxt:resHtml(),
+                  vars:{i:i, l:l, r:r, s:'—', '组数':res.length}})});
+    }
+
+    F.push({hl:[20], tag:'返回', cls:'t-dark',
+      msg:'所有基准都试完了：共凑出 <b>' + res.length + '</b> 组，<code>res = ' + (res.length ? res.map(t => '[' + t.join(', ') + ']').join('  ') : '[]') + '</code> 🎉 复盘三件套：排序打底（同值相邻才好去重）、双指针夹逼（省掉一重循环，O(n³) → O(n²)）、命中后三处去重（i、l、r 各防一种重影）——一组不多、一组不少。',
+      do: draw({states:{}, marks:[], resTxt:resHtml(), result:res,
+                vars:{'组数':res.length}})});
+    return F;
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P085 · 单词拆分 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 85, num: 139, title: '单词拆分', diff: '中等', cat: '动态规划',
+  method: 'wordBreak',
+
+  lede: '题目：字符串 <span class="var r">s</span> 能不能被切成若干段，使<b>每一段都出现在词典 wordDict 里</b>？比如 applepenapple = apple + pen + apple。' +
+        '动画里 <span class="var o">dp[i]</span> 表示"前 i 个字符能不能拆出来"：判断每个前缀时，把词典里每个词拉来试当<b>"最后一个词"</b>——' +
+        '蓝色名牌指着 s 里正在比对的段（<span class="var i">i</span> 名牌指着前缀末端），命中就点亮 dp[i]。',
+
+  roles: [
+    {c:'orange', code:'dp[i]', text:'前 i 个字符能否拆成词典词'},
+    {c:'blue',   code:'w',     text:'正在试的"最后一个词"'},
+    {c:'blue',   code:'s 段',  text:'s 里正在比对的字符段'},
+    {c:'violet', code:'dp[start]', text:'挖掉 w 后剩下前缀的状态'},
+    {c:'green',  code:'dp[i]=True', text:'找到一个能收尾的词'}
+  ],
+
+  codeTitle: '跟着高亮读代码——if 那行变<span style="color:var(--green)">绿</span>＝词对上了且剩下的前缀可拆，dp[i] 点亮；变<span style="color:var(--red)">红</span>＝词太长 / 前缀不可拆 / 段对不上。',
+
+  legend: [
+    {c:'blue',   text:'正在比对的 s 字符段'},
+    {c:'violet', text:'dp[start] 挖掉 w 后的前缀'},
+    {c:'orange', text:'当前 dp[i]'},
+    {c:'green',  text:'dp[i] 已点亮（能拆）'}
+  ],
+
+  idea: 'dp[i] = 存在词典词 w，使得 dp[i−len(w)] 为真且 s 末尾正好是 w：枚举"最后一个词"收尾，把大前缀化成小前缀。',
+
+  qa: [
+    {q:'为什么盯住"最后一个词"，而不是从头找第一个词？',
+     a:'效果一样，但"最后一个词"让状态定义干净：前缀 s[:i] 可拆 ⟺ 存在词 w 恰好垫在末尾，且更短的前缀 s[:i−len(w)] 可拆。每个 i 只需对着词典试一圈，不用真的枚举所有切法。'},
+    {q:'dp[0] = True 是什么鬼？空串也算拆开？',
+     a:'它是整个递推的支点：当某个词正好覆盖 s[:i] 全部时（start = 0），"剩下的前缀"就是空的——空串天然不需要切，所以记 True。没有它，第一个词永远接不上。'},
+    {q:'catsandog 为什么是 False？',
+     a:'能点亮的只有 dp[3]（cat）、dp[4]（cats）、dp[7]（sand / and）：比如 cat|sand 之后只剩 og，og 不在词典，而 dp[7] 为 True 也救不了 dp[9]——试遍所有"最后一个词"都失败，dp[9] 保持 False。'},
+    {q:'复杂度？',
+     a:'n 是 s 长度、k 是词典大小、L 是词平均长：双层循环里做一次长度 L 的比较，时间 O(n·k·L)；dp 表 O(n)。'}
+  ],
+
+  complexity: '时间 O(n × 词典词数 × 词长)　·　空间 O(n)（dp 表）',
+
+  form: [
+    {key:'s', label:'s', type:'str', def:'applepenapple'},
+    {key:'wordDict', label:'wordDict', type:'strlist', def:['apple','pen']}
+  ],
+  presets: [
+    {label:'applepenapple → true', values:{s:'applepenapple', wordDict:['apple','pen']}},
+    {label:'catsandog → false（拆不出）', values:{s:'catsandog', wordDict:['cats','dog','sand','and','cat']}},
+    {label:'cars → true（多路都能拆）', values:{s:'cars', wordDict:['car','ca','rs']}},
+    {label:'a → true（边界）', values:{s:'a', wordDict:['a']}}
+  ],
+
+  code: `class Solution:
+    def wordBreak(self, s, wordDict):
+        n = len(s)
+        dp = [False] * (n + 1)              # dp[i]: 前 i 个字符能否拆成词典词
+        dp[0] = True                        # 空串天然可拆, 递推的支点
+        for i in range(1, n + 1):           # 依次判断前缀 s[:i]
+            for w in wordDict:              # 枚举"最后一个词"的候选
+                if i >= len(w) and dp[i - len(w)] and s[i - len(w):i] == w:
+                    dp[i] = True            # w 能收尾, 且剩下的前缀也可拆
+        return dp[n]
+`,
+
+  sol(input){
+    const s = String(input.s == null ? '' : input.s);
+    const dict = input.wordDict || [];
+    const n = s.length;
+    const dp = new Array(n + 1).fill(false);
+    dp[0] = true;
+    for(let i = 1; i <= n; i++)
+      for(const w of dict)
+        if(i >= w.length && dp[i - w.length] && s.slice(i - w.length, i) === w)
+          dp[i] = true;
+    return dp[n];
+  },
+  expected: true,
+
+  quiz: [
+    {q:'dp[i] = True 到底意味着什么?',
+     options:['前 i 个字符里存在某一段连续子串能由词典词拼出','前 i 个字符 s[0..i−1] 能整个切成词典词,一段不剩','s 从位置 i 开始的后缀能拆成词典词'],
+     answer:1,
+     explain:'dp 的状态定义是"前缀整体可拆":判断 dp[i] 时要把某个词 w 垫在末尾,再要求挖掉 w 后剩下的前缀 dp[i−len(w)] 也整体可拆——两头都是"整体",递推才接得上。选项 A 太弱("存在一段"不需要 DP,一次扫描就够);选项 C 方向反了,dp 表里存的全是"往前看"的前缀信息,没有后缀。'
+     ,jumpTo:1},
+    {q:'s = "aabb",词典 ["a","aa","bb"]。哪些 dp 格能点亮?',
+     options:['dp[1]、dp[2]、dp[3]、dp[4] 全亮','dp[1]、dp[2]、dp[4] 亮,dp[3] 不亮','只有 dp[2] 和 dp[4] 亮','dp[4] 亮,其余全不亮'],
+     answer:1,
+     explain:'逐格推:dp[1]:"a" 命中 ✓;dp[2]:"aa" 命中(或 "a"+dp[1])✓;dp[3] 的前缀 "aab":拿 "a" 收尾→末段 "b" 对不上;拿 "aa" 收尾→末段 "ab" 对不上;拿 "bb" 收尾→末段 "ab"≠"bb"——全失败,False;dp[4] 的前缀 "aabb":拿 "bb" 收尾→s[2:4]="bb" 对上了,且 dp[2]=True → True。注意 dp[3] 就是拆不出 "aab",中间"卡一下"完全不影响整串答案 dp[4]=True。'
+     ,jumpTo:15},
+    {q:'"catsandog"(词典 cats, dog, sand, and, cat)返回 False,直接原因是?',
+     options:['词典里有词(sand、and)没被用上,说明词典给错了','dp[9] 收尾试遍所有候选:"dog" 卡在 dp[6]=False,sand/and 末尾对不上 "og"——一个能收尾的词都找不到','dp 表里出现了 False 格子,程序一见到 False 就提前返回 False'],
+     answer:1,
+     explain:'点亮过的只有 dp[3](cat)、dp[4](cats)、dp[7](sand / and):到 dp[9] 时,"dog" 想收尾但剩下的前缀 "catsan" 是 dp[6]=False;"sand"/"and" 的长度对不上末段 "og"。所有"最后一个词"候选全灭 → dp[9] 定格 False。选项 C 混淆了概念:中间格子是 False 没关系,只看最终的 dp[n];选项 A 更不成立——词典本来就不要求用完(比如 s="ab"、词典 ["a","ab","b"],"b" 没用上照样 True)。'
+     ,jumpTo:19},
+  ],
+
+  steps(input){
+    const F = [];
+    const s = String(input.s == null ? '' : input.s);
+    const dict = input.wordDict || [];
+    const n = s.length;
+
+    // dp 真实跑一遍
+    const dp = new Array(n + 1).fill(false);
+    dp[0] = true;
+
+    // 跑完的终版表（仅供收尾解说回查一种切法用，不参与动画）
+    const dpDone = new Array(n + 1).fill(false);
+    dpDone[0] = true;
+    for(let i = 1; i <= n; i++)
+      for(const w of dict)
+        if(i >= w.length && dpDone[i - w.length] && s.slice(i - w.length, i) === w)
+          dpDone[i] = true;
+
+    // 画面最多画 14 格
+    const shownS = Math.min(n, 14);          // s 显示前 14 个字符
+    const shownD = Math.min(n, 13);          // dp 显示 0..shownD
+    const dTxt = b => b ? '能' : '不能';
+    const dispD = () => { const a = []; for(let i = 0; i <= shownD; i++) a.push(dTxt(dp[i])); return a; };
+
+    // 收尾解说：回查 dpDone 还原一种切法
+    const path = [];
+    (function walk(x){
+      if(x <= 0 || !dpDone[x]) return;
+      for(const w of dict){
+        if(x >= w.length && dpDone[x - w.length] && s.slice(x - w.length, x) === w){
+          path.unshift(w); walk(x - w.length); return;
+        }
+      }
+    })(n);
+
+    /* ---- 绘制（o 全是帧生成那一刻的快照，铁律 5） ---- */
+    const draw = (o) => (v) => {
+      v.arr('s', s.slice(0, shownS).split(''), {
+        label:'字符串 <code>s</code>　·　下标从 0 起',
+        quotes:true, states:o.sst || {}, markers:o.smk || [], idxCls:o.six || {}
+      });
+      v.arr('dp', o.dispD, {
+        label:'DP 表 <code>dp</code>　·　<code>dp[i]</code> = 前 i 个字符能否拆',
+        cw:40, states:o.dst || {}, markers:o.dmk || [], idxCls:o.dix || {}
+      });
+      v.arr('words', dict, {
+        label:'词典 <code>wordDict</code>',
+        quotes:true, states:o.wst || {}, markers:o.wmk || []
+      });
+      if(o.vars) v.vars('vars', o.vars, {label:'当前变量', hl:o.hlv || []});
+      if(o.res !== undefined) v.result(o.res, {label:'能否拆分'});
+    };
+    const smk = i => ({name:'i', idx:i, cls:'mi', text:'▲ 前 i 个'});
+    const dmk = i => ({name:'i', idx:i, cls:'mi', text:'▲ i'});
+    const wmk = k => ({name:'w', idx:k, cls:'mr', text:'▲ w'});
+
+    F.push({hl:[1,2,3,4,5], tag:'初始化', cls:'t-grey',
+      msg:'s 共 <b>' + n + '</b> 个字符，词典 ' + dict.length + ' 个词。dp[i] 的定义：<b>前 i 个字符（s[0..i−1]）能不能整个拆成词典词</b>——只看前缀、不管后面。全表先记 False，只有 <code>dp[0] = True</code>：空串什么都不用切，天然成立，它是整个递推的支点——第一个词接上去时，"剩下的前缀"正是这个空串。接下来 i 从 1 到 n：每轮拿词典里每个词试当<b>"最后一个词"</b>，谁能严丝合缝垫在末尾、且剩下的前缀可拆，dp[i] 就点亮。' +
+          (n > shownS ? '（串太长，画面只画前 14 个字符，后面照常口算）' : ''),
+      do: draw({dispD:dispD(), sst:{}, smk:[], dst:{0:'done'}, dmk:[dmk(0)], wst:{}, wmk:[],
+                vars:{n:n, 'dp[0]':'True', 其余:'False'}})});
+
+    for(let i = 1; i <= n; i++){
+      F.push({hl:[6], tag:'前 i=' + i, cls:'t-orange',
+        msg:'轮到判断前 <b>' + i + '</b> 个字符 <b>"' + LCesc(s.slice(0, i)) + '"</b> 能不能拆。思路：若它真能拆，切出来的<b>最后一个词</b>一定正好垫在末尾——所以把词典里每个词轮流拉来试当"最后一个词"，只要有一个成功，dp[' + i + '] 就是 True。橙色 ▲ 指着前缀末端，下方 dp 表的 dp[' + i + '] 格是本轮要填的。',
+        do: draw({dispD:dispD(), sst:{[i - 1]:'active'}, smk:[smk(i - 1)],
+                  dst:{[i]:'active'}, dmk:[dmk(i)], dix:{[i]:'on-i'},
+                  wst:{}, wmk:[],
+                  vars:{i:i, w:'—', 'dp[i]':dTxt(dp[i])}})});
+
+      for(let wi = 0; wi < dict.length; wi++){
+        const w = dict[wi];
+        const wl = w.length;
+
+        if(wl > i){
+          F.push({hl:[7,8], no:8, tag:'试 w=' + w, cls:'t-red',
+            msg:'试词 <b>"' + LCesc(w) + '"</b>：它有 ' + wl + ' 个字母，比整个前缀（' + i + ' 个字符）还长——"最后一个词"再长也不能超出前缀，垫不进去 → 直接跳过。dp[' + i + '] 暂时还是 ' + dTxt(dp[i]) + '，等后面的词来试。',
+            do: draw({dispD:dispD(), sst:{[i - 1]:'active'}, smk:[smk(i - 1)],
+                      dst:{[i]:'active'}, dmk:[dmk(i)], dix:{[i]:'on-i'},
+                      wst:{[wi]:'active'}, wmk:[wmk(wi)],
+                      vars:{i:i, w:w, 'dp[i]':dTxt(dp[i])}})});
+          continue;
+        }
+        const start = i - wl;
+        const seg = s.slice(start, i);
+        if(!dp[start]){
+          F.push({hl:[7,8], no:8, tag:'试 w=' + w, cls:'t-red',
+            msg:'试拿 <b>"' + LCesc(w) + '"</b>（' + wl + ' 个字母）收尾："最后一个词"必须<b>贴着前缀末端对齐</b>，占位置 ' + start + ' ~ ' + (i - 1) + '（画面里灰掉的那段），挖掉后剩前 ' + start + ' 个字符。读数：<code>dp[' + start + '] = False</code>——前面那段本身都拆不成词典词，w 垫得再准也白搭 → 此路不通。注意：这只是<b>一个词</b>失败，不代表 dp[' + i + '] 就是 False，继续试下一个词；词典全试完都不行，dp[' + i + '] 才真定格 False。',
+            do: draw({dispD:dispD(), sst:segStates(start, i, 'muted'), smk:[smk(i - 1)],
+                      dst:{[i]:'active', [start]:'pivot'}, dmk:[dmk(i)], dix:{[i]:'on-i', [start]:'on-r'},
+                      wst:{[wi]:'active'}, wmk:[wmk(wi)],
+                      vars:{i:i, w:w, 'start':start, 'dp[start]':'False', 'dp[i]':dTxt(dp[i])}})});
+        } else if(seg !== w){
+          F.push({hl:[7,8], no:8, tag:'试 w=' + w, cls:'t-red',
+            msg:'试拿 <b>"' + LCesc(w) + '"</b> 收尾：前缀 dp[' + start + '] = True 没问题，但"最后一个词"要贴着末端对齐（占位置 ' + start + ' ~ ' + (i - 1) + '，画面里蓝色的那段），s 这一段实际是 <b>"' + LCesc(seg) + '"</b>，跟 <b>"' + LCesc(w) + '"</b> 逐字符对不上 → 此词出局。一个词失败不算数，接着试别的词。',
+            do: draw({dispD:dispD(), sst:segStates(start, i, 'in'), smk:[smk(i - 1)],
+                      dst:{[i]:'active', [start]:'pivot'}, dmk:[dmk(i)], dix:{[i]:'on-i', [start]:'on-r'},
+                      wst:{[wi]:'active'}, wmk:[wmk(wi)],
+                      vars:{i:i, w:w, 'start':start, 's 段':seg, 'dp[i]':dTxt(dp[i])}})});
+        } else {
+          dp[i] = true;
+          F.push({hl:[7,8,9], ok:8, tag:'命中 w=' + w, cls:'t-green',
+            msg:'命中！<b>"' + LCesc(w) + '"</b> 正好垫在末尾，两个条件同时成立：① s[' + start + ':' + i + '] = <b>"' + LCesc(seg) + '"</b> 与词逐字符相同；② dp[' + start + '] = True，前面的部分已能拆。<b>dp[' + i + '] = True</b>：前 ' + i + ' 个字符能拆——前面的切法 + 词 "' + LCesc(w) + '" 收尾。绿色闪的就是刚点亮的格子。',
+            do: draw({dispD:dispD(), sst:segStates(start, i, 'just'), smk:[smk(i - 1)],
+                      dst:{[i]:'done', [start]:'pivot'}, dmk:[dmk(i)], dix:{[i]:'on-i', [start]:'on-r'},
+                      wst:{[wi]:'active'}, wmk:[wmk(wi)],
+                      vars:{i:i, w:w, 'start':start, 's 段':seg, 'dp[i]':'True'},
+                      hlv:['dp[i]']})});
+        }
+      }
+    }
+
+    const okFin = dp[n];
+    F.push({hl:[10], ok: okFin ? 10 : undefined, no: okFin ? undefined : 10,
+      tag:'返回', cls: okFin ? 't-dark' : 't-red',
+      msg: okFin
+        ? 'dp[' + n + '] = <b>True</b> → <code>return True</code> 🎉 一种切法：<b>' +
+          (path.length ? path.map(w => '"' + LCesc(w) + '"').join(' + ') : '') + '</b>，每一段都在词典里——从 dp[n] 沿着"命中过的词"回查就能还原出它。'
+        : 'dp[' + n + '] 到最后都是 <b>False</b> → <code>return False</code>：对最后一个前缀，词典里每个"最后一个词"候选都试失败了——说明无论怎么切，s 总有一段落在词典之外。',
+      do: draw({dispD:dispD(), sst:{}, smk:[],
+                dst:{[shownD]: okFin ? 'target' : 'muted'},
+                dmk:[{name:'ans', idx:shownD, cls: okFin ? 'mg' : 'mq', text:'▲ 答案'}],
+                wst:{}, wmk:[],
+                res: okFin})});
+
+    return F;
+
+    // s 段高亮：start..i-1 一起上色（闭包在帧生成时定死值）
+    function segStates(a, b, st){
+      const o = {};
+      for(let k = a; k < b; k++) o[k] = st;
+      return o;
+    }
+  }
+});
+</script>
+</body>
+</html>

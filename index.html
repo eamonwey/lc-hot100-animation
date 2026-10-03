@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎯</text></svg>">
+<title>LeetCode 热题 100 · 动画题解</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<div class="wrap hero" id="app">
+  <div class="topbar">
+    <span class="toplink" style="cursor:default">🏠 目录</span>
+  </div>
+  <header>
+    <h1>LeetCode 热题 100 · 动画题解</h1>
+    <p class="sub">
+      按 <a href="https://leetcode.cn/studyplan/top-100-liked/" target="_blank" rel="noopener">官方学习计划</a> 的顺序，
+      每道题一个可交互的 Python 动画：<b>代码逐行高亮 ↔ 画面同步演示 ↔ 中文大白话解说</b>。
+      可以一步步走，也可以直接 ▶ 播放；测试用例随手改，程序输出自动校验。
+    </p>
+    <div class="pbar">
+      <div class="track"><div class="fillbar" id="pfill" style="width:0%"></div></div>
+      <span class="pt" id="ptext">已掌握 0 / 100</span>
+    </div>
+    <div class="reviewbar" id="reviewBar" style="display:none"></div>
+    <div class="filters">
+      <input class="fin" id="searchBox" placeholder="🔍 搜索题号 / 题名 / 解法">
+      <button class="filter-btn on" data-d="全部">全部</button>
+      <button class="filter-btn" data-d="简单">简单</button>
+      <button class="filter-btn" data-d="中等">中等</button>
+      <button class="filter-btn" data-d="困难">困难</button>
+      <button class="filter-btn" id="onlyTodo">只看没掌握的</button>
+    </div>
+  </header>
+  <div id="sections"></div>
+  <footer style="margin-top:26px">
+    建议顺序：从上往下刷，每题先 ▶ 播放一遍看懂思路，再自己写一遍。<br>
+    LeetCode 热题 100 · 动画题解 —— 用眼睛看懂每一行 Python。
+  </footer>
+</div>
+
+<script src="assets/problems.js"></script>
+<script>
+(function(){
+'use strict';
+const CATS = [
+  ['哈希','🗂'], ['双指针','👉'], ['滑动窗口','🪟'], ['子串','🧵'],
+  ['普通数组','🔢'], ['矩阵','⬜'], ['链表','🔗'], ['二叉树','🌳'],
+  ['图论','🗺'], ['回溯','🧭'], ['二分查找','🔍'], ['栈','🥞'],
+  ['堆','⛰'], ['贪心算法','💰'], ['动态规划','📈'], ['多维动态规划','🧮'], ['技巧','🎩']
+];
+const DONE_KEY = 'lc100.done.v2';
+const STAGES = [1, 3, 7, 14, 30];   // 艾宾浩斯复习节点(天)
+function done(){ try{ return JSON.parse(localStorage.getItem(DONE_KEY) || '[]'); }catch(e){ return []; } }
+function loadJSON(k){ try{ return JSON.parse(localStorage.getItem(k) || '{}'); }catch(e){ return {}; } }
+function reviewList(){
+  const at = loadJSON('lc100.doneAt'), rv = loadJSON('lc100.reviews');
+  const now = Date.now(), out = [];
+  done().forEach(o => {
+    let t = at[o];
+    if(!t){ t = now; at[o] = t; }   // 旧数据没有时间戳 → 从现在起算
+    const stage = STAGES[Math.min(rv[o] || 0, STAGES.length - 1)];
+    if(now - t >= stage * 86400000) out.push({order: o, days: Math.floor((now - t) / 86400000), round: Math.min(rv[o] || 0, STAGES.length - 1) + 1});
+  });
+  out.sort((a, b) => b.days - a.days);
+  return out;
+}
+function doReview(o){
+  const at = loadJSON('lc100.doneAt'), rv = loadJSON('lc100.reviews');
+  rv[o] = (rv[o] || 0) + 1; at[o] = Date.now();
+  try{ localStorage.setItem('lc100.reviews', JSON.stringify(rv)); localStorage.setItem('lc100.doneAt', JSON.stringify(at)); }catch(e){}
+  render(); toast('第 ' + rv[o] + ' 轮复习完成 ✓');
+}
+function toast(msg){
+  let t = document.getElementById('toast2');
+  if(!t){ t = document.createElement('div'); t.id = 'toast2'; document.body.appendChild(t); }
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._timer); t._timer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+let filterD = '全部', onlyTodo = false, query = '';
+
+function render(){
+  const dn = done();
+  const secs = document.getElementById('sections');
+
+  // 今日复习横幅
+  const rb = document.getElementById('reviewBar');
+  const due = reviewList();
+  if(due.length){
+    let rh = '<b>📖 今日复习 · ' + due.length + ' 题</b><span class="rsub">按 1 / 3 / 7 / 14 / 30 天的记忆节点提醒,重刷一遍才算真的记住</span><div class="rlist">';
+    due.slice(0, 10).forEach(x => {
+      const p = window.LC_PROBLEMS.find(t => t.order === x.order);
+      rh += '<span class="ritem"><a href="pages/p' + String(x.order).padStart(3,'0') + '.html">P' + String(x.order).padStart(3,'0') + ' ' + p.title + '</a><small>第' + x.round + '轮·隔' + x.days + '天</small><button data-review="' + x.order + '">✓ 复习完</button></span>';
+    });
+    if(due.length > 10) rh += '<span class="ritem more">…还有 ' + (due.length - 10) + ' 题</span>';
+    rh += '</div></div>';
+    rb.innerHTML = rh; rb.style.display = '';
+    rb.querySelectorAll('[data-review]').forEach(b => b.addEventListener('click', () => doReview(+b.getAttribute('data-review'))));
+  } else { rb.style.display = 'none'; }
+
+  let html = '';
+  CATS.forEach(([cat, icon]) => {
+    const items = window.LC_PROBLEMS.filter(p => p.cat === cat);
+    const doneN = items.filter(p => dn.includes(p.order)).length;
+    html += '<section class="catsec" data-cat="' + cat + '"><h2>' + icon + ' ' + cat +
+            '<small>' + doneN + ' / ' + items.length + ' 已掌握</small></h2><div class="pgrid">';
+    items.forEach(p => {
+      const isDone = dn.includes(p.order);
+      if(filterD !== '全部' && p.diff !== filterD) return;
+      if(onlyTodo && isDone) return;
+      if(query && !(String(p.num).includes(query) || p.title.includes(query) || p.approach.includes(query))) return;
+      html += '<a class="pcard' + (isDone ? ' done' : '') + '" href="pages/p' + String(p.order).padStart(3,'0') + '.html">' +
+              '<div class="row1"><span class="pid">P' + String(p.order).padStart(3,'0') + '</span>' +
+              '<span class="pnum">LC ' + p.num + '</span>' +
+              (isDone ? '<span class="donetag">✓</span>' : '') +
+              '<span class="diffchip d-' + p.diff + '">' + p.diff + '</span></div>' +
+              '<div class="pt">' + p.title + '</div>' +
+              '<div class="ap">' + p.approach + '</div></a>';
+    });
+    html += '</div></section>';
+  });
+  if(!html) html = '<p style="color:var(--muted);margin-top:20px">没有符合条件的题目～</p>';
+  secs.innerHTML = html;
+  const pct = Math.round(dn.length / 100 * 100);
+  document.getElementById('pfill').style.width = pct + '%';
+  document.getElementById('ptext').textContent = '已掌握 ' + dn.length + ' / 100' + (pct === 100 ? ' 🎉 全部刷完！' : '');
+}
+
+document.getElementById('searchBox').addEventListener('input', function(){
+  query = this.value.trim(); render();
+});
+document.querySelectorAll('.filter-btn[data-d]').forEach(b => {
+  b.addEventListener('click', function(){
+    document.querySelectorAll('.filter-btn[data-d]').forEach(x => x.classList.remove('on'));
+    this.classList.add('on');
+    filterD = this.dataset.d; render();
+  });
+});
+document.getElementById('onlyTodo').addEventListener('click', function(){
+  onlyTodo = !onlyTodo;
+  this.classList.toggle('on', onlyTodo);
+  render();
+});
+window.addEventListener('storage', render);
+document.addEventListener('visibilitychange', () => { if(!document.hidden) render(); });
+window.addEventListener('focus', render);
+window.addEventListener('pageshow', render); // 从题解页返回(bfcache)时刷新进度
+render();
+})();
+</script>
+</body>
+</html>

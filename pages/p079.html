@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P079 · 划分字母区间 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 79, num: 763, title: '划分字母区间', diff: '中等', cat: '贪心算法',
+  method: 'partitionLabels',
+
+  lede: '题目：把字符串切成<b>尽可能多</b>的小段，要求每个字母只出现在<b>一个</b>段里，返回每段的长度。' +
+        '思路是两趟扫描：第 1 趟用 <span class="var o">last</span> 表记下每个字母<b>最后出现</b>的下标；' +
+        '第 2 趟养一个窗口 [start..end]，每扫到一个字母就要求窗口罩住它的最后出现（<span class="var r">end</span> 取 max），' +
+        '一旦 <span class="var i">i</span> 走到 end——再没人要求延长，咔嚓切一段。',
+
+  roles: [
+    {c:'orange', code:'i',     text:'正在扫的字符'},
+    {c:'green',  code:'last',  text:'记事本：字母 → 最后出现的下标'},
+    {c:'blue',   code:'end',   text:'窗口右边界：被 last 一路往右顶'},
+    {c:'blue',   code:'start', text:'当前段左端'},
+    {c:'violet', code:'parts', text:'每段长度，切一段记一个'}
+  ],
+
+  codeTitle: '跟着高亮读代码——<code>if i == end</code> 变<span style="color:var(--green)">绿</span>＝窗口收口、切下一段；变<span style="color:var(--red)">红</span>＝窗口还得继续扩。',
+
+  legend: [
+    {c:'blue',   text:'当前窗口 [start..end]'},
+    {c:'orange', text:'正在扫的字符 i'},
+    {c:'green',  text:'已切好的段'},
+    {swatch:'var(--green-soft)', text:'last 表高亮行 = 本步查的字母'}
+  ],
+
+  idea: '先一趟记下每个字母最后出现在哪；第二遍每个字母都在给窗口续命（end 取 max），i 一走到 end，说明没人再要求延长——咔嚓切一段。',
+
+  qa: [
+    {q:'为什么要先建 last 表？不建行不行？',
+     a:'切段有个铁律：<b>同一个字母的所有出现必须待在同一段里</b>。所以窗口扫到字母 ch 时，右边界至少要伸到 last[ch]——不知道"最后出现"在哪，就得每步回头重扫一遍，O(n²)。先花一趟记下来，第二趟就是纯查表。'},
+    {q:'end = max(end, last[ch]) 为什么要取 max？',
+     a:'窗口右边界<b>只会往右扩、绝不回缩</b>：之前的字母可能已经把 end 顶到很远（比如 a 把 end 顶到 8），现在来个 c 要求到 7，取 max 后仍是 8——保证窗内<b>每一个</b>字母的要求都被满足，谁也不得罪。'},
+    {q:'凭什么 i == end 时一刀切下去是安全的？',
+     a:'不变式：窗口 [start..end] 内每个字母的<b>最后一次出现</b>都落在窗内。i 扫到 end，说明窗内字符全查过一遍，后面的字符不管是谁，它的 last 位置都在 end 右边（或另开新窗）——不可能再回头要求延长。所以 [start..end] 自成一段，不多不少。'},
+    {q:'复杂度是多少？',
+     a:'两趟扫描各 O(n)，共 O(n)；空间是 last 表，最多装 26 个小写字母，O(|Σ|) = O(1)。'}
+  ],
+
+  complexity: '时间 O(n)（两趟扫描）　·　空间 O(|Σ|)（last 表最多 26 项）',
+
+  form: [
+    {key:'s', label:'s', type:'str', def:'ababcbacadefegdehijhklij'}
+  ],
+  presets: [
+    {label:'默认（答案 [9,7,8]）', values:{s:'ababcbacadefegdehijhklij'}},
+    {label:'eccbbbbdec → [10]（整串一段）', values:{s:'eccbbbbdec'}},
+    {label:'abcdabcd → [5,1,1,1]', values:{s:'abcdabcd'}},
+    {label:'a → [1]（单字符边界）', values:{s:'a'}}
+  ],
+
+  code: `class Solution:
+    def partitionLabels(self, s):
+        last = {}                     # 字母 -> 最后出现的下标
+        for i, ch in enumerate(s):    # 第 1 趟: 建表
+            last[ch] = i
+        parts = []                    # 每段的长度
+        start, end = 0, 0             # 当前段的窗口
+        for i, ch in enumerate(s):    # 第 2 趟: 一边扫一边扩窗
+            end = max(end, last[ch])  # 必须罩住 ch 最后出现
+            if i == end:              # 走到窗口尽头 -> 切!
+                parts.append(end - start + 1)
+                start = end + 1
+        return parts
+`,
+
+  sol(input){
+    const s = String(input.s == null ? '' : input.s);
+    const last = {};
+    for(let i = 0; i < s.length; i++) last[s[i]] = i;
+    const parts = [];
+    let start = 0, end = 0;
+    for(let i = 0; i < s.length; i++){
+      end = Math.max(end, last[s[i]]);
+      if(i === end){ parts.push(end - start + 1); start = end + 1; }
+    }
+    return parts;
+  },
+  expected: [9, 7, 8],
+
+  quiz: [
+    {q:'end = max(end, last[ch]) 为什么要取 max,直接写 end = last[ch] 不行吗?',
+     options:['不行——右边界只会右扩、绝不回缩,直接覆盖会把先前字母的最后出现扔出窗外,切段就错了','行,效果完全一样','不行——max 是为了防止下标越界'],
+     answer:0,
+     explain:'窗口右边界是全窗字母要求的"最大公约数":先前进窗的字母(比如 a)可能已经把 end 顶到 8,现在来个只要求到 3 的字母,若直接覆盖 end=3,a 的最后出现就被扔出窗外——同一段里再也罩不住 a。取 max 保证窗内每一个字母的要求都被满足,谁也不得罪。',
+     jumpTo:27},
+    {q:'s = "abacjjk",切出来各段长度是?',
+     options:['[3,1,2,1]','[3,4]','[2,1,2,1]'],
+     answer:0,
+     explain:'last 表:a→2、b→1、c→3、j→5、k→6。扫 a 时 end 被顶到 2,i 走到 2 收口 → [3];c 只出现一次,立刻自成一段 → [1];j 把 end 顶到 5 → 段 [2];k 单独收尾 → [1]。结果是 [3,1,2,1]。选 [3,4] 是把 c 并进后面那段——合法但不是最多段;选 [2,1,2,1] 是在 i=1 就想切,可 a 在下标 2 还有出现,拦腰切一刀 a 就跨两段了。能收口就立刻切,段数才最多。',
+     jumpTo:45},
+    {q:'凭什么 i 一走到 end 就敢放心切一刀?往后要是再出现窗内的字母怎么办?',
+     options:['因为 end 之后的字符都和窗内不同,程序算过','不变式兜底:窗内每个字母的最后出现都落在窗内——end 之后的字符若也出现在窗内,刚才查表时早把 end 顶得更远了;没顶,说明窗内字母在后面绝迹了','因为字符串已经排过序,后面的字母只会更大'],
+     answer:1,
+     explain:'第二趟扫到 i 为止,[start..end] 里每个字符都查过一次表,end 被顶到"窗内字母最远的最后出现"。反证:end 之后若还有某字母 ch 的出现、而 ch 又在窗内,那 last[ch] ≥ 那个位置 > end,查 ch 的表时 end 早就被顶过去了——矛盾。所以走到 end 那一刻,窗口对外牵连为零,切一刀不多不少。字符串也没排过序。',
+     jumpTo:45},
+  ],
+
+  steps(input){
+    const F = [];
+    const s = String(input.s == null ? '' : input.s);
+    const S = s.split('');
+    const n = S.length;
+    const lastMap = new Map();
+    const segOf = new Array(n).fill(-1);   // 每个字符属于第几段
+    let curSeg = 0, start = 0, end = 0;
+    const parts = [];
+
+    /* ---- 字符行 html：在 push 那一刻拼好（快照） ---- */
+    const sRow = (o) => {
+      let h = '';
+      for(let t = 0; t < n; t++){
+        let bg = '#fff', bd = 'var(--line)', fg = '#4c5160';
+        if(o.mode === 'build'){
+          if(t < o.i){ bg = 'var(--green-soft)'; bd = 'var(--green-mid)'; fg = 'var(--green)'; }
+          else if(t === o.i){ bg = 'var(--orange-soft)'; bd = 'var(--orange)'; fg = 'var(--orange)'; }
+        } else {
+          if(segOf[t] >= 0 && segOf[t] < o.curSeg){ bg = 'var(--green-soft)'; bd = 'var(--green-mid)'; fg = 'var(--green)'; }
+          else if(t >= o.start && t <= o.end){
+            if(t === o.i){ bg = 'var(--orange-soft)'; bd = 'var(--orange)'; fg = 'var(--orange)'; }
+            else { bg = 'var(--blue-soft)'; bd = 'var(--blue-mid)'; fg = 'var(--blue)'; }
+          }
+        }
+        const mks = (o.marks || []).filter(m => m.idx === t)
+          .map(m => '<span class="' + m.cls + '" style="font-size:9.5px">' + m.text + '</span>').join('<br>');
+        h += '<span style="display:inline-block;width:24px;text-align:center;vertical-align:top">' +
+             '<span style="display:block;font-size:9.5px;color:#a8a496;height:13px;line-height:13px">' + t + '</span>' +
+             '<span style="display:block;margin:0 1px;font-size:15px;font-weight:600;line-height:26px;height:26px;' +
+             'background:' + bg + ';border:1.5px solid ' + bd + ';color:' + fg + ';border-radius:6px">' + LCesc(S[t]) + '</span>' +
+             '<span style="display:block;min-height:14px;line-height:1.3">' + mks + '</span>' +
+             '</span>';
+      }
+      return h;
+    };
+
+    /* ---- 快照绘制（铁律 5：全部数据进 o，渲染时只读 o） ---- */
+    const draw = (o) => (v) => {
+      v.text('srow', o.rowHtml, {html:true, label:'字符串 <code>s</code>　·　' + o.rowLabel});
+      v.map('last', o.last, {label:'<code>last</code> 表（字母 → 最后出现的下标）', hlK:o.hlK});
+      v.vars('vars', o.vars, {label:'变量', hl:o.hl || []});
+      if(o.res !== undefined) v.result(o.res, {label:'每段长度'});
+    };
+    const snap = (extra) => Object.assign({
+      rowHtml:'', rowLabel:'', last:Array.from(lastMap.entries()), hlK:undefined,
+      vars:{}, hl:[]
+    }, extra);
+    const scanMarks = (i, st, ed) => {
+      const m = [{idx:i, cls:'mk-a', text:'▲i'}, {idx:ed, cls:'mk-b', text:'▲end'}];
+      if(st < n) m.push({idx:st, cls:'mk-g', text:'▲start'});
+      return m;
+    };
+
+    /* ============ 第 1 趟：建 last 表 ============ */
+    F.push({hl:[1,2,3], tag:'初始化', cls:'t-grey',
+      msg:'切段有条铁律：<b>同一个字母的所有出现必须待在同一段里</b>——只要字母 ch 还在后面露面，含它的那段就必须一路罩过去，不能拦腰截断。怎么提前知道"每个字母最后出现在哪"？先花一趟扫描，把每个字母<b>最后出现</b>的下标记进 <code>last</code> 表（画面中间那张记事本），第二趟扫到任何字母一查表就知道窗口至少要伸多远，不用回头重扫。现在表还空着、已登记 0 个字母，接下来逐格登记。',
+      do: draw(snap({rowHtml:sRow({mode:'build', i:-1}), rowLabel:'第 1 遍：建 last 表',
+                     vars:{i:'—', ch:'—', '已登记':0}}))});
+
+    for(let i = 0; i < n; i++){
+      const ch = S[i];
+      lastMap.set(ch, i);
+      const firstTime = !S.slice(0, i).includes(ch);
+      F.push({hl:[4,5], tag:'登记 last', cls:'t-orange',
+        msg:'扫到 s[' + i + '] = <code>' + LCesc(ch) + '</code>' + (firstTime
+          ? '：它第一次露面，在 last 表里给它记一行 <code>last[' + LCesc(ch) + '] = ' + i + '</code>（刚高亮的那行）。'
+          : '：它之前出现过，旧记录作废，覆盖成 <code>last[' + LCesc(ch) + '] = ' + i + '</code>——表里永远只存"到目前为止最后一次"，等这一趟扫完，存下的自然就是全串最后一次。') +
+          '先花 O(n) 把"最后出现"备好，第二趟就是纯查表 O(1)；不建表的话每切一刀都得回头重扫，会退化成 O(n²)。表里现有 ' + lastMap.size + ' 个字母。',
+        do: draw(snap({rowHtml:sRow({mode:'build', i:i}), rowLabel:'第 1 遍：建 last 表',
+                       hlK:ch, vars:{i:i, ch:ch, '已登记':lastMap.size}}))});
+    }
+
+    F.push({hl:[6,7], tag:'表建好了', cls:'t-green',
+      msg:'last 表完工，共 ' + lastMap.size + ' 个字母，每个字母的"最后出现位置"都随查随得。第 2 遍开扫：<code>start = 0</code>、<code>end = 0</code>。窗口 [start..end] 的规矩是<b>罩住窗内每个字母的最后出现</b>——这条不被破坏，切下来的段才合法；至于 end 被谁顶到多远、什么时候能切，看下面每一步。',
+      do: draw(snap({rowHtml:sRow({mode:'scan', i:-1, start:0, end:0, curSeg:curSeg, marks:scanMarks(-1, 0, 0)}),
+                     rowLabel:'第 2 遍：扩窗口，到尽头就切',
+                     vars:{i:'—', start:start, end:end, parts:'[]'}}))});
+
+    /* ============ 第 2 趟：扩窗 + 切段 ============ */
+    for(let i = 0; i < n; i++){
+      const ch = S[i];
+      const oldEnd = end;
+      const lv = lastMap.get(ch);
+      end = Math.max(end, lv);
+      F.push({hl:[8,9], tag:'查表扩窗', cls:'t-ink',
+        msg:'i = ' + i + '（<code>' + LCesc(ch) + '</code>）走进窗口，查表得 <code>last[' + LCesc(ch) + '] = ' + lv + '</code> → <code>end = max(' + oldEnd + ', ' + lv + ') = ' + end + '</code>' +
+            (end > oldEnd ? '。' + LCesc(ch) + ' 的最后出现比当前边界更远，<b>窗口被顶到 ' + end + '</b>——不罩住它，这个字母就会出现在两个段里。'
+                          : '。要求 ' + lv + ' 没超出当前边界，<b>右边界不动</b>。') +
+            '取 max 而不是直接覆盖，是因为右边界<b>只会右扩、绝不回缩</b>：先前进窗的字母可能已经把 end 顶得很远，新字母要求更近时若把 end 拉回来，先前字母的最后出现就被扔出窗外，切段就错了。',
+        do: draw(snap({rowHtml:sRow({mode:'scan', i:i, start:start, end:end, curSeg:curSeg, marks:scanMarks(i, start, end)}),
+                       rowLabel:'第 2 遍：扩窗口，到尽头就切',
+                       hlK:ch, vars:{i:i, ch:ch, start:start, end:end, parts:'[' + parts.join(', ') + ']'},
+                       hl:['end']}))});
+
+      const hit = (i === end);
+      F.push({hl:[10], ok: hit ? 10 : undefined, no: hit ? undefined : 10,
+        tag:'到尽头了吗', cls: hit ? 't-green' : 't-red',
+        msg: hit
+          ? '<code>i == end</code>（' + i + ' == ' + end + '）：i 已把 [start..' + end + '] 里的字母逐个查过表，它们的最后出现全部落在窗内。反过来想：end 之后的字符若也出现在窗内，刚才查表时早把 end 顶得更远了——没顶，说明<b>窗内字母在后面绝迹了</b>。没人再要求延长，<b>可以切了！</b>'
+          : '<code>i == end</code>？' + i + ' ≠ ' + end + '：窗内还有字母把右边界顶在 ' + end + '（比 i 远）——它的后半截还没扫到，现在切会拦腰截断，<b>继续往右扫</b>。',
+        do: draw(snap({rowHtml:sRow({mode:'scan', i:i, start:start, end:end, curSeg:curSeg, marks:scanMarks(i, start, end)}),
+                       rowLabel:'第 2 遍：扩窗口，到尽头就切',
+                       vars:{i:i, ch:ch, start:start, end:end, parts:'[' + parts.join(', ') + ']'}}))});
+
+      if(hit){
+        const segStart = start, segEnd = end, len = segEnd - segStart + 1;
+        parts.push(len);
+        for(let t = segStart; t <= segEnd; t++) segOf[t] = curSeg;
+        curSeg++;
+        start = end + 1;
+        F.push({hl:[11,12], tag:'切一段！', cls:'t-violet',
+          msg:'咔嚓！段 s[' + segStart + '..' + segEnd + '] 定了，长度 = end − start + 1 = ' + segEnd + ' − ' + segStart + ' + 1 = <b>' + len + '</b>，记入 <code>parts</code>（这串字符变绿）。敢切是因为这段的对外牵连已经为零：窗内每个字母的最后出现都落在段里，谁也不会再把它往后拽。然后 <code>start = end + 1 = ' + start + '</code>，从下一个字符另起新窗口，重复"扩窗—收口"流程。',
+          do: draw(snap({rowHtml:sRow({mode:'scan', i:i, start:start, end:end, curSeg:curSeg, marks:scanMarks(i, start, end)}),
+                         rowLabel:'第 2 遍：扩窗口，到尽头就切',
+                         vars:{i:i, ch:ch, start:start, end:end, parts:'[' + parts.join(', ') + ']'},
+                         hl:['parts']}))});
+      }
+    }
+
+    F.push({hl:[8], no:8, tag:'扫描结束', cls:'t-red',
+      msg:'i 走完全部 ' + n + ' 个字符，最后一段也在串尾收口——<b>每一格都恰好属于一段</b>。因为每段的右边界都是被"窗内字母的最后出现"顶出来的，任何字母都不可能同时出现在两段里；而且能收口就立刻切，段数已经多到不能再多。画面上绿色就是切好的段。',
+      do: draw(snap({rowHtml:sRow({mode:'scan', i:-1, start:start, end:end - 1, curSeg:curSeg, marks:[]}),
+                     rowLabel:'全部切完',
+                     vars:{i:'—', start:start, end:end, parts:'[' + parts.join(', ') + ']'}}))});
+
+    F.push({hl:[13], tag:'返回', cls:'t-dark',
+      msg:'<code>return parts = [' + parts.join(', ') + ']</code> 🎉 ' + parts.length + ' 段、' + n + ' 个字符各归各段。复盘：第 1 趟建 last 表、第 2 趟扩窗切段，两趟各 O(n)；"i 追平 end"就是收口信号——多切一刀会有字母跨段，少切一刀段数就不是最多，贪心得刚刚好。',
+      do: draw(snap({rowHtml:sRow({mode:'scan', i:-1, start:start, end:end - 1, curSeg:curSeg, marks:[]}),
+                     rowLabel:'全部切完', res:parts,
+                     vars:{i:'—', start:'—', end:'—', parts:'[' + parts.join(', ') + ']'}}))});
+
+    return F;
+  }
+});
+</script>
+</body>
+</html>

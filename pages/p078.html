@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P078 · 跳跃游戏 II · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 78, num: 45, title: '跳跃游戏 II', diff: '中等', cat: '贪心算法',
+  method: 'jump',
+
+  lede: '题目：从下标 0 出发，每次最多往右跳 <span class="var i">nums[i]</span> 格，求<b>跳到最后一格的最少次数</b>（题目保证一定能到）。' +
+        '把整个跳跃想成<b>分层</b>：第 0 层只有起点；第 k 层 = 恰好跳 k 步能到的格子。' +
+        '<span class="var r">cur_end</span> 是"当前层的右边界"，<span class="var g">farthest</span> 是扫这一层时发现的"下一层能到多远"——' +
+        '扫到 <span class="var r">cur_end</span> 就被迫再跳一步（jumps+1），边界整体推进。层数就是答案。',
+
+  roles: [
+    {c:'orange', code:'i',         text:'正在扫的格子'},
+    {c:'blue',   code:'cur_end',   text:'当前层右边界：走到它就得再跳'},
+    {c:'green',  code:'farthest',  text:'下一层最远：扫的过程中一路更新'},
+    {c:'violet', code:'jumps',     text:'已经跳的步数 = 层数'}
+  ],
+
+  codeTitle: '跟着高亮读代码——<code>if i == cur_end</code> 变<span style="color:var(--green)">绿</span>＝走到当前层尽头、被迫跳一步；变<span style="color:var(--red)">红</span>＝还在层里，继续扫。',
+
+  legend: [
+    {c:'blue',   text:'当前层的格子'},
+    {swatch:'var(--green-soft)', text:'虚绿框：下一层的候选地盘（farthest 以内）'},
+    {c:'green',  text:'已定层：层数不会再变'},
+    {c:'violet', text:'jumps：跳了几步'}
+  ],
+
+  idea: '把跳跃当 BFS 分层：farthest 记下一层最远，扫到 cur_end 就 jumps+1 并把 cur_end 推到 farthest——层数即最少跳数，一趟 O(n)。',
+
+  qa: [
+    {q:'为什么"层数"就是最少跳跃次数？',
+     a:'第 0 层是起点，第 k 层恰好是"跳 k 步才能到"的格子集合。终点落在第 k 层，就说明 k 步是下限；而贪心保证层与层首尾相接、每一层都被覆盖到，所以 k 步也一定够——下限即答案。'},
+    {q:'cur_end 和 farthest 到底谁是谁？',
+     a:'<b>cur_end 是"这一层到哪里为止"</b>：i 扫到它，说明当前层的格子全看完了，该跳下一步了。<b>farthest 是"从这一层出发最远能探到哪"</b>：扫当前层每个格子时，用 i + nums[i] 一路把它往外推。跳的时候 cur_end 直接继承 farthest。'},
+    {q:'为什么 for 循环只扫到 n − 2（不含最后一格）？',
+     a:'扫到最后一格之前，cur_end 必然已经 ≥ n−1（否则按题意根本到不了终点）。若把最后一格也扫进去，站在终点上还会再"被迫跳一步"，凭空多算一次。少扫一格正好掐掉这个尾巴。'},
+    {q:'这和真正的 BFS 队列有什么区别？',
+     a:'BFS 会把每层的下标一个个入队，空间 O(n)。贪心发现"一层只需要两个边界"：不排队、只记 cur_end / farthest，空间压到 O(1)——本质还是层序，只是把队列省成了两个数字。'}
+  ],
+
+  complexity: '时间 O(n)（每格看一次）　·　空间 O(1)（只有三个变量）',
+
+  form: [
+    {key:'nums', label:'nums', type:'arr', def:[2,3,1,1,4]}
+  ],
+  presets: [
+    {label:'[2,3,1,1,4] → 2', values:{nums:[2,3,1,1,4]}},
+    {label:'[1,1,1,1] → 3（每步一格）', values:{nums:[1,1,1,1]}},
+    {label:'[0] → 0（已在终点）', values:{nums:[0]}},
+    {label:'[2,3,0,1,4] → 2（带 0 的坑）', values:{nums:[2,3,0,1,4]}}
+  ],
+
+  code: `class Solution:
+    def jump(self, nums):
+        jumps = 0                 # 已经跳了几步
+        cur_end = 0               # 当前层的最右边界
+        farthest = 0              # 扫描中发现的下一层最远
+        for i in range(len(nums) - 1):     # 最后一格不用扫
+            farthest = max(farthest, i + nums[i])   # 谁更远?
+            if i == cur_end:      # 走到当前层尽头
+                jumps += 1        # 被迫再跳一步
+                cur_end = farthest  # 边界推进到下一层
+        return jumps
+`,
+
+  sol(input){
+    const nums = input.nums || [];
+    let jumps = 0, curEnd = 0, farthest = 0;
+    for(let i = 0; i < nums.length - 1; i++){
+      farthest = Math.max(farthest, i + nums[i]);
+      if(i === curEnd){ jumps++; curEnd = farthest; }
+    }
+    return jumps;
+  },
+  expected: 2,
+
+  quiz: [
+    {q:'for 循环为什么只扫到 n − 2(故意不看最后一格)?多扫一格会怎样?',
+     options:['会数组越界,程序崩溃','站在终点上还会被 i == cur_end 的判断逼着再 jumps+1,凭空多算一步——扫到倒数第二格时边界必然已盖住终点,少扫一格正好掐掉这个尾巴','没什么影响,只是多花一次循环'],
+     answer:1,
+     explain:'最后一格本身不需要"被跳到它的次数"之外的任何计算:扫到倒数第二格为止时,cur_end 必然 ≥ n−1(题目保证可达),终点已落进最后一层。若把终点也扫进去,当 i 走到 cur_end 处还会触发一次 jumps += 1——可人已经站在终点上了,再跳一步纯属幻觉。这个"少扫一格"是把边界条件掐死在循环写法里的经典技巧。',
+     jumpTo:2},
+    {q:'nums = [4,1,1,3,2,1],最少跳几步到最后一格?',
+     options:['1','2','3'],
+     answer:1,
+     explain:'分层推:第 0 层只有格子 0;扫它得 farthest = 0+4 = 4,i == cur_end → jumps=1,第 1 层 = 格子 1~4;继续扫格子 1~3,farthest 被 3+3=6 推到 6;轮到 i=4(第 1 层边界)→ jumps=2,cur_end=6 ≥ 5,终点(格子 5)在第 2 层。答案 2:0 → 4 → 5。选 1 的是以为起点的 4 能直接够到最后一格—— reach = 0+4 是"摸到下标 4",差一格;选 3 的是把每段都拆成一步在数。',
+     jumpTo:11},
+    {q:'为什么扫到 cur_end(层边界)才 jumps+1,而不是一发现能跳更远就立刻跳?',
+     options:['因为必须等数组扫完一遍才能知道答案','同层内早跳晚跳都一样:先把整层每个格子伸出的触角都收进 farthest,那一步才跳得最值——一步就能继承全层的最远边界','因为 jumps 是全局变量,不能随便加'],
+     answer:0,
+     explain:'这是"BFS 分层"的贪心浓缩:第 k 层的所有格子都只花 k 步,在它们之间纠结何时起跳毫无收益——任何新地盘迟早都会被 farthest 收录。拖到 cur_end 才结算,等于先把全队的侦察结果汇总,再统一迈一步,一步踩到全层能探到的最远处;count 不变式"每层恰好 +1"也由此守住。数组只扫一遍,和"等扫完再答"无关。',
+     jumpTo:10},
+  ],
+
+  steps(input){
+    const F = [];
+    const nums = input.nums || [];
+    const n = nums.length;
+    const layerOf = new Array(n).fill(-1);   // 每格属于第几层（跑算法时同步填）
+    if(n > 0) layerOf[0] = 0;
+    let jumps = 0, curEnd = 0, farthest = 0, curLayer = 0;
+
+    /* ---- 快照绘制（铁律 5：所有动态量在 push 那一刻定死） ---- */
+    const col = () => {
+      const s = {};
+      for(let t = 0; t < n; t++){
+        if(layerOf[t] >= 0) s[t] = (layerOf[t] < curLayer) ? 'done' : 'in';
+        else if(t <= farthest) s[t] = 'peek';
+      }
+      return s;
+    };
+    const mk = () => {
+      const m = [];
+      if(n > 0) m.push({name:'cur_end', idx:Math.min(curEnd, n - 1), cls:'mr', text:'▲ cur_end'});
+      if(n > 0) m.push({name:'farthest', idx:Math.min(farthest, n - 1), cls:'mg', text:'▲ farthest'});
+      return m;
+    };
+    const draw = (o) => (v) => {
+      v.arr('nums', nums, {
+        label:'数组 <code>nums</code>　·　值 = 从这格最多能跳几格',
+        states:o.st, markers:o.marks.concat(n > 0 ? [{name:'i', idx:o.iIdx, cls:'mi', text:'▲ i'}] : [])
+      });
+      v.vars('vars', o.vars, {label:'变量', hl:o.hl || []});
+      if(o.res !== undefined) v.result(o.res, {label:'最少跳跃次数'});
+    };
+    const snap = (extra) => Object.assign({
+      st:col(), marks:mk(), iIdx:Math.min(curEnd, n - 1),
+      vars:{jumps:jumps, cur_end:curEnd, farthest:farthest}, hl:[]
+    }, extra);
+
+    F.push({hl:[1,2,3,4,5], tag:'初始化', cls:'t-grey',
+      msg:'把跳跃想成<b>分层（BFS 思路）</b>：第 0 层只有起点；第 k 层 = 恰好跳 k 步能到的所有格子——<b>终点在第几层，答案就是几</b>。手里只记两个数：<code>cur_end</code>＝当前层<b>右边界</b>（蓝牌，扫到它说明这一层看完了），<code>farthest</code>＝扫的过程中一路打探到的<b>下一层最远边界</b>（绿牌）。初始都站在第 0 格，jumps = 0。',
+      do: draw(snap())});
+
+    F.push({hl:[6], tag:'开扫', cls:'t-blue',
+      msg:'<code>i</code> 只扫到 <b>n − 2 = ' + (n - 2) + '</b>，最后一格故意不看：扫到倒数第二格为止时，边界必然已盖住终点（题目保证可达）；若把终点也扫进去，站在终点上还会被"到层尽头"的判断逼着再多跳一步，凭空多算。少扫一格正好掐掉这个尾巴。',
+      do: draw(snap({iIdx:0}))});
+
+    for(let i = 0; i < n - 1; i++){
+      const reach = i + nums[i];
+      const oldFar = farthest;
+      farthest = Math.max(farthest, reach);
+      F.push({hl:[6,7], tag:'更新 farthest', cls:'t-ink',
+        msg:'站在第 <b>' + i + '</b> 格（值 ' + nums[i] + '）：从这最远能蹦到 <code>i + nums[i] = ' + i + ' + ' + nums[i] + ' = ' + reach + '</code>，与旧值取大 → <code>farthest = max(' + oldFar + ', ' + reach + ') = ' + farthest + '</code>' +
+            (farthest > oldFar ? '——下一层的地盘又往外拓了（绿牌 ▲ farthest 右移）。' : '——同层伙伴已经探到这么远，这格没贡献新边界。') +
+            '注意 farthest 只是"侦察兵"：先记下不急着用，等走到层边界才兑现成新地盘。',
+        do: draw(snap({iIdx:i, hl:['farthest']}))});
+
+      const atEdge = (i === curEnd);
+      F.push({hl:[8], ok: atEdge ? 8 : undefined, no: atEdge ? undefined : 8,
+        tag:'到层尽头了吗', cls: atEdge ? 't-green' : 't-red',
+        msg: atEdge
+          ? '<code>i == cur_end</code>（' + i + ' == ' + curEnd + '）→ 走到当前层<b>右边界</b>：第 ' + curLayer + ' 层的格子全部看完，想再往右<b>必须跳一步</b>。为什么拖到 cur_end 才结算也不漏最优？同层内早跳晚跳都一样——不管从这层哪个格子起跳，探到的新地盘最后都会被 farthest 收录；先扫完整层再跳，用的信息最全，一步就能继承最远值。'
+          : '<code>i == cur_end</code>？' + i + ' ≠ ' + curEnd + ' → 还在当前层（蓝框）地盘里，<b>能不跳就不跳</b>：继续借用这一层的观察能力把 farthest 探得更远，将来那一步才跳得值。结算时机未到，jumps 不动。',
+        do: draw(snap({iIdx:i}))});
+
+      if(atEdge){
+        jumps++;
+        F.push({hl:[9], tag:'再跳一步', cls:'t-violet',
+          msg:'<code>jumps += 1</code> → 已跳 <b>' + jumps + '</b> 步。这一步不用担心落空：<b>farthest 是当前层所有格子一起伸出的最远触角</b>，跳一下必然踩进下一层的地盘（题目也保证终点可达）。好比过河：先让全队把对岸最远的踏脚石侦察出来，再统一迈一步。',
+          do: draw(snap({iIdx:i, hl:['jumps']}))});
+
+        curEnd = farthest;
+        curLayer++;
+        const from = i + 1, to = Math.min(farthest, n - 1);
+        for(let t = from; t <= to; t++) layerOf[t] = curLayer;
+        F.push({hl:[10], tag:'边界推进', cls:'t-blue',
+          msg:'<code>cur_end = farthest = ' + curEnd + '</code>：蓝牌 ▲ cur_end 跳到新边界，第 <b>' + curLayer + '</b> 层 = 格子 ' + from + '..' + to +
+              '，一格不多地整体染色；旧层变成绿色（done），层数永远定死不再回头。接下来在新地盘里继续侦察下一层——<b>每结算完一层 jumps 就 +1，层数即步数</b>。',
+          do: draw(snap({iIdx:i, hl:['cur_end']}))});
+      }
+    }
+
+    F.push({hl:[6], no:6, tag:'扫描结束', cls:'t-red',
+      msg:'<code>i</code> 走完 n − 2 = ' + (n - 2) + '，for 收工。此时 <code>cur_end = ' + Math.min(curEnd, n - 1) + ' ≥ n − 1</code>：最后一层的边界已盖住终点，说明终点正好落在第 ' + jumps + ' 层里——层数就藏在 jumps 中。',
+      do: draw(snap({iIdx:Math.min(curEnd, n - 1)}))});
+
+    F.push({hl:[11], tag:'返回', cls:'t-dark',
+      msg:'<code>return jumps = ' + jumps + '</code> 🎉 为什么层数就是<b>最少</b>步数？第 k 层 = "少于 k 步绝对到不了"的格子集合，终点在第 ' + jumps + ' 层说明下限是 ' + jumps + '；而贪心每层都把 farthest 推到最远、层层首尾相接，' + jumps + ' 步又一定够——下限即答案。一趟 O(n)，只记三个变量，空间 O(1)。',
+      do: draw(snap({iIdx:Math.min(curEnd, n - 1), res:jumps}))});
+
+    return F;
+  }
+});
+</script>
+</body>
+</html>

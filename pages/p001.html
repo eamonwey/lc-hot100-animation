@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P001 · 两数之和 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 1, num: 1, title: '两数之和', diff: '简单', cat: '哈希',
+  method: 'twoSum',
+
+  lede: '题目：在数组里找<b>两个</b>数，使它们的和等于 <span class="var r">target</span>，返回这两个数的<b>下标</b>。' +
+        '动画里 <span class="var i">i</span> 是正在扫的格子，<span class="var r">seen</span> 是"看过的数 → 下标"的记事本：' +
+        '每到一格先问一句"我的另一半来过吗？"，没来过就把自己登记进去。← → 逐步看，或直接 ▶ 播放。',
+
+  roles: [
+    {c:'orange', code:'i', text:'当前扫到的格子'},
+    {c:'blue',   code:'x', text:'当前数'},
+    {c:'blue',   code:'y', text:'它需要的另一半 = target − x'},
+    {c:'green',  code:'seen', text:'哈希表：值 → 下标'}
+  ],
+
+  codeTitle: '跟着高亮读代码——查表那行变<span style="color:var(--green)">绿</span>＝另一半找到了，变<span style="color:var(--red)">红</span>＝还没来，先登记自己。',
+
+  idea: '别回头找搭档：把"我还需要谁"记进哈希表，让答案自己来撞上门——空间换时间。',
+
+  qa: [
+    {q:'为什么查 y 而不是把所有组合都试一遍？',
+     a:'暴力两层循环是 O(n²)：每个数都要回头把前面的数再摸一遍。哈希表把"y 出现过吗"变成 O(1) 查询，整个问题变成一趟 O(n) 的扫描——这就是空间换时间。'},
+    {q:'seen 里存的到底是什么？',
+     a:'恰好是"已经扫过、还没配对成功"的那些数：键是数值本身，值是它的下标。所以 <b>if y in seen</b> 等价于"y 在 i 左边的某个位置出现过"。'},
+    {q:'数组里有重复的数（比如 [3,3]）会乱吗？',
+     a:'不会。我们是<b>先查后存</b>：走到第二个 3 时，第一个 3 已经在表里，直接命中返回 [0,1]；即使覆盖写入也来不及发生。顺序反过来就错了。'}
+  ],
+
+  complexity: '时间 O(n)　·　空间 O(n)（哈希表最多存 n 个数）',
+
+  form: [
+    {key:'nums', label:'nums', type:'arr', def:[2,7,11,15]},
+    {key:'target', label:'target', type:'num', def:9}
+  ],
+  presets: [
+    {label:'[2,7,11,15] 目标9', values:{nums:[2,7,11,15], target:9}},
+    {label:'[3,2,4] 目标6', values:{nums:[3,2,4], target:6}},
+    {label:'[3,3] 目标6（重复数）', values:{nums:[3,3], target:6}},
+    {label:'[1,5,3,6] 目标7', values:{nums:[1,5,3,6], target:7}}
+  ],
+
+  code: `class Solution:
+    def twoSum(self, nums, target):
+        seen = {}                     # 值 -> 下标
+        for i, x in enumerate(nums):
+            y = target - x            # 需要的另一半
+            if y in seen:             # 之前出现过吗?
+                return [seen[y], i]
+            seen[x] = i               # 登记自己
+`,
+
+  sol(input){
+    const seen = new Map();
+    for(let i = 0; i < input.nums.length; i++){
+      const y = input.target - input.nums[i];
+      if(seen.has(y)) return [seen.get(y), i];
+      seen.set(input.nums[i], i);
+    }
+    return null;
+  },
+  expected: [0, 1],
+
+  quiz: [
+    {q:'为什么是「先查表、再登记自己」?要是先登记再查,会出什么岔子?',
+     options:['顺序无所谓,结果一样','当 x 自己就等于另一半时(比如数组里只有一个 5、target=10),会把自己配给自己,返回同一下标重复的假答案','先登记会直接报错'],
+     answer:1,
+     explain:'先查后存保证查表时 seen 里只有「i 左边扫过的数」。若反过来先把 x 存进表,当 y = target − x 恰好等于 x 本身时,查表必然查到刚登记的自己——数组里明明只有一个 5,也会返回 [同一格, 同一格]。先查后存则稳稳要求两个不同位置的数,这个顺序是铁律。',
+     jumpTo:4},
+    {q:'nums = [4,2,7,1]、target = 9,这个算法返回什么?',
+     options:['[0,2]','[1,2]','[2,3]','[1,3]'],
+     answer:1,
+     explain:'逐格走:i=0 时 x=4,y=5 查表没有,登记 4;i=1 时 x=2,y=7 没有,登记 2;i=2 时 x=7,y=2——2 在表里!它的下标是 1,返回 [1,2](验算 2+7=9)。[0,2] 对应 4+7=11,不对;[2,3] 对应 7+1=8,也不对。',
+     jumpTo:8},
+    {q:'这题把暴力两层循环的 O(n²) 压到 O(n),靠的是什么?',
+     options:['数组先排了个序','哈希表把「y 出现过吗」从 O(n) 的回头扫描变成 O(1) 查询,一趟扫描就够了','两个指针相向夹逼,砍掉一半组合'],
+     answer:1,
+     explain:'暴力的瓶颈是「每个数都要回头把左边的数挨个加一遍验证」。哈希表把这件事变成一次 O(1) 查询:每到一格只问 seen 一句"我的另一半来过吗"。本题要返回原始下标、顺序无关,排序反而会打乱下标;双指针夹逼也不是这题的套路——核心就是空间换时间。',
+     jumpTo:4},
+  ],
+
+  steps(input){
+    const F = [];
+    const nums = input.nums, target = input.target;
+    const seen = new Map();
+
+    // 统一的画面绘制：数组 + 哈希表 + 变量 (+ 结果)
+    const base = (o) => (v) => {
+      v.arr('nums', nums, Object.assign({
+        label:'数组 <code>nums</code>　·　<code>target = ' + target + '</code>'
+      }, o.arr || {}));
+      v.map('seen', o.seen, {label:'哈希表 <code>seen</code>（值 → 下标）', hlK:o.hlK});
+      if(o.vars) v.vars('vars', o.vars, {label:'当前变量'});
+      if(o.result) v.result(o.result, {label:'返回结果'});
+    };
+
+    F.push({hl:[1,2,3], tag:'初始化', cls:'t-grey',
+      msg:'这题要找两个数，让它们加起来正好等于 <b>' + target + '</b>。最笨的办法是两层循环：每个数都回头把左边的数挨个再试一遍，O(n²) 太慢——这里换思路，从左往右只扫一趟，把"看过的数 → 下标"登记进右侧的哈希表 <code>seen</code>（此刻是空表，0 项）。每到一格先问一句"我在等的另一半来过吗？"：来过就当场报答案，没来过才登记自己。一句话：用一张记事本换掉所有回头翻找，这就是空间换时间。',
+      do: base({arr:{}, seen:[]})});
+
+    for(let i = 0; i < nums.length; i++){
+      const x = nums[i], y = target - x;
+      const seenSnap = () => Array.from(seen.entries());
+      const mark = () => [{name:'i', idx:i, cls:'mi', text:'▲ i'}];
+
+      F.push({hl:[4], tag:'遍历', cls:'t-ink',
+        msg:'走到第 <b>' + i + '</b> 格，当前数 <code>x = ' + x + '</code>——橙色高亮格、▲ i 名牌就钉在这里。此刻 <code>seen</code> 里已有 ' + seen.size + ' 项' + (seen.size ? '（' + seenSnap().map(e => e[0] + '→第' + e[1] + '格').join('、') + '）' : '（还是空表）') + '，全是 i 左边扫过、还没配上对的数——它们就是 x 可能的搭档名单。这一步只报到、不动表：先算出"我在等谁"，再去查名单。',
+        do: base({arr:{states:{[i]:'active'}, markers:mark()}, seen:seenSnap(),
+                  vars:{i:i, x:x, y:'?', 'seen 项数':seen.size}})});
+
+      F.push({hl:[5], tag:'求另一半', cls:'t-blue',
+        msg:'先算出"我在等谁"：<code>y = target − x = ' + target + ' − ' + x + ' = <b>' + y + '</b></code>（变量面板同步亮出 y）。这一步把问题从"找两个数"缩成"找一个数"：只要 y 在左边出现过，x 和它就是答案，完全不用回头试任何组合。要是不算 y，就得把左边每个数都和 x 加一遍验证——哈希表的一次查询正好替掉这一整轮验证。',
+        do: base({arr:{states:{[i]:'in'}, markers:mark()}, seen:seenSnap(),
+                  vars:{i:i, x:x, y:y}})});
+
+      const hit = seen.has(y);
+      F.push({hl:[6], ok: hit ? 6 : undefined, no: hit ? undefined : 6,
+        tag:'查表', cls: hit ? 't-green' : 't-red',
+        msg: hit
+          ? '查 <code>seen</code>：<code>y = ' + y + '</code> <b>在表里！</b>（表里这一行被黄色高亮）它的下标是 ' + seen.get(y) + '——左边第 ' + seen.get(y) + ' 格的 ' + nums[seen.get(y)] + '，正是 x = ' + x + ' 等的人。哈希表 O(1) 一步命中；要是用数组挨个找，光这一次就要 O(n)，整个算法直接退回 O(n²)。'
+          : '查 <code>seen</code>：没有 <code>y = ' + y + '</code> ✗——左边那 ' + seen.size + ' 个数里没有它的搭档（表里没有一行被高亮）。别灰心，下一步把自己登记进表：等右边真扫到一个想找 ' + y + ' 的数，一查表就知道该来第几格找 x。现在没等到，不等于永远等不到。',
+        do: base({arr:{states:{[i]:'in'}, markers:mark()}, seen:seenSnap(),
+                  hlK: hit ? String(y) : undefined, vars:{i:i, x:x, y:y}})});
+
+      if(hit){
+        const j = seen.get(y);
+        F.push({hl:[7], tag:'找到答案', cls:'t-green',
+          msg:'验算：<code>nums[' + j + '] + nums[' + i + '] = ' + nums[j] + ' + ' + x + ' = ' + target + '</code> ✓，返回下标 <b>[' + j + ', ' + i + ']</b>（画面上两格染成金色，▲ 名牌分别钉住搭档和 i）。注意 j 一定小于 i：先来的人先登记，被查到时必然在左边——这就是"先查后存"的妙处。反过来若先存后查，x 恰好等于 y 时会把自己配给自己（比如数组里只有一个 5、target = 10，先存 5 再查 5 就错配了）。',
+          do: base({arr:{states:{[j]:'target', [i]:'target'},
+                         markers:[{name:'j', idx:j, cls:'mg', text:'▲ seen 里的下标'},{name:'i', idx:i, cls:'mi', text:'▲ i'}]},
+                    seen:seenSnap(), result:[j, i]})});
+        return F;
+      }
+
+      seen.set(x, i);
+      F.push({hl:[8], tag:'登记', cls:'t-orange',
+        msg:'执行 <code>seen[' + x + '] = ' + i + '</code>：x = ' + x + ' 正式进表（黄色高亮新行），现在表里共 ' + seen.size + ' 项。登记的意义：往后若扫到一个数正好等于 y = ' + y + '，它算出的另一半就是刚存的 x，一查就知道来第 ' + i + ' 格找搭档——登记一次，全程受益。至此第 ' + i + ' 格"先查后存"两步走完，i 继续右移。',
+        do: base({arr:{states:{[i]:'done'}, markers:mark()}, seen:seenSnap(),
+                  hlK:String(x), vars:{i:i, x:x, y:y}})});
+    }
+
+    F.push({hl:[4], no:4, tag:'扫完了', cls:'t-red',
+      msg:'i 走完全部 ' + nums.length + ' 格也没凑出一对：表里攒下的 ' + seen.size + ' 个数谁也没等到搭档——这组用例无解。为什么敢下结论：若存在 nums[a] + nums[b] = target（a 在前），轮到 b 时 y 正是 nums[a]，必被查出来，一个不漏。实际做题可以不写这段兜底：题目保证恰好一组答案，循环里必然提前 return。',
+      do: base({arr:{}, seen:Array.from(seen.entries()), result:'无解'})});
+    return F;
+  }
+});
+</script>
+</body>
+</html>

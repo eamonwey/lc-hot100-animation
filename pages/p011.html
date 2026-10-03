@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P011 · 滑动窗口最大值 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 11, num: 239, title: '滑动窗口最大值', diff: '困难', cat: '子串',
+  method: 'maxSlidingWindow',
+
+  lede: '题目：给一个数组和窗口大小 <span class="var i">k</span>，窗口每次右移一格，返回<b>每个窗口里的最大值</b>。' +
+        '暴力每步重新找最大要 O(n·k)。动画用<span class="var r">单调队列 dq</span>（存下标，对应的值从队头到队尾递减，下方竖排、队头在上）——' +
+        '<b>队头永远是当前窗口的最大值</b>。每个新元素进门先做两件事：请走过期的队头，扔掉比自己小的队尾。每个下标只进队一次，均摊 O(n)。',
+
+  roles: [
+    {c:'orange', code:'i / x', text:'当前下标与新元素'},
+    {c:'blue',   code:'dq',    text:'单调队列：下标的值从队头到队尾递减'},
+    {c:'green',  code:'ans',   text:'各窗口的最大值'},
+    {c:'red',    code:'弹出',  text:'过期队头 / 没用的队尾被请走'}
+  ],
+
+  codeTitle: '跟着高亮读代码——队头过期请走（<code>popleft</code>），队尾比新元素小就<span style="color:var(--red)">敢扔</span>（<code>pop</code>）；窗口满后队头直接收割为答案。',
+
+  legend: [
+    {c:'blue', text:'当前窗口 [i−k+1..i]'},
+    {c:'orange', text:'i 新元素'},
+    {c:'violet', text:'队头 = 窗口最大值'}
+  ],
+
+  idea: '队列里只留"还可能当最大"的下标：队尾小的被新元素碾掉，队头过期的请走——队头即窗口最大，进出队各一次，均摊 O(n)。',
+
+  qa: [
+    {q:'为什么敢把比 x 小的队尾全扔掉？',
+     a:'被扔的队尾比 x 旧——它一定比 x 先滑出窗口；值又不比 x 大。只要它还在窗口里，x 也一定在，而 x 比它大 → 最大值永远轮不到它。留着只是占位，扔掉毫不可惜。'},
+    {q:'为什么队列里存下标而不存值？',
+     a:'判断队头"过没过期"必须知道它的位置：<code>dq[0] ≤ i−k</code> 就说明它已被窗口甩在身后。只存值的话，过期与否无从判断。'},
+    {q:'每个元素进队出队几次？为什么是 O(n)？',
+     a:'每个下标恰好从队尾进一次；要么被后面更大的元素从队尾扔掉，要么过期后从队头请走——最多出队一次。进出队总次数 ≤ 2n，均摊 O(1)，整体 O(n)。'},
+    {q:'和暴力 O(nk) 比，差距什么时候拉开？',
+     a:'k 越大差距越大。n = 10⁵、k = 5×10⁴ 时暴力要约 5×10⁹ 次比较，单调队列只要约 2×10⁵ 次进出队——这就是"均摊"的威力。'}
+  ],
+
+  complexity: '时间 O(n)（每个下标至多进队、出队各一次）　·　空间 O(k)（队列里最多 k 个下标）',
+
+  form: [
+    {key:'nums', label:'nums', type:'arr', def:[1,3,-1,-3,5,3,6,7]},
+    {key:'k', label:'k', type:'num', def:3}
+  ],
+  presets: [
+    {label:'[1,3,-1,-3,5,3,6,7] k=3', values:{nums:[1,3,-1,-3,5,3,6,7], k:3}},
+    {label:'[7,2,4] k=2', values:{nums:[7,2,4], k:2}},
+    {label:'[9,8,7,6] k=2（只出不进）', values:{nums:[9,8,7,6], k:2}},
+    {label:'[5] k=1（最小）', values:{nums:[5], k:1}}
+  ],
+
+  code: `from collections import deque
+
+class Solution:
+    def maxSlidingWindow(self, nums, k):
+        dq = deque()                   # 存下标, 值从队头到队尾递减
+        ans = []
+        for i, x in enumerate(nums):
+            if dq and dq[0] <= i - k:  # 队头滑出窗口左界 -> 请走
+                dq.popleft()
+            while dq and nums[dq[-1]] <= x:
+                dq.pop()               # 队尾比 x 小: 留着也没用
+            dq.append(i)               # 新下标进队尾
+            if i >= k - 1:
+                ans.append(nums[dq[0]])  # 队头 = 当前窗口最大值
+        return ans
+`,
+
+  sol(input){
+    const nums = (input.nums || []).map(Number);
+    const k = Number(input.k);
+    const dq = [], ans = [];
+    for(let i = 0; i < nums.length; i++){
+      if(dq.length && dq[0] <= i - k) dq.shift();
+      while(dq.length && nums[dq[dq.length - 1]] <= nums[i]) dq.pop();
+      dq.push(i);
+      if(i >= k - 1) ans.push(nums[dq[0]]);
+    }
+    return ans;
+  },
+  expected: [3,3,5,5,6,7],
+
+  quiz: [
+    {q:'单调队列里存的是「下标」而不是「值」,这是为什么?',
+     options:['下标更省内存','只有拿着下标才能判断"队头是否已滑出窗口"(nums[i−k] 的过期问题),值本身判断不了','存值会算错最大值'],
+     answer:0,
+     explain:'队头是最大值没错,但它可能属于早已离开窗口的元素。判断"过期"必须比较它的位置与当前窗口左边界:i − k ≥ 队头下标 → 该走了。值答不出"我在哪",下标才能。这也是它叫"单调双端队列"而非单调栈的原因。',
+     jumpTo:25},
+    {q:'新元素进队前,把队尾比它小的元素都弹掉,为什么敢扔?',
+     options:['反正它们已经进过一次队了','它们比新元素旧(先出窗),又比新元素小——只要它们还在窗口里,队尾就轮不到它们当最大值','为了节省内存'],
+     answer:1,
+     explain:'两条理由叠一起:①更旧——未来任何窗口要么装不下它(它先出窗);②更小——只要新元素在窗口里,最大值至少是新元素。又旧又小 = 永远没有翻身之日,留着只会挡路。',
+     jumpTo:9},
+    {q:'窗口成型后(i ≥ k−1),为什么敢直接说「队头就是当前窗口的最大值」?',
+     options:['因为队列长度永远是 k','因为队列内部从队头到队尾严格递减,且队头下标一定在窗口内(过期的一进循环就被弹掉)','因为每次都重新扫了一遍窗口'],
+     answer:1,
+     explain:'两条不变式合起来:①过期就请走队头 → 队头下标必在 [i−k+1, i] 内;②进队前清掉所有更小的队尾 → 队列内从队头到队尾严格递减。窗口内最大的那个数,必然站在队头。',
+     jumpTo:17},
+  ],
+
+  steps(input){
+    const F = [];
+    const nums = (input.nums || []).map(Number);
+    const k = Math.max(1, Math.floor(Number(input.k) || 1));
+    const n = nums.length;
+    const dq = [];                        // 队头在前
+    const ans = [];
+
+    const stackItems = () => dq.slice().reverse().map(j => ({key:'q' + j, val:nums[j], fx:' 下标' + j}));
+    const stackStates = (newIdx) => {
+      const st = {};
+      if(dq.length) st['q' + dq[0]] = 'active';
+      if(newIdx != null) st['q' + newIdx] = 'just';
+      return st;
+    };
+    const winSt = (i, incl, over) => {
+      const st = {};
+      const hi = incl ? i : i - 1;
+      for(let z = Math.max(0, i - k + 1); z <= hi; z++) st[z] = 'in';
+      if(over) for(const kk in over) st[kk] = over[kk];
+      return st;
+    };
+    const mk = (i) => [{name:'i', idx:i, cls:'mi', text:'▲ i'}];
+    const varsO = (i, x) => ({i:i, x:x, ans:ans.length ? ans.join(',') : '（还没有）'});
+    /* ★ 快照原则：o 里的数据全部在 push 那一刻定死 */
+    const draw = (o) => (v) => {
+      v.arr('nums', nums, {
+        label:'数组 <code>nums</code>　·　窗口大小 <code>k = ' + k + '</code>',
+        states:o.states || {}, markers:o.marks || []
+      });
+      v.stack('dq', o.stack || [], {
+        label:'单调队列 <code>dq</code>（存下标 · 值从队头到队尾递减）',
+        states:o.stackStates || {},
+        topTag:(o.stack && o.stack.length) ? '队头' : null
+      });
+      v.vars('vars', o.vars, {label:'变量'});
+      if(o.result !== undefined) v.result(o.result, {label:'各窗口最大值'});
+    };
+
+    F.push({hl:[1,3,4,5,6], tag:'准备', cls:'t-grey',
+      msg:'每个窗口都要报最大值，暴力每窗重找要 O(n·k)。单调队列只留"还有资格当最大值"的<b>下标</b>，对应值从队头到队尾<b>递减</b>——于是<b>队头永远是当前窗口的最大值</b>，报答案看一眼队头就行。画面：上方数组是窗口滑动的跑道（蓝格 = 窗口内），下方竖排的是队列 dq，最上格是队头。新元素进门立两条规矩：<b>过期的队头请走，比它小的队尾让路</b>。',
+      do: draw({states:{}, marks:[], stack:[], stackStates:{}, vars:varsO('—', '—')})});
+
+    for(let i = 0; i < n; i++){
+      const x = nums[i];
+      F.push({hl:[7], tag:'新元素敲门', cls:'t-ink',
+        msg:'<code>i = ' + i + '</code>，新元素 <code>x = ' + x + '</code> 敲门（▲橙 i 名牌指着它）。窗口即将滑成 [' + Math.max(0, i - k + 1) + '..' + i + ']——左界一旦越过 0，最左的元素就开始出窗。接下来按规矩办：队头体检 → 队尾让路 → 自己进队尾。',
+        do: draw({states:winSt(i, false, {[i]:'peek'}), marks:mk(i),
+                  stack:stackItems(), stackStates:stackStates(null), vars:varsO(i, x)})});
+
+      const expired = dq.length > 0 && dq[0] <= i - k;
+      F.push({hl:[8], ok:expired ? 8 : undefined, no:expired ? undefined : 8,
+        tag:'队头体检', cls:expired ? 't-orange' : 't-blue',
+        msg:expired
+          ? '队头体检：下标 ' + dq[0] + ' ≤ i−k = ' + (i - k) + ' → 它已滑出窗口左界（左界 = ' + Math.max(0, i - k + 1) + '），过期了。过期队头留着不删，队头就会冒充一个"不在窗口里的最大值"。这也是队列存下标而不是存值的原因：过没过期，一比便知。'
+          : (dq.length
+              ? '队头体检：下标 ' + dq[0] + ' &gt; i−k = ' + (i - k) + ' → 还在窗口 [' + Math.max(0, i - k + 1) + '..' + i + '] 里，继续留任队头。队头不过期，"队头即窗口最大"这条性质就没破，本格答案已经稳了。'
+              : '队列还空着（第一个元素还没进队），没有队头需要体检——直接进下一关：给队尾清位。'),
+        do: draw({states:winSt(i, false, {[i]:'active'}), marks:mk(i),
+                  stack:stackItems(), stackStates:stackStates(null), vars:varsO(i, x)})});
+
+      if(expired){
+        const h = dq.shift();
+        F.push({hl:[9], tag:'请走队头', cls:'t-orange',
+          msg:'<code>dq.popleft()</code>：下标 ' + h + '（值 ' + nums[h] + '）出队。它曾当过窗口最大值，但下标已 ≤ i−k = ' + (i - k) + '，从这一格起任何窗口都装不下它——留着只会冒充答案，任期到此为止。',
+          do: draw({states:winSt(i, false, {[i]:'active', [h]:'stale'}), marks:mk(i),
+                    stack:stackItems(), stackStates:stackStates(null), vars:varsO(i, x)})});
+      }
+
+      while(dq.length && nums[dq[dq.length - 1]] <= x){
+        const t = dq.pop();
+        F.push({hl:[10,11], ok:10, tag:'扔队尾', cls:'t-red',
+          msg:'队尾（下标 ' + t + '，值 ' + nums[t] + '）≤ x = ' + x + ' → <b>敢扔！</b>两个理由叠一起：它比 x 旧，任何未来的窗口要么装不下它（它先出窗）、要么同时装着 x；而 x 又不比它小。所以它这辈子再也当不上最大值——留着纯属占位，扔掉后队列照样递减。',
+          do: draw({states:winSt(i, false, {[i]:'active'}), marks:mk(i),
+                    stack:stackItems(), stackStates:stackStates(null), vars:varsO(i, x)})});
+      }
+      F.push({hl:[10], no:10, tag:'队尾停手', cls:'t-blue',
+        msg:dq.length
+          ? '队尾值 ' + nums[dq[dq.length - 1]] + ' &gt; x = ' + x + ' → 停手。它比 x 大，将来 x 滑出窗口后它还有机会接班当最大——必须留住，队列的递减性质也靠它保住。'
+          : (i === 0
+              ? '队列还空着——x 是第一个进队的，前面没谁可扔，它将直接成为队头。从下一格起才有"过期"一说。'
+              : '队列被扔空了 → 留场的老元素全被 x 比了下去，x 是它们中间最强的，直接当新队头。'),
+        do: draw({states:winSt(i, false, {[i]:'active'}), marks:mk(i),
+                  stack:stackItems(), stackStates:stackStates(null), vars:varsO(i, x)})});
+
+      dq.push(i);
+      F.push({hl:[12], tag:'进队尾', cls:'t-blue',
+        msg:'<code>dq.append(' + i + ')</code>：x 排到队尾（队列里刚进队的闪蓝）。此刻队列的值从队头到队尾：' + dq.map(j => nums[j]).join(' ≥ ') + '——递减性质完好，队头最大、队尾最新。每个下标在自己"还可能当最大"的整个任期内都待在队里。',
+        do: draw({states:winSt(i, true), marks:mk(i),
+                  stack:stackItems(), stackStates:stackStates(i), vars:varsO(i, x)})});
+
+      if(i >= k - 1){
+        ans.push(nums[dq[0]]);
+        F.push({hl:[13,14], ok:13, tag:'收割最大值', cls:'t-green',
+          msg:'窗口 [' + (i - k + 1) + '..' + i + '] 集齐 ' + k + ' 个元素 → 收割：队头下标 ' + dq[0] + ' 的值 <b>' + nums[dq[0]] + '</b> 就是它的最大值（数组里紫格标记），记入 ans。为什么放心看队头？队头是全队最大，且刚体检过还在窗口里——两个条件都占齐，不用再扫窗口。',
+          do: draw({states:winSt(i, true, {[dq[0]]:'target'}), marks:mk(i),
+                    stack:stackItems(), stackStates:stackStates(null), vars:varsO(i, x)})});
+      } else {
+        F.push({hl:[13], no:13, tag:'窗口未满', cls:'t-grey',
+          msg:'窗口里只有 ' + (i + 1) + ' 个元素，还差 ' + (k - 1 - i) + ' 个才满 → 先不记答案。照常维护结构，等窗口攒满的那一刻，答案自动浮出来。',
+          do: draw({states:winSt(i, true), marks:mk(i),
+                    stack:stackItems(), stackStates:stackStates(null), vars:varsO(i, x)})});
+      }
+    }
+
+    F.push({hl:[15], tag:'返回', cls:'t-dark',
+      msg:'每个窗口的最大值连成答案：<b>[' + ans.join(', ') + ']</b> 🎉 每个下标只从队尾进一次、至多出队一次（被更大的队尾碾掉，或过期后从队头请走），进出总次数 ≤ 2n → 均摊 O(n)。对比暴力 O(n·k)：窗口越长，这个省法越狠。',
+      do: draw({states:{}, marks:n ? mk(n - 1) : [],
+                stack:stackItems(), stackStates:stackStates(null),
+                vars:{i:n - 1, x:'—', ans:ans.join(',')}, result:ans})});
+    return F;
+  },
+
+  /* ========= 解法二：力扣官方题解 方法一 · 优先队列(大顶堆 + 懒删除) ========= */
+  alt: {
+    label: '官方 · 优先队列(堆)',
+    method: 'maxSlidingWindow',
+
+    lede: '题目不变：给数组 <code>nums</code> 和窗口大小 <span class="var i">k</span>，返回<b>每个窗口的最大值</b>。' +
+          '单调队列是 O(n) 的最优解，官方题解还给了更"不挑不拣"的<b>优先队列（大顶堆）</b>：' +
+          '每个元素连同下标一起塞进堆，<b>堆顶就是"值最大、同值更靠前"的候选</b>；' +
+          '下标滑出窗口的堆顶再<b>懒删除</b>——少动脑子维护不变式，多付一个 log。',
+
+    codeTitle: '跟着高亮读代码——堆面板从下到上按"值"升序排（同值下标小者优先），最上格就是堆顶；<code>while</code> 行变<span style="color:var(--orange)">橙</span>＝堆顶过期，当场懒删除。橙虚线格＝已滑出窗口、还埋在堆里的"僵尸"元素。',
+
+    legend: [
+      {c:'blue', text:'当前窗口 [i−k+1..i]'},
+      {c:'orange', text:'i 新元素 / 过期待删'},
+      {c:'violet', text:'堆顶 = 候选最大值'},
+      {c:'red', text:'过期堆顶被懒删除'}
+    ],
+
+    roles: [
+      {c:'orange', code:'i / x', text:'当前下标与新元素'},
+      {c:'violet', code:'h',     text:'大顶堆：存 (值取负, 下标)，值大者在上'},
+      {c:'green',  code:'ans',   text:'各窗口的最大值'},
+      {c:'red',    code:'懒删除', text:'下标 ≤ i−k 的堆顶被弹出'}
+    ],
+
+    idea: '堆里全都要：每个 (值取负, 下标) 都进大顶堆，堆顶过期就懒删除——堆顶永远是"值最大、最靠前"的合法候选。',
+
+    qa: [
+      {q:'已经有 O(n) 的单调队列了，为什么还要学 O(n log n) 的堆？',
+       a:'堆版本几乎不用动脑子：不用设计"队尾扔人"的不变式，新元素无脑进堆即可。任何"滑动窗口第 k 大 / 最小值"变形都能直接套。面试先写堆版保底、再优化成单调队列，是很标准的答题路线。'},
+      {q:'什么叫"懒删除"？为什么不实时把过期元素从堆里抠出来？',
+       a:'堆只会删堆顶。过期元素可能埋在堆中间，实时删除找不到也删不起。干脆留着：每个元素都带下标，等它浮到堆顶、且确认下标 ≤ i−k 时再弹。每个元素至多被弹一次，删除总代价仍是 O(n log n)。'},
+      {q:'埋在堆里的过期元素会不会污染答案？',
+       a:'不会。每次取答案前，<code>while</code> 循环保证堆顶一定还在窗口里；埋在下面的过期元素值只会更小，等它浮上来时同样会被弹掉——永远轮不到它当答案。'},
+      {q:'和单调队列的复杂度差多少？',
+       a:'堆版 O(n log n)：每个元素进出堆各一次、每次 O(log n)；单调队列 O(n)：进出队均摊 O(1)。n = 10⁵ 时两者差一个 17 倍左右的因子——数据量大时单调队列明显更快，堆版胜在通用、好写。'}
+    ],
+
+    complexity: '时间 O(n log n)（每个元素进出堆各一次，堆操作 O(log n)）　·　空间 O(n)（懒删除：过期元素可能滞留堆中）',
+
+    code: `# 解法二:力扣官方题解 方法一(优先队列)
+import heapq
+
+class Solution:
+    def maxSlidingWindow(self, nums, k):
+        h = []                         # 堆: 存 (值取负, 下标)
+        ans = []
+        for i, x in enumerate(nums):
+            heapq.heappush(h, (-x, i))     # 新元素进堆, 值大者浮上堆顶
+            while h[0][1] <= i - k:        # 堆顶下标滑出窗口 -> 懒删除
+                heapq.heappop(h)
+            if i >= k - 1:
+                ans.append(-h[0][0])       # 堆顶 = 当前窗口最大值
+        return ans
+`,
+
+    sol(input){
+      const nums = (input.nums || []).map(Number);
+      const k = Number(input.k);
+      const h = [], ans = [];             // h: [值取负, 下标]
+      const lt = (a, b) => a[0] < b[0] || (a[0] === b[0] && a[1] < b[1]);
+      const up = j => {
+        while(j > 0){
+          const p = (j - 1) >> 1;
+          if(!lt(h[j], h[p])) break;
+          const t = h[p]; h[p] = h[j]; h[j] = t; j = p;
+        }
+      };
+      const down = () => {
+        let i = 0;
+        for(;;){
+          const l = 2 * i + 1, r = l + 1;
+          let m = i;
+          if(l < h.length && lt(h[l], h[m])) m = l;
+          if(r < h.length && lt(h[r], h[m])) m = r;
+          if(m === i) break;
+          const t = h[m]; h[m] = h[i]; h[i] = t; i = m;
+        }
+      };
+      for(let i = 0; i < nums.length; i++){
+        h.push([-nums[i], i]); up(h.length - 1);
+        while(h.length && h[0][1] <= i - k){
+          const last = h.pop();
+          if(h.length){ h[0] = last; down(); }
+        }
+        if(i >= k - 1) ans.push(-h[0][0]);
+      }
+      return ans;
+    },
+    expected: [3,3,5,5,6,7],
+
+    steps(input){
+      const F = [];
+      const nums = (input.nums || []).map(Number);
+      const k = Math.max(1, Math.floor(Number(input.k) || 1));
+      const n = nums.length;
+      const h = [];                     // 堆元素 {v, idx}，v 存真值（堆里实际是 -v）
+      const ans = [];
+
+      const top = () => h.reduce((b, it) => (it.v > b.v || (it.v === b.v && it.idx < b.idx)) ? it : b, h[0]);
+      const heapItems = () => h.slice()
+        .sort((a, b) => (a.v - b.v) || (b.idx - a.idx))    // 底→顶 优先级升序, 最上格 = 堆顶
+        .map(it => ({key:'h' + it.idx, val:it.v, fx:' 下标' + it.idx}));
+      const heapSt = (ik, newIdx, focusIdx) => {
+        const st = {};
+        h.forEach(it => { if(it.idx <= ik) st['h' + it.idx] = 'stale'; });
+        if(focusIdx != null) st['h' + focusIdx] = 'active';
+        else if(h.length) st['h' + top().idx] = 'pivot';
+        if(newIdx != null) st['h' + newIdx] = 'just';
+        return st;
+      };
+      const winSt = (i, incl, over) => {
+        const st = {};
+        const hi = incl ? i : i - 1;
+        for(let z = Math.max(0, i - k + 1); z <= hi; z++) st[z] = 'in';
+        if(over) for(const kk in over) st[kk] = over[kk];
+        return st;
+      };
+      const mk = (i) => [{name:'i', idx:i, cls:'mi', text:'▲ i'}];
+      const tpTxt = tp => tp ? tp.v + '（下标' + tp.idx + '）' : '（空）';
+      const varsO = (i, x, tp) => ({i:i, x:x, 堆顶:tpTxt(tp), ans:ans.length ? ans.join(',') : '（还没有）'});
+      /* ★ 快照原则：states/marks/heap/heapSt/vars 全部在 push 那一刻定死 */
+      const draw = (o) => (v) => {
+        v.arr('nums', nums, {
+          label:'数组 <code>nums</code>　·　窗口大小 <code>k = ' + k + '</code>',
+          states:o.states || {}, markers:o.marks || []
+        });
+        v.stack('h', o.heap || [], {
+          label:'大顶堆 <code>h</code>　·　存 (值取负, 下标)，画面显示真值（最上格 = 堆顶）',
+          states:o.heapSt || {},
+          topTag:(o.heap && o.heap.length) ? '堆顶' : null
+        });
+        v.vars('vars', o.vars, {label:'变量'});
+        if(o.result !== undefined) v.result(o.result, {label:'各窗口最大值'});
+      };
+
+      F.push({hl:[1,2,4,5,6,7], tag:'准备', cls:'t-grey',
+        msg:'换官方题解的方法一——<b>优先队列（大顶堆）</b>：不挑不拣，每个元素连值带下标全部丢进堆，值最大的自动浮上堆顶。滑出窗口的不急着眼删（堆只方便删堆顶，过期货可能埋在中间），先赖着，等它自己浮到堆顶、确认过期再<b>懒删除</b>。代价是每次堆操作 O(log n)，换来完全不用设计"谁该留谁该走"的不变式。画面：最上格 = 堆顶，橙虚线格 = 已出窗、还埋在堆里的"僵尸"元素。',
+        do: draw({states:{}, marks:[], heap:[], heapSt:{}, vars:varsO('—', '—', null)})});
+
+      for(let i = 0; i < n; i++){
+        const x = nums[i];
+        F.push({hl:[8], tag:'新元素敲门', cls:'t-ink',
+          msg:'<code>i = ' + i + '</code>，新元素 <code>x = ' + x + '</code>。和单调队列的层层体检不同，这版进门零门槛——直接把 <code>(' + (-x) + ', ' + i + ')</code> 丢进堆。值取负是为了借 Python 小顶堆模拟大顶堆；画面显示的都是还原后的真值，不用晕。',
+          do: draw({states:winSt(i, false, {[i]:'peek'}), marks:mk(i),
+                    heap:heapItems(), heapSt:heapSt(i - k, null, null), vars:varsO(i, x, top())})});
+
+        h.push({v:x, idx:i});
+        F.push({hl:[9], tag:'进堆', cls:'t-blue',
+          msg:'<code>heappush(h, (-' + x + ', ' + i + '))</code>：x 进堆后自动上浮归位，此刻堆顶是 ' + tpTxt(top()) + '（紫框格）。堆顶永远 = 值最大（同值取下标小）的那个——这是堆自己保证的，我们只管往里塞。',
+          do: draw({states:winSt(i, false, {[i]:'active'}), marks:mk(i),
+                    heap:heapItems(), heapSt:heapSt(i - k, i, null), vars:varsO(i, x, top())})});
+
+        for(;;){
+          const tp = top();
+          const stale = tp.idx <= i - k;
+          F.push({hl:[10], ok:stale ? 10 : undefined, no:stale ? undefined : 10,
+            tag:'堆顶体检', cls:stale ? 't-orange' : 't-blue',
+            msg:stale
+              ? '堆顶体检：' + tpTxt(tp) + ' 的下标 ' + tp.idx + ' ≤ i−k = ' + (i - k) + ' → 已滑出窗口左界，偏偏它还是全堆最大的——不删它，答案就会被一个出窗的值冒充。<b>懒删除</b>：趁它正好赖在堆顶，现在请走。'
+              : '堆顶体检：' + tpTxt(tp) + ' 的下标 ' + tp.idx + ' &gt; i−k = ' + (i - k) + ' → 还在窗口 [' + Math.max(0, i - k + 1) + '..' + i + '] 里，是合法候选。堆里也许埋着过期"僵尸"（橙虚线格），但它们值更小、沉在下面，浮上来之前轮不到说话。',
+            do: draw({states:winSt(i, false, stale ? {[tp.idx]:'stale', [i]:'active'} : {[i]:'active'}), marks:mk(i),
+                      heap:heapItems(), heapSt:heapSt(i - k, null, stale ? tp.idx : null), vars:varsO(i, x, tp)})});
+          if(!stale) break;
+          h.splice(h.indexOf(tp), 1);
+          F.push({hl:[11], tag:'懒删除出堆', cls:'t-red',
+            msg:'<code>heappop(h)</code>：（值 ' + tp.v + '，下标 ' + tp.idx + '）出堆。"懒"的精髓：不主动钻进堆里找过期货（堆不支持），等它自己浮到堆顶再结算。删完接着看新堆顶——下面说不定还埋着别的过期货，体检循环会一轮轮排下去。',
+            do: draw({states:winSt(i, false, {[tp.idx]:'stale', [i]:'active'}), marks:mk(i),
+                      heap:heapItems(), heapSt:heapSt(i - k, null, null), vars:varsO(i, x, top())})});
+        }
+
+        const tp2 = top();
+        if(i >= k - 1){
+          ans.push(tp2.v);
+          F.push({hl:[12,13], ok:12, tag:'收割最大值', cls:'t-green',
+            msg:'窗口 [' + (i - k + 1) + '..' + i + '] 集齐 ' + k + ' 个元素 → 收割：堆顶 ' + tpTxt(tp2) + ' 就是当前窗口最大值，<code>-h[0][0]</code> 把存进去的负值还原成 <b>' + tp2.v + '</b>，记入 ans。取答案前 while 已把堆顶验明正身——埋在下面的过期货永远没机会冒充答案。',
+            do: draw({states:winSt(i, true, {[tp2.idx]:'target'}), marks:mk(i),
+                      heap:heapItems(), heapSt:heapSt(i - k, null, null), vars:varsO(i, x, tp2)})});
+        } else {
+          F.push({hl:[12], no:12, tag:'窗口未满', cls:'t-grey',
+            msg:'窗口里只有 ' + (i + 1) + ' 个元素，还差 ' + (k - 1 - i) + ' 个才满 → 先不记答案。照常维护结构，等窗口攒满的那一刻，答案自动浮出来。',
+            do: draw({states:winSt(i, true), marks:mk(i),
+                      heap:heapItems(), heapSt:heapSt(i - k, null, null), vars:varsO(i, x, tp2)})});
+        }
+      }
+
+      F.push({hl:[14], tag:'返回', cls:'t-dark',
+        msg:'每个窗口的最大值连成答案：<b>[' + ans.join(', ') + ']</b> 🎉 每个元素进堆一次、至多出堆一次，但每次堆操作 O(log n) → 整体 O(n log n)，比单调队列的 O(n) 慢一档，换来的是零不变式、几乎不用动脑。此刻堆里还躺着 ' + h.length + ' 个元素（含没删的过期货）——懒删除就是把清理的账先记着，等它们自己浮上来再结。',
+        do: draw({states:{}, marks:n ? mk(n - 1) : [],
+                  heap:heapItems(), heapSt:heapSt(n - k, null, null),
+                  vars:{i:n - 1, x:'—', 堆顶:tpTxt(top()), ans:ans.join(',')}, result:ans})});
+      return F;
+    }
+  }
+});
+</script>
+</body>
+</html>

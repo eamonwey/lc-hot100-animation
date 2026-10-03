@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P033 · 排序链表 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 33, num: 148, title: '排序链表', diff: '中等', cat: '链表',
+  method: 'sortList',
+
+  lede: '题目：给链表<b>按升序重新排队</b>：4→2→1→3 变成 1→2→3→4，返回新表头。' +
+        '链表没有下标，归并排序是最合适的打法：<span class="var r">slow</span>/<span class="var i">fast</span> 快慢指针走到中点把链表<b>剪成两段</b>，' +
+        '两段各自排好序，再像拉链一样把小节点一个个<span class="var v">摘</span>进结果。右侧调用栈会记录"谁还没排完"。',
+  roles: [
+    {c:'blue',   code:'slow', text:'慢指针：一步一格，最后停在左半段末尾'},
+    {c:'orange', code:'fast', text:'快指针：一次跳两格，负责探路'},
+    {c:'violet', code:'l / r', text:'两条已排好的半段，归并时比队头'},
+    {c:'green',  code:'tail', text:'已合并部分的尾巴，负责接上新节点'},
+    {c:'ink',    code:'stack', text:'右侧竖条 = 递归调用栈'}
+  ],
+
+  codeTitle: '跟着高亮读代码——上半部分"找中点 → 断开 → 递归"，下半部分 merge 用 tail 把两条有序链表的队头逐个摘下来。比较行变<span style="color:var(--green)">绿</span>＝摘左边的，变<span style="color:var(--red)">红</span>＝摘右边的。',
+
+  legend: [
+    {c:'blue',   text:'slow 慢指针'},
+    {c:'orange', text:'fast 快指针'},
+    {c:'green',  text:'tail 已合并尾巴'},
+    {c:'violet', text:'紫色 = 正在递归的段'}
+  ],
+
+  idea: '链表版归并排序：快慢指针找中点断开 → 两半各自排好 → merge 按大小逐个摘节点接起来。',
+
+  qa: [
+    {q:'为什么用快慢指针找中点？链表不是能数长度吗？',
+     a:'数长度要先走一遍再走第二遍；快慢指针一遍就够：fast 每次跳两格，fast 到头时 slow 正好走到中间。而且这里让 <b>fast 从 head.next 出发</b>，保证 slow 停在<b>左半段的最后一个</b>节点上，方便下一行 slow.next = None 干净地剪断。'},
+    {q:'fast 从 head 出发行不行？',
+     a:'不行，偶数长度会死循环。比如 [4,2]：fast 从 4 出发，fast.next=2 存在 → slow 走到 2，fast 跳出链表；mid = slow.next = None，右半段是空，左半段还是 [4,2] 没变短 → 无限递归。fast 从 head.next 出发时，[4,2] 的循环一次都不进，slow 停在 4，正好切成 [4] 和 [2]。'},
+    {q:'为什么链表排序选归并而不是快排？',
+     a:'归并只需要改 next 指针、按顺序摘节点，不需要随机访问，也不需要额外数组；快排的 partition 依赖两端下标，在链表上很别扭。归并还天然稳定，最坏也是 O(n log n)。'},
+    {q:'递归会不会太深？',
+     a:'每层把长度减半，一共 log n 层，栈深 O(log n)，4 个节点只递归 3 层。想省掉栈可以改"自底向上"两两合并的迭代版，但代码复杂不少，面试写递归版足够。'}
+  ],
+
+  complexity: '时间 O(n log n)（每层归并 O(n)，共 log n 层）　·　空间 O(log n)（递归栈）',
+
+  form: [
+    {key:'head', label:'head', type:'list', def:[4,2,1,3]}
+  ],
+  presets: [
+    {label:'4→2→1→3', values:{head:[4,2,1,3]}},
+    {label:'5→4→3→2→1（逆序）', values:{head:[5,4,3,2,1]}},
+    {label:'单节点 7', values:{head:[7]}},
+    {label:'空链表', values:{head:[]}}
+  ],
+
+  code: `class Solution:
+    def sortList(self, head):
+        if not head or not head.next:      # 递归出口: 空或单节点
+            return head
+        slow, fast = head, head.next       # fast 从第二个出发
+        while fast and fast.next:          # 快慢指针找中点
+            slow = slow.next
+            fast = fast.next.next
+        mid = slow.next                    # 中点后的第一格
+        slow.next = None                   # 剪断, 左右两段独立
+        l = self.sortList(head)            # 左半段排好序
+        r = self.sortList(mid)             # 右半段排好序
+        return self.merge(l, r)            # 归并成一条
+
+    def merge(self, a, b):
+        dummy = tail = ListNode(0)         # tail: 已合并部分的尾巴
+        while a and b:
+            if a.val <= b.val:             # 两边队头比一比
+                tail.next = a; a = a.next  # 摘左边的
+            else:
+                tail.next = b; b = b.next  # 摘右边的
+            tail = tail.next               # 尾巴后移
+        tail.next = a if a else b          # 接上没比完的剩余段
+        return dummy.next
+`,
+
+  sol(input){
+    const a = (input.head || []).filter(x => x != null);
+    function msort(arr){                    // 与 Python 同逻辑: 快慢找中点 + 归并
+      if(arr.length <= 1) return arr;
+      let s = 0, f = 1;
+      while(f < arr.length && f + 1 < arr.length){ s++; f += 2; }
+      const l = msort(arr.slice(0, s + 1)), r = msort(arr.slice(s + 1));
+      const out = []; let i = 0, j = 0;
+      while(i < l.length && j < r.length){
+        if(l[i] <= r[j]){ out.push(l[i]); i++; } else { out.push(r[j]); j++; }
+      }
+      while(i < l.length){ out.push(l[i]); i++; }
+      while(j < r.length){ out.push(r[j]); j++; }
+      return out;
+    }
+    return msort(a);
+  },
+  expected: [1,2,3,4],
+
+  quiz: [
+    {q:'快慢指针找中点时，fast 为什么特意从 head.next（第二个节点）出发，而不是和 slow 一起从 head 出发？',
+     options:['让 fast 领先一步，画面上对称好看','fast 从 head 出发时，偶数长度会死循环：如 [4,2]，slow 走到 2、fast 跳出链表，mid = slow.next = None，右半为空、左半还是 [4,2] 没变短，无限递归；从 head.next 出发则 slow 正好停在左半段最后一个，剪得干净','两种写法完全等价，只是个人风格'],
+     answer:1,
+     explain:'找中点的目的是「剪断」：slow 必须停在左半段的最后一个节点上，slow.next = None 才剪得干净。fast 从 head.next 出发时，路程仍是 slow 的约两倍，但落点错开一格——slow 恰好停在左半段末尾（奇数、偶数长度都不会切错）。从 head 出发的话，[4,2] 这类偶数长度会让 mid 为空、左半不变，递归永远停不下来。',
+     jumpTo:3},
+    {q:'链表 5→3→8→1：第一次剪断时 slow 停在哪个节点？切成哪两半？最终结果？',
+     options:['slow 停在 3（下标 1），切成 [5,3] 和 [8,1]；两半排好后归并 → 1→3→5→8','slow 停在 8（下标 2），切成 [5,3,8] 和 [1]；最终 1→3→5→8','slow 停在 5，切成空段和整条链，无法继续'],
+     answer:0,
+     explain:'fast 从 head.next（3）出发：一轮后 slow=3、fast=1，fast 的 next 为空 → 循环结束，slow 停在下标 1（值 3）——左半段最后一个。在 3 和 8 之间剪断 → 左 [5,3]、右 [8,1]。两半继续递归：[5,3]→[3,5]、[8,1]→[1,8]；最后 merge：1、3、5、8 依次摘下 → 1→3→5→8。误选「停在 8」是按「偶数取后一个中点」的直觉——这题的 fast 起点特殊，slow 恰好停在左半段末尾。',
+     jumpTo:7},
+    {q:'链表排序为什么选归并而不是快排？',
+     options:['归并代码更短','链表没有随机访问下标，快排的 partition 要两头夹逼、原地交换，在单链表上没法做；归并的核心动作是「比两个队头、摘小的接上」，全是顺序操作，天然契合链表，还稳定','仅仅因为快排最坏 O(n²)、归并最坏 O(n log n)，数据结构上没有区别'],
+     answer:1,
+     explain:'快排的灵魂是 partition：双下标从两端向中间扫描交换——链表只能顺着 next 单向走，根本「夹」不了。归并每一层只做「比队头、摘节点、接 tail」，纯粹顺序访问，merge 还只改 next、不用辅助数组，且天然稳定。代价是递归栈 O(log n)；想彻底省掉可以改「自底向上」两两合并的迭代版，但代码复杂不少。链表配归并，是数据结构与算法的双向奔赴。',
+     jumpTo:54},
+  ],
+
+  steps(input){
+    const F = [];
+    const hs = (input.head || []).filter(x => x != null);
+    const nodes = hs.map((v, i) => ({key:'n' + i, val:v}));
+    const byKey = {}; nodes.forEach(n => byKey[n.key] = n);
+    const vv = k => k == null ? '空' : LCesc(String(byKey[k].val));
+    const vName = keys => '[' + keys.map(k => vv(k)).join(',') + ']';
+    let callSeq = 0;
+
+    /* ★ 快照原则：每一帧的 rows/pointers/edges 全部在 F.push 那一刻用字面量拼好，
+       do() 执行时只读 o 里已定死的快照，绝不回读外层可变变量 */
+    const draw = o => (v) => {
+      (o.rows || []).forEach(r => {
+        v.list(r.id, r.keys.map(k => byKey[k]), {
+          label: r.label,
+          states: r.states || {},
+          pointers: r.pointers || [],
+          edges: r.edges,
+          dummy: !!r.dummy
+        });
+      });
+      const st = o.stack || [];
+      v.stack('S', st, {
+        label:'递归调用栈　·　越往下越新',
+        states: st.length ? {[st[st.length - 1].key]:'active'} : {},
+        topTag:'栈顶'
+      });
+      if(o.result != null) v.result(o.result, {label:'排序结果'});
+    };
+
+    /* 归并动画：从 a、b 两条有序链的队头逐个摘小者进 out（p021 式摘取） */
+    function mergeAnim(aKeys, bKeys, la, lb, frames){
+      let i = 0, j = 0;
+      const out = [];
+      const headRow = () => ({id:'mA', keys:aKeys.slice(i), label:'左源 <code>l</code>=' + vName(aKeys) + '（摘 ' + la + '）', states:{}, pointers: i < aKeys.length ? [{key:aKeys[i], text:'▼ a', cls:'mi'}] : []});
+      const rightRow = () => ({id:'mB', keys:bKeys.slice(j), label:'右源 <code>r</code>=' + vName(bKeys) + '（摘 ' + lb + '）', states:{}, pointers: j < bKeys.length ? [{key:bKeys[j], text:'▼ b', cls:'mr'}] : []});
+      const outRow = () => ({id:'mOut', keys:out.slice(), label:'已合并（tail 之后）', dummy:true,
+        states: out.length ? {[out[out.length - 1]]:'just'} : {}, pointers: []});
+
+      F.push({hl:[13,15,16], tag:'归并开始', cls:'t-violet',
+        msg:'两条半段都排好了 → <code>return self.merge(l, r)</code>。<code>dummy = tail = ListNode(0)</code>：tail 站在 dummy 身后，负责把摘下的节点一个个接进下方"已合并"行。' +
+            '为什么要 dummy？合并结果的头现在还不知道是谁，先用哑节点兜底，最后 dummy.next 就是新头。规则一句话：<b>谁小谁上前</b>。',
+        do: draw({rows:[headRow(), rightRow(), outRow()], stack: frames})});
+
+      while(i < aKeys.length && j < bKeys.length){
+        const takeA = byKey[aKeys[i]].val <= byKey[bKeys[j]].val;
+        F.push({hl:[17,18], ok: takeA ? 18 : undefined, no: takeA ? undefined : 18, tag:'比较队头', cls: takeA ? 't-green' : 't-red',
+          msg:'两边都还有节点 → 比队头：<code>' + vv(aKeys[i]) + '</code> vs <code>' + vv(bKeys[j]) + '</code>，' +
+              (takeA ? '<b>' + vv(aKeys[i]) + ' ≤ ' + vv(bKeys[j]) + '</b>，摘左边的——相等时偏向左边，<code>&lt;=</code> 保住了归并的稳定性（相等元素不换位）。'
+                     : '<b>' + vv(aKeys[i]) + ' &gt; ' + vv(bKeys[j]) + '</b>，摘右边的。') +
+              '为什么只比队头就够？两条链各自有序，队头就是各自的最小值，全局最小必然在两个队头之中——这是归并正确性的全部根基。',
+          do: draw({rows:[
+            {id:'mA', keys:aKeys.slice(i), label:'左源 <code>l</code>', states:{[aKeys[i]]:'active'}, pointers:[{key:aKeys[i], text:'▼ a', cls:'mi'}]},
+            {id:'mB', keys:bKeys.slice(j), label:'右源 <code>r</code>', states:{[bKeys[j]]:'active'}, pointers:[{key:bKeys[j], text:'▼ b', cls:'mr'}]},
+            outRow()], stack: frames})});
+
+        if(takeA){ out.push(aKeys[i]); i++; } else { out.push(bKeys[j]); j++; }
+        F.push({hl: takeA ? [19,22] : [20,21,22], tag:'摘取', cls:'t-green',
+          msg:'把 <b>' + vv(out[out.length - 1]) + '</b> 接到 tail 后面（<code>tail.next = 摘下者; tail = tail.next</code>），tail 后移一格，被摘一边的指针也前进一步。' +
+              '已合并 <b>' + out.length + '</b> 个节点——下方"已合并"行每长一格，上面某行的队头就前进一格，像拉链一样逐格咬合。',
+          do: draw({rows:[headRow(), rightRow(), outRow()], stack: frames})});
+      }
+
+      const rest = aKeys.slice(i).concat(bKeys.slice(j));
+      F.push({hl:[17,23], no:17, tag:'接上剩余', cls:'t-orange',
+        msg:'有一边摘空了，<code>while a and b</code> 结束 → 剩下的 <b>' + vName(rest) + '</b> 本来就有序，而且每个都不小于已合并的所有值，<code>tail.next = a if a else b</code> 整段接上即可，不用再比。' +
+            '这是归并的收尾红利：一边耗尽，另一边整体搬运。',
+        do: draw({rows:[
+          {id:'mA', keys:aKeys.slice(i), label:'左源 <code>l</code>', states:{}, pointers:[]},
+          {id:'mB', keys:bKeys.slice(j), label:'右源 <code>r</code>', states:{}, pointers:[]},
+          outRow()], stack: frames})});
+      rest.forEach(k => out.push(k));
+
+      F.push({hl:[24], tag:'merge 返回', cls:'t-dark',
+        msg:'<code>return dummy.next</code> → 合并出有序链 <b>' + vName(out) + '</b>。' +
+            'merge 全程只改 next 指针、逐个摘节点，不建新节点也不用辅助数组——这就是链表归并比数组归并省地方的原因。',
+        do: draw({rows:[{id:'seg', keys:out.slice(), label:'merge 返回 ' + vName(out), states:{}}], stack: frames})});
+      return out;
+    }
+
+    /* 递归排序一段链（seg = 节点 key 数组，按当前顺序） */
+    function visit(seg, frames, parSeg){
+      const id = 'c' + (++callSeq);
+      const stack = frames.concat([{key:id, val:'sortList(' + vName(seg) + ')'}]);
+      const parRow = () => parSeg && parSeg.length
+        ? [{id:'pseg', keys:parSeg, label:'上一层等着用：' + vName(parSeg),
+            states: parSeg.reduce((m, k) => (m[k] = 'muted', m), {}), pointers:[]}]
+        : [];
+      const segRow = (st, ptrs, edges) => ({id:'seg', keys:seg, label:'当前正在排：' + vName(seg), states:st || {}, pointers:ptrs || [], edges});
+
+      if(seg.length <= 1){
+        F.push({hl:[3,4], ok:3, tag:'递归出口', cls:'t-grey',
+          msg:'调用 <code>sortList(' + vName(seg) + ')</code>：长度 ≤ 1，<code>not head or not head.next</code> 成立 → <b>原样返回</b>。' +
+              '为什么单节点可以直接返回？一个节点自己就是有序的，这是递归的"最小情形"——没有这个刹车，单个节点还会被继续切：mid 是 null、右段为空，左段还是它自己，递归永远停不下来。画面上节点标 done，本层出栈交还。',
+          do: draw({rows: parRow().concat([segRow(seg.length ? {[seg[0]]:'done'} : {})]), stack})});
+        return seg;
+      }
+
+      F.push({hl:[3], no:3, tag:'进入函数', cls:'t-blue',
+        msg:'调用 <b>sortList(' + vName(seg) + ')</b>：长度 ≥ 2 没法直接答 → 走固定四步：找中点、剪断、递归两半、归并。' +
+            '为什么从中间切？两半各自排好再合并，比整条链硬排省事——这就是"分而治之"，每切一次规模减半，一共只切 log n 层。画面上当前段整行可见，栈里压进新的一层。',
+        do: draw({rows: parRow().concat([segRow()]), stack})});
+
+      /* --- 阶段①：快慢指针找中点 --- */
+      let s = 0, f = 1;
+      const sfRow = (st) => segRow(st || {}, [
+        {key:seg[s], text:'▼ slow', cls:'mr'},
+        {key:seg[f], text:'▼ fast', cls:'mi'}
+      ]);
+      F.push({hl:[5], tag:'找中点', cls:'t-ink',
+        msg:'初始化：<code>slow</code> 站在 <b>' + vv(seg[0]) + '</b>，<code>fast</code> 站在 <b>' + vv(seg[1]) + '</b>——注意 fast 从第二个节点出发，这是故意的。' +
+            'fast 一次跳两格、slow 一次走一格，fast 到头时 slow 正好走到中间，像操场跑圈：快的跑完两圈，慢的刚好一圈。' +
+            '让 fast 从 head.next 出发，是为了让 slow 停在<b>左半段最后一个</b>节点上，方便下一行 <code>slow.next = None</code> 干净剪断（fast 若从 head 出发，偶数长度会死循环）。',
+        do: draw({rows: parRow().concat([sfRow()]), stack})});
+      while(f < seg.length && f + 1 < seg.length){
+        F.push({hl:[6], ok:6, tag:'while 检查', cls:'t-blue',
+          msg:'while 检查：<code>fast</code> 在 <b>' + vv(seg[f]) + '</b>，它的 next 是 <b>' + vv(seg[f + 1]) + '</b>，两个都存在 → 条件成立，快慢各走一步。' +
+              '这个双重检查 <code>fast and fast.next</code> 是防 fast 跳出链表后再取 next 出错，两个条件缺一不可。',
+          do: draw({rows: parRow().concat([sfRow()]), stack})});
+        s++; f += 2;
+        F.push({hl:[7,8], tag:'快慢各走', cls:'t-ink',
+          msg:'<code>slow = slow.next</code> 慢走一格到 <b>' + vv(seg[s]) + '</b>；<code>fast = fast.next.next</code> 一次跳两格到 ' + (seg[f] != null ? '<b>' + vv(seg[f]) + '</b>' : '<b>链表外（空）</b>') + '。' +
+              '速度差 2:1，每轮画面上两个 ▼ 指针的距离就是这段差距，段越长 slow 越靠近中点。',
+          do: draw({rows: parRow().concat([segRow({}, [
+            {key:seg[s], text:'▼ slow', cls:'mr'},
+            {key:seg[f] || seg[seg.length - 1], text: seg[f] != null ? '▼ fast' : '▼ fast（已出界）', cls:'mi'}
+          ])]), stack})});
+      }
+      F.push({hl:[6], no:6, tag:'while 结束', cls:'t-red',
+        msg: f >= seg.length
+          ? '<code>fast</code> 一步跳出了链表（null）→ 条件不成立，循环结束。slow 停在 <b>' + vv(seg[s]) + '</b>。'
+          : '<code>fast</code> 在 ' + vv(seg[f]) + '，它的 next 是空 → 条件不成立，循环结束。slow 停在 <b>' + vv(seg[s]) + '</b>。' +
+            '两种收尾殊途同归：slow 都正好是<b>左半段最后一个</b>——这正是 fast 从 head.next 出发换来的，奇数、偶数长度都不会切错。',
+        do: draw({rows: parRow().concat([segRow({}, [{key:seg[s], text:'▼ slow', cls:'mr'}])]), stack})});
+
+      /* --- 阶段②：剪断 --- */
+      const left = seg.slice(0, s + 1), right = seg.slice(s + 1);
+      const cutEdges = [];
+      for(let x = 0; x < s; x++) cutEdges.push([seg[x], seg[x + 1]]);
+      for(let x = s + 1; x < seg.length - 1; x++) cutEdges.push([seg[x], seg[x + 1]]);
+      F.push({hl:[9,10], tag:'断开', cls:'t-orange',
+        msg:'<code>slow.next = None</code>：把 <b>' + vv(seg[s]) + '</b> 和 <b>' + vv(seg[s + 1]) + '</b> 之间的箭头剪断，一条链从此分成两条独立的链——左段 <b>' + vName(left) + '</b>、右段 <b>' + vName(right) + '</b>。' +
+            '画面上中间的箭头消失了。为什么上一行要先存 <code>mid = slow.next</code>？剪断之后右段唯一的入口就是 mid，不先记下来，右半段就永远找不到了。',
+        do: draw({rows: parRow().concat([segRow({[seg[s]]:'pivot', [seg[s + 1]]:'peek'}, [], cutEdges)]), stack})});
+
+      /* --- 阶段③：递归排两半 --- */
+      F.push({hl:[11], tag:'递归·左', cls:'t-violet',
+        msg:'<code>l = self.sortList(head)</code>：先把左段 <b>' + vName(left) + '</b> 整个递归排好。' +
+            '此刻右段 ' + vName(right) + ' 还没人管——别担心，本层函数还压在栈里，它自己的 <code>mid</code> 变量记着右段入口，左段排完就回来。递归就是这种"先欠账、回来再还"的节奏。',
+        do: draw({rows: parRow(), stack})});
+      const ml = visit(left, stack, seg);
+      F.push({hl:[11], tag:'左段排好', cls:'t-green',
+        msg:'左段递归返回，拿到排好的 <b>l = ' + vName(ml) + '</b>——不管左段内部又切了几层，本层只看"孩子交给我的结果"。' +
+            '接着 <code>r = self.sortList(mid)</code> 去排右段。',
+        do: draw({rows: parRow().concat([{id:'seg', keys:ml, label:'左段排序结果 l = ' + vName(ml), states: ml.reduce((m, k) => (m[k] = 'done', m), {}), pointers:[]}]), stack})});
+
+      F.push({hl:[12], tag:'递归·右', cls:'t-violet',
+        msg:'<code>r = self.sortList(mid)</code>：再把右段 <b>' + vName(right) + '</b> 递归排好。' +
+            '左段结果已经在手上，右段一返回，本层的全部原材料就凑齐了，只剩最后一步 merge。',
+        do: draw({rows: parRow(), stack})});
+      const mr = visit(right, stack, seg);
+      F.push({hl:[12], tag:'右段排好', cls:'t-green',
+        msg:'右段也返回：<b>r = ' + vName(mr) + '</b>。现在 l、r 两条<b>各自有序</b>的链都到手，归并的前提成立了：全局最小必然在两个队头之中，每次比一次队头就能摘走一个，不重不漏。',
+        do: draw({rows: parRow().concat([
+          {id:'seg', keys:ml, label:'l = ' + vName(ml), states: ml.reduce((m, k) => (m[k] = 'done', m), {}), pointers:[]},
+          {id:'mB', keys:mr, label:'r = ' + vName(mr), states: mr.reduce((m, k) => (m[k] = 'done', m), {}), pointers:[]}]), stack})});
+
+      /* --- 阶段④：归并 --- */
+      const merged = mergeAnim(ml, mr, 'l', 'r', stack);
+      F.push({hl:[13], tag:'本层返回', cls:'t-dark',
+        msg:'sortList(' + vName(seg) + ') 返回 <b>' + vName(merged) + '</b>，本层出栈交差。' +
+            '复盘本层四步：找中点、剪断、欠两个递归、merge 收账——每层都是同一套模板，层层弹回，最外层拿到的就是最终答案。',
+        do: draw({rows:[{id:'seg', keys:merged, label:'本层结果 ' + vName(merged), states: merged.reduce((m, k) => (m[k] = 'done', m), {}), pointers:[]}], stack: frames})});
+      return merged;
+    }
+
+    /* ---- 开场 ---- */
+    if(hs.length){
+      F.push({hl:[1,2], tag:'初始化', cls:'t-grey',
+        msg:'链表 <b>' + hs.map(x => LCesc(String(x))).join('→') + '</b> 要排成升序。链表没有下标、没法随机访问，快排插不上手，归并是它的本命打法：快慢指针找中点 → 剪成两半 → 两半各自排好 → 像拉链一样归并。' +
+            '每层把规模减半、共 log n 层，所以是 O(n log n)；右侧竖条是调用栈——往下长 = 深入子问题，往上缩 = 返回汇报。',
+        do: draw({rows:[{id:'seg', keys:nodes.map(n => n.key), label:'原链表', states:{},
+          pointers:[{key:'n0', text:'▼ head', cls:'mq'}]}], stack: []})});
+    } else {
+      F.push({hl:[1,2], tag:'初始化', cls:'t-grey',
+        msg:'链表为空：sortList(None) 直接命中递归出口 <code>not head</code> → 返回 None，一步都不用走。空和单节点是这道题递归的两大最小情形。',
+        do: draw({rows:[], stack: []})});
+    }
+
+    const ans = visit(nodes.map(n => n.key), [], null);
+
+    F.push({hl:[13], tag:'排序完成', cls:'t-dark',
+      msg:'🎉 整条链表排好：<b>' + ans.map(k => vv(k)).join('→') + '</b>。' +
+          '复杂度复盘：每层 merge 花 O(n)、共 log n 层 → 时间 O(n log n)；递归栈深 log n → 空间 O(log n)。' +
+          '归并是链表排序的最优解：不需要随机访问、只用改指针，还天然稳定。',
+      do: draw({rows:[{id:'seg', keys:ans, label:'最终结果', states: ans.reduce((m, k) => (m[k] = 'done', m), {}), pointers:[]}], stack: [],
+        result: ans.map(k => byKey[k].val)})});
+
+    return F;
+  }
+});
+</script>
+</body>
+</html>

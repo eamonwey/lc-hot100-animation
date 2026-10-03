@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P099 · 寻找重复数 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 99, num: 287, title: '寻找重复数', diff: '中等', cat: '技巧',
+  method: 'findDuplicate',
+
+  lede: '题目：n+1 个数都在 1 ~ n 里，必有重复，找出那个重复的数——<b>不许改数组、只能 O(1) 空间</b>，哈希和排序都被封死了。' +
+        '换个眼光：<b>站在下标 <span class="var i">i</span>，<code>nums[i]</code> 就是你的"下一站"</b>——n+1 条箭头射向 n 个站号，必有站被指两次，' +
+        '从 0 出发一路走必然进圈，而<b>圈的入口正是重复数</b>（它被指了两次）。于是用链表判圈的 <span class="var r">slow</span>/<span class="var v">fast</span> 快慢指针：' +
+        '先在圈里相遇，再让 slow 回 0、两个同速走，再相遇就是入口。',
+
+  roles: [
+    {c:'orange', code:'slow', text:'慢指针：每轮走一步（数值 = 所在站号）'},
+    {c:'violet', code:'fast', text:'快指针：每轮走两步'},
+    {c:'blue',   code:'nums[i]', text:'站 i 的下一站 = nums[i]（图上的箭头）'}
+  ],
+
+  codeTitle: '跟着高亮读代码——第 7 行变<span style="color:var(--green)">绿</span>＝圈内相遇；' +
+             '第 10 行变<span style="color:var(--red)">红</span>＝第二阶段两针碰头，答案就在眼前。',
+
+  legend: [
+    {c:'orange', text:'slow 所在节点 / 橙箭头 = slow 走过'},
+    {c:'violet', text:'fast 所在节点 / 绿箭头 = fast 走过'},
+    {c:'red', text:'红箭头：指向入口的两条路（重复数）'}
+  ],
+
+  idea: '把 i → nums[i] 当"下一站"：重复数 = 环入口。快慢指针圈内相遇后，一个回 0 同速走，再相遇即入口。',
+
+  qa: [
+    {q:'为什么图里一定有环？',
+     a:'共 n+1 个格子，每个都伸出一条箭头，但站号只有 0 ~ n 共 n 个——必有站被指两次。' +
+       '而且值都 ≥ 1，没有箭头指回 0，所以 0 一定在圈外的"尾巴"上：整条路像 ρ（一根尾巴拖个圈），从 0 走下去迟早进圈。'},
+    {q:'圈内相遇后，为什么"一个回 0、同速走"就恰好碰到入口？',
+     a:'设 0 到入口要走 a 步、相遇点沿圈再走 b 步回入口。相遇时 slow 走了 a+b 步、fast 走了 2(a+b)，多走的全是整圈，' +
+       '数学上能推出 a ≡ b (mod 圈长)。所以一个从 0 出发走 a 步、一个从相遇点走 b 步，会在入口<b>同时到达</b>。'},
+    {q:'为什么不用哈希表或排序？',
+     a:'能用但违规：哈希表要 O(n) 空间，排序要改动数组。本题限定"不改数组 + O(1) 空间"，Floyd 判圈正好两条都不碰；' +
+       '另一条路是"值域二分 + 计数"，O(n log n) 但不如判圈优雅。'},
+    {q:'相遇点为什么不是入口？还要第二阶段？',
+     a:'快慢针只能在圈内相遇，相遇位置取决于起跑差距，一般不是入口。第二阶段利用 a ≡ b 把"距离差"抵消掉，才能精确锁定入口。'}
+  ],
+
+  complexity: '时间 O(n)（慢针最多走一圈）　·　空间 O(1)（不排序、不建表、不改数组）',
+
+  form: [
+    {key:'nums', label:'nums', type:'arr', def:[1,3,4,2,2]}
+  ],
+  presets: [
+    {label:'[1,3,4,2,2] 默认 → 2', values:{nums:[1,3,4,2,2]}},
+    {label:'[3,1,3,4,2] → 3', values:{nums:[3,1,3,4,2]}},
+    {label:'[1,1] 最小边界 → 1', values:{nums:[1,1]}},
+    {label:'[1,4,3,2,4] 环=自环 → 4', values:{nums:[1,4,3,2,4]}}
+  ],
+
+  code: `class Solution:
+    def findDuplicate(self, nums):
+        slow = fast = 0              # 都从下标 0 出发
+        while True:                  # 快的每次跳两步
+            slow = nums[slow]        # 慢的走一步
+            fast = nums[nums[fast]]  # 快的走两步
+            if slow == fast:         # 在圈里相遇
+                break
+        slow = 0                     # 慢的送回起点
+        while slow != fast:          # 两个同速前进
+            slow = nums[slow]
+            fast = nums[fast]
+        return slow                  # 再相遇点 = 圈入口 = 重复数
+`,
+
+  sol(input){
+    const nums = input.nums;
+    let slow = 0, fast = 0;
+    do{
+      slow = nums[slow];
+      fast = nums[nums[fast]];
+    }while(slow !== fast);
+    slow = 0;
+    while(slow !== fast){
+      slow = nums[slow];
+      fast = nums[fast];
+    }
+    return slow;
+  },
+  expected: 2,
+
+  quiz: [
+    {q:'默认例 nums=[1,3,4,2,2]:第一阶段快慢针在几号站相遇?那是圈入口吗?',
+     options:['4 号站——不是入口:入口是 2(下标 3、4 处的值都是 2,两条箭头指进它);相遇点只是追及问题的碰头处,取决于起跑差距,要靠第二阶段"一个回 0、同速走"才能锁定入口','2 号站——相遇点就是圈入口,第二阶段只是走个过场','4 号站——它就是入口,fast 恰好绕了一整圈'],
+     answer:0,
+     explain:'实地走:每轮 slow 一步、fast 两步,(slow,fast) 依次 (1,3) → (3,4) → (2,4) → (4,4),在 4 号站追上。但入口是 2:下标 3 和 4 的值都是 2,2 号站被指两次。相遇点为什么不落在入口?快针先进圈,碰头位置由"起跑差距 mod 圈长"决定,一般不是入口。第二阶段靠 a ≡ b (mod C) 把距离差抵消:slow 回 0、两针同速,再碰头才必然是入口 2。若相遇就直接返回,大多数输入都会答错。',
+     jumpTo:13},
+    {q:'解法二(值域二分 + 计数)里,cnt ≤ mid 时凭什么敢把左半 [lo, mid] 整个砍掉?',
+     options:['cnt ≤ mid 说明 ≤ mid 的每个值都恰好出现一次,重复数自然在右边——直接读出来就行','反证 + 鸽笼:若重复数 d ≤ mid,> mid 的数(至少 n+1−mid 个)只能挤进 mid+1 ~ n 共 n−mid 种值,人数比笼子多,右边必再冒出一个重复——与"只有一个重复数"矛盾;所以 d 在右边。两个方向其实都靠鸽笼','因为数组在左半段是有序的,扫一眼没发现重复'],
+     answer:1,
+     explain:'注意 cnt ≤ mid 本身推不出"≤ mid 的值互不重复"——4 个数挤 3 种值也可以只重一个。真正干活的是反证:假设重复数 d ≤ mid,那 > mid 的值只剩 n−mid 种笼子,却要住进至少 n+1−mid 个数(共 n+1 个数、≤ mid 的至多 mid 个)——超员必重,右边冒出第二个重复,与题目"只有一个重复数"打架,假设崩塌。cnt > mid 时则正向用鸽笼(超员必重 ⇒ 重复在左)。方向对称、砍哪半都不丢答案,二分才能收敛到重复数。',
+     jumpTo:1},
+    {q:'为什么"圈入口"恰好就是重复数?',
+     options:['入口站有两条箭头指进来(尾巴尽头一条、圈内绕回一条)——某站被指两次 ⇔ 它作为值在数组里出现两次,这正是重复数的定义','因为重复数在数组里数值最大,绕圈总会先经过它','因为 slow 和 fast 在入口交换过数值'],
+     answer:0,
+     explain:'图上每条箭头 i → nums[i] 对应数组里的一次取值:值 v 出现两次 ⇔ 有两个下标都指向站 v ⇔ 站 v 入度为 2。而入口正是那个"既接住尾巴、又被圈内某站指回"的两入度站——尾巴那条来自起点方向,圈内那条就是环的闭合边。所以"入口、被指两次的站、重复的值"三者是同一个点,第二阶段找到入口,就是找到了重复数。',
+     jumpTo:25},
+  ],
+
+  steps(input){
+    const F = [];
+    const nums = input.nums;
+    const n = nums.length;
+    if(!n){
+      F.push({hl:[1,2], tag:'空数组', cls:'t-grey', msg:'空数组没有重复数可言。', do:() => {}});
+      return F;
+    }
+
+    const pos = Viz.circle(Array.from({length:n}, (_, k) => String(k)), {w:430, h:265});
+    const edges = nums.map((v, k) => [String(k), String(v)]);
+
+    /* ★ 快照原则：节点/边状态都生成快照对象，do() 里只读 o，不读外层可变量 */
+    const slowE = new Set();                    // slow 踩过的边 'a-b'
+    const fastE = new Set();                    // fast 踩过的边 'a-b'
+    const snapE = () => {
+      const o = {};
+      fastE.forEach(k => { o[k] = 'e-done'; });
+      slowE.forEach(k => { o[k] = 'e-active'; });
+      return o;
+    };
+    const st = (s, f, extra) => {
+      const o = {};
+      if(s != null && s >= 0 && s < n) o[String(s)] = 'active';
+      if(f != null && f >= 0 && f < n) o[String(f)] = 'target';
+      return Object.assign(o, extra || {});
+    };
+    const aSt = (s, f) => {
+      const o = {};
+      if(s != null && s >= 0 && s < n) o[s] = 'active';
+      if(f != null && f >= 0 && f < n) o[f] = 'target';
+      return o;
+    };
+    const marks = (s, f) => {
+      const m = [];
+      if(s != null) m.push({name:'slow', idx:s, cls:'mi', text:'▲ slow'});
+      if(f != null) m.push({name:'fast', idx:f, cls:'mv', text:'▲ fast'});
+      return m;
+    };
+    const draw = (o) => (v) => {
+      v.graph('G', pos, edges, {label:'下一站图　·　箭头 <code>i → nums[i]</code>', states:o.states || {}, edgeStates:o.eSt || {}, w:430, h:265});
+      v.arr('nums', nums.slice(), {label:'数组 <code>nums</code>　·　名牌站的位置 = 指针值', states:o.aSt || {}, markers:o.marks || []});
+      v.vars('vars', o.vars || {}, {label:'指针（数值 = 站号）', hl:o.vhl || []});
+      if(o.result !== undefined) v.result(o.result, {label:'重复数'});
+    };
+
+    let slow = 0, fast = 0;
+    F.push({hl:[1,2,3], tag:'初始化', cls:'t-grey',
+      msg:'把数组看成"下一站"地图：站在 <code>i</code> 号站，<code>nums[i]</code> 就是下一站。共 ' + n + ' 格 = ' + n + ' 条箭头，站号只有 0 ~ ' + (n - 1) + '；而值都在 1 ~ ' + (n - 1) + '，<b>没有任何箭头指回 0</b>——' + n + ' 条箭头全挤进剩下 ' + (n - 1) + ' 个站，必有一站被指两次。于是整条路像字母 ρ：0 在"尾巴"上，一路走迟早进圈，<b>圈入口正是那个被指两次的站 = 重复数</b>。slow、fast 都从 0 号站出发：慢的每轮一步，快的每轮两步。',
+      do: draw({states:st(0, 0), aSt:aSt(0, 0), marks:marks(0, 0), vars:{slow:0, fast:0}})});
+
+    /* ---------- 第一阶段：圈内相遇 ---------- */
+    for(let guard = 0; guard < 3 * n + 10; guard++){
+      const ps = slow;
+      slow = nums[slow];
+      slowE.add(ps + '-' + slow);
+      F.push({hl:[4,5], tag:'圈内 · 慢走一步', cls:'t-blue',
+        msg:'<code>slow = nums[' + ps + ']</code>：慢针沿箭头走一步，从 ' + ps + ' 站挪到 <b>' + slow + '</b> 站（图上橙箭头 = slow 的足迹，数组名牌同步移动）。',
+        do: draw({states:st(slow, fast), aSt:aSt(slow, fast), marks:marks(slow, fast), eSt:snapE(),
+                  vars:{slow:slow, fast:fast}})});
+
+      const pf = fast, f1 = nums[fast], f2 = nums[f1];
+      fast = f2;
+      fastE.add(pf + '-' + f1);
+      fastE.add(f1 + '-' + f2);
+      F.push({hl:[6], tag:'圈内 · 快走两步', cls:'t-ink',
+        msg:'<code>fast = nums[nums[' + pf + ']]</code>：快针连跳两站 ' + pf + ' → ' + f1 + ' → <b>' + f2 + '</b>（绿箭头 = fast 的足迹）。每轮快针都净多走一步——正是这"一步之差"决定了迟早追上。',
+        do: draw({states:st(slow, fast), aSt:aSt(slow, fast), marks:marks(slow, fast), eSt:snapE(),
+                  vars:{slow:slow, fast:fast}})});
+
+      const met = slow === fast;
+      F.push({hl:[7,8], ok:met ? 7 : undefined, no:met ? undefined : 7,
+        tag:met ? '圈里相遇！' : '还没追上', cls:met ? 't-green' : 't-red',
+        msg:met
+          ? 'slow = fast = <b>' + slow + '</b> 号站，追上了 → <code>break</code>！为什么一定追得上？快针先进圈绕圈跑，等慢针也进圈后，快针每轮拉近 1 步、差距又不足一圈，最多再绕一圈必碰头。但相遇点是"追及问题的碰头处"，<b>一般不是圈入口</b>——入口得靠第二阶段算出来。'
+          : 'slow = ' + slow + '、fast = ' + fast + '，还没碰头 → 下一轮继续：慢的一步、快的两步。别急，一旦两针都进了圈，快针每轮拉近 1 步，追上只是时间问题。',
+        do: draw({states:st(slow, fast), aSt:aSt(slow, fast), marks:marks(slow, fast), eSt:snapE(),
+                  vars:{slow:slow, fast:fast}})});
+      if(met) break;
+    }
+
+    /* ---------- 第二阶段：一个回 0，同速找入口 ---------- */
+    slow = 0;
+    F.push({hl:[9], tag:'第二阶段 · 回起点', cls:'t-violet',
+      msg:'把 slow 送回 <b>0</b>，fast 留在相遇点 ' + fast + '，两针改成<b>同速</b>（每轮各一步）。为什么再碰头就是入口？设 0 到入口要走 a 步、入口到相遇点走 b 步、圈长 C：相遇时 slow 走了 a+b、fast 走了 2(a+b)，多走的 a+b 必是整圈 ⇒ a+b = k·C ⇒ <b>a = (C − b) + (k−1)·C</b>。而 C − b 正是"相遇点沿圈走到入口"的距离 c——所以"从 0 走 a 步"和"从相遇点走 a 步 = 绕 k−1 整圈再走 c 步"会在入口<b>同时到达</b>。',
+      do: draw({states:st(0, fast), aSt:aSt(0, fast), marks:marks(0, fast), eSt:snapE(),
+                vars:{slow:0, fast:fast}})});
+
+    for(let guard = 0; guard < 3 * n + 10 && slow !== fast; guard++){
+      F.push({hl:[10], ok:10, tag:'找入口 · 还没碰头', cls:'t-green',
+        msg:'<code>slow = ' + slow + ' ≠ fast = ' + fast + '</code> → 两针同速各进一步：slow 在数自己的 a 步，fast 在走它的"绕 k−1 整圈 + c 步"，殊途同归——碰头那天就是入口。',
+        do: draw({states:st(slow, fast), aSt:aSt(slow, fast), marks:marks(slow, fast), eSt:snapE(),
+                  vars:{slow:slow, fast:fast}})});
+      const ps = slow;
+      slow = nums[slow];
+      slowE.add(ps + '-' + slow);
+      F.push({hl:[11], tag:'找入口 · slow 一步', cls:'t-blue',
+        msg:'<code>slow = nums[' + ps + ']</code> → 慢针走到 <b>' + slow + '</b> 号站。',
+        do: draw({states:st(slow, fast), aSt:aSt(slow, fast), marks:marks(slow, fast), eSt:snapE(),
+                  vars:{slow:slow, fast:fast}})});
+      const pf = fast;
+      fast = nums[fast];
+      fastE.add(pf + '-' + fast);
+      F.push({hl:[12], tag:'找入口 · fast 一步', cls:'t-ink',
+        msg:'<code>fast = nums[' + pf + ']</code> → 快针走到 <b>' + fast + '</b> 号站。两针步调一致，剩下的"距离差"同步消减。',
+        do: draw({states:st(slow, fast), aSt:aSt(slow, fast), marks:marks(slow, fast), eSt:snapE(),
+                  vars:{slow:slow, fast:fast}})});
+    }
+    F.push({hl:[10], no:10, tag:'两针碰头', cls:'t-green',
+      msg:'<code>slow == fast == ' + slow + '</code> → 同时到达，循环结束！两针各自的 a 步此刻恰好走完——这不是巧合，是 <b>a = c + (k−1)·C</b> 这条等式的直接结论，碰头点只能是<b>圈入口</b>。',
+      do: draw({states:st(slow, fast), aSt:aSt(slow, fast), marks:marks(slow, fast), eSt:snapE(),
+                vars:{slow:slow, fast:fast}})});
+
+    const ans = slow;
+    const incoming = [];
+    for(let k = 0; k < n; k++) if(nums[k] === ans) incoming.push(k);
+    const finE = snapE();
+    incoming.forEach(k => { finE[k + '-' + ans] = 'e-block'; });
+    const finSt = {};
+    finSt[String(ans)] = 'pivot';
+    const finA = {};
+    nums.forEach((v, k) => { if(v === ans) finA[k] = 'target'; });
+    F.push({hl:[13], tag:'返回重复数', cls:'t-dark',
+      msg:'🎉 <code>return ' + ans + '</code>。看图验证：节点 <b>' + ans + '</b> 有两条红箭头指进来（下标 ' + incoming.join('、') + ' 处的值都是 ' + ans + '）——被指两次的站既是圈入口、也是重复数，两条线索在同一点汇合。全程不排序、不建表、不改数组，时间 O(n)、空间 O(1)，这就是 Floyd 判圈在本题的化身。',
+      do: draw({states:finSt, aSt:finA, marks:[], eSt:finE, vars:{slow:ans, fast:ans}, result:ans})});
+
+    return F;
+  },
+
+  /* ========= 解法二：力扣官方方法二 · 二分答案 + 计数 ========= */
+  alt: {
+    label: '官方 · 二分答案 + 计数',
+    method: 'findDuplicate',
+
+    lede: '题目不变：n+1 个数都取自 1 ~ n，必有重复，找它——<b>不许改数组、只能 O(1) 空间</b>。这版不找环，改<b>"猜答案"</b>：' +
+          '重复数一定藏在<b>值域 [1, n]</b> 里（n = len(nums) − 1）。每轮猜一个 <span class="var v">mid</span>，' +
+          '遍历数组数出 <span class="var o">cnt</span> = 有多少个数 ≤ mid，用<b>鸽笼原理</b>判断重复数在 mid 左边还是右边，' +
+          '把区间拦腰砍半；缩到 lo == hi 就是答案。',
+
+    roles: [
+      {c:'blue',   code:'lo / hi', text:'答案所在的值域区间（不是下标！）'},
+      {c:'violet', code:'mid', text:'本轮猜测：重复数 ≤ mid 吗？'},
+      {c:'orange', code:'cnt', text:'数组里 ≤ mid 的个数，逐格数出来'}
+    ],
+
+    legend: [
+      {c:'orange', text:'正在数的格子'},
+      {c:'blue',   text:'值 ≤ mid，计入 cnt'},
+      {swatch:'#b3afa2', text:'灰格：值 > mid，没计入'},
+      {c:'violet', text:'高亮格：重复数出现的位置'}
+    ],
+
+    codeTitle: '跟着高亮读代码——第 8 行变<span style="color:var(--green)">绿</span>＝这个数 ≤ mid、计入 cnt；' +
+               '第 10 行变<span style="color:var(--green)">绿</span>＝cnt &gt; mid、鸽笼挤爆、重复数在左半 [lo, mid]；变<span style="color:var(--red)">红</span>＝在右半。',
+
+    idea: '在值域 [1, n] 上二分答案：cnt(≤mid) > mid ⇔ 重复数 ≤ mid（鸽笼原理两个方向都成立），每数一遍数组就把区间砍半，缩到 lo == hi 即重复数。',
+
+    complexity: '时间 O(n log n)（每轮 O(n) 计数，共 O(log n) 轮）　·　空间 O(1)（只读数组）',
+
+    qa: [
+      {q:'为什么 cnt > mid 就敢断定重复数在 [lo, mid]？',
+       a:'鸽笼原理：刚才计入的 cnt 个数，取值全部来自 1 ~ mid 这 <b>mid 种</b>值——cnt &gt; mid 个数挤 mid 个笼子，必有笼子塞两个，即某个 ≤ mid 的值重复了。题目保证只有<b>一个</b>重复数，所以它只能落在左半。'},
+      {q:'反过来 cnt ≤ mid，凭什么敢砍掉左半？',
+       a:'反证：若重复数 d ≤ mid，那 &gt; mid 的值只剩 n − mid 种，却要装下 n+1 − cnt ≥ n+1 − mid 个数——比笼子数还多 1，又鸽笼必重，重复数就跑到右边去了、与 d ≤ mid 矛盾。所以 cnt ≤ mid ⟹ d &gt; mid。<b>两个方向都靠鸽笼</b>，砍哪半都不会把答案砍丢，这是官方解法最妙的对称性。'},
+      {q:'为什么在"值域"上二分，而不是数组下标？',
+       a:'数组不许排序（下标会乱），下标本身也没单调性；但"≤ x 的个数 cnt(x)"随 x 单调不减，而且 <code>cnt(x) &gt; x</code> 恰好在重复数 d 处首次成立（d 左边恒假、d 右边恒真）——判断有单调性，就拿到二分的通行证。这套"猜答案 + 验证"的写法叫<b>二分答案</b>，很多题通用。'},
+      {q:'和主解法 Floyd 判圈怎么选？',
+       a:'Floyd O(n) / O(1) 是本题复杂度天花板，但"把数组看成链表、找环入口"的转化很吃灵感；二分计数 O(n log n) / O(1) 慢一点，胜在"猜 mid → 数 cnt → 鸽笼定方向"人人能现场推出来，不依赖任何巧劲。面试建议：先用二分保底讲清，再补 Floyd 展示功底。'}
+    ],
+
+    code: `class Solution:
+    def findDuplicate(self, nums):
+        lo, hi = 1, len(nums) - 1     # 在值域 1 ~ n 上二分(n = len-1), 不是下标!
+        while lo < hi:
+            mid = (lo + hi) // 2      # 猜一个中点
+            cnt = 0
+            for v in nums:            # 数一遍: 有多少个数 <= mid
+                if v <= mid:
+                    cnt += 1
+            if cnt > mid:             # 鸽笼: cnt 个数挤 mid 种值必重
+                hi = mid              # 重复数在 [lo, mid]
+            else:                     # cnt <= mid: 左半住得下, 不必重
+                lo = mid + 1          # 重复数在 [mid+1, hi]
+        return lo                     # 区间缩成一点 = 重复数
+`,
+
+    sol(input){
+      const nums = input.nums;
+      let lo = 1, hi = nums.length - 1;
+      while(lo < hi){
+        const mid = (lo + hi) >> 1;
+        let cnt = 0;
+        for(const v of nums) if(v <= mid) cnt++;
+        if(cnt > mid) hi = mid; else lo = mid + 1;
+      }
+      return lo;
+    },
+    expected: 2,
+
+    steps(input){
+      const F = [];
+      const nums = input.nums;
+      const m = nums.length;   // 数组长度 = n + 1
+      const n = m - 1;         // 值都是 1 ~ n
+
+      if(!m){
+        F.push({hl:[2], tag:'空数组', cls:'t-grey', msg:'空数组没有重复数可言。', do:() => {}});
+        return F;
+      }
+
+      // 终版对照：主解法 Floyd 对同一输入的结果（带护栏，只在收尾对照用）
+      let floyd = -1, fa = 0, fb = 0;
+      for(let g = 0; g < 4 * m + 20; g++){
+        fa = nums[fa]; fb = nums[nums[fb]];
+        if(fa === fb) break;
+      }
+      if(fa === fb){
+        fa = 0;
+        for(let g = 0; g < 4 * m + 20 && fa !== fb; g++){ fa = nums[fa]; fb = nums[fb]; }
+        if(fa === fb) floyd = fa;
+      }
+
+      /* ---- 快照绘制（铁律 5：全部状态在 push 那一刻定死） ---- */
+      const draw = (o) => (v) => {
+        v.arr('nums', nums.slice(), {
+          label:'数组 <code>nums</code>　·　蓝 = 计入 cnt　橙 = 正在数　灰 = 没计入',
+          states:o.nst || {}, markers:o.nmk || [], idxCls:o.nix || {}
+        });
+        v.vars('vars', o.vars || {}, {label:'值域二分 · 变量', hl:o.hlv || []});
+        if(o.seg) v.text('seg', o.seg, {html:true, label:'值域区间 <code>[lo, hi]</code> 收缩'});
+        if(o.res !== undefined) v.result(o.res, {label:'重复数'});
+      };
+      const seg = (lo, hi, extra) => '[lo, hi] = [' + lo + ', ' + hi + ']' + (extra || '');
+
+      let lo = 1, hi = n, rounds = 0;
+      F.push({hl:[1,2], tag:'换思路 · 猜答案', cls:'t-grey',
+        msg:'这版不找环、不建表，把"找重复"翻译成<b>猜答案</b>：先猜"重复数 ≤ mid 吗？"，再数一遍数组验证。' + m + ' 个数挤 1 ~ ' + n + ' 这 ' + n + ' 种值，鸽笼原理保证必有值被用两次——它就是答案。主解法 Floyd 判圈是 O(n) 的天花板，但靠的是"把数组看成链表"的神来之笔；本解法三板斧是<b>猜 mid → 数 cnt → 鸽笼定方向</b>，人人能现场推出来。',
+        do: draw({nst:{}, vars:{lo:lo, hi:hi}, seg:seg(lo, hi, '　·　答案必在其中')})});
+      F.push({hl:[3], tag:'初始化值域', cls:'t-blue',
+        msg:'<code>lo, hi = 1, ' + n + '</code>：注意二分的是<b>值域</b>不是下标——' + m + ' 个数都取自 1 ~ ' + n + '，答案 100% 落在 [1, ' + n + ']。为什么值域能二分？"≤ x 的个数 cnt(x)"随 x 单调不减，而且 <code>cnt(x) &gt; x</code> 恰好在重复数处首次成立——判断有单调性，就拿到二分的通行证。',
+        do: draw({nst:{}, vars:{lo:lo, hi:hi}, seg:seg(lo, hi, '　·　答案必在其中')})});
+
+      while(lo < hi){
+        rounds++;
+        const mid = (lo + hi) >> 1;
+        let cnt = 0;
+        F.push({hl:[4,5,6], ok:4, tag:'第 ' + rounds + ' 轮 · 猜 mid=' + mid, cls:'t-violet',
+          msg:'lo = ' + lo + ' &lt; hi = ' + hi + ' → 区间还没缩成一点，继续猜：<code>mid = (' + lo + ' + ' + hi + ') // 2 = ' + mid + '</code>，cnt 清零。本轮只回答一个问题：<b>数组里有多少个数 ≤ mid？</b>——数完就知道重复数在 mid 左边还是右边。',
+          do: draw({nst:{}, vars:{lo:lo, mid:mid, hi:hi, cnt:0}, hlv:['mid'],
+                    seg:seg(lo, hi, '　·　本轮猜 mid = ' + mid)})});
+        for(let k = 0; k < m; k++){
+          const hit = nums[k] <= mid;
+          if(hit) cnt++;
+          const st = {};
+          for(let j = 0; j < k; j++) st[j] = nums[j] <= mid ? 'in' : 'muted';
+          st[k] = 'active';
+          F.push({hl:[7,8,9], ok:hit ? 8 : undefined, no:hit ? undefined : 8,
+            tag:'数数 ' + (k + 1) + '/' + m, cls:hit ? 't-blue' : 't-grey',
+            msg: hit
+              ? '数到第 ' + (k + 1) + ' 格：nums[' + k + '] = ' + nums[k] + ' ≤ mid = ' + mid + ' ✓ 计入 → <code>cnt = ' + cnt + '</code>。已扫 ' + (k + 1) + '/' + m + ' 格，蓝格都是"挤笼子的候选"。'
+              : '数到第 ' + (k + 1) + ' 格：nums[' + k + '] = ' + nums[k] + ' &gt; mid = ' + mid + ' ✗ 不计入，cnt 保持 ' + cnt + '。它超过笼子上限，看一眼就跳过。',
+            do: draw({nst:st, nmk:[{name:'v', idx:k, cls:'mi', text:'▲ v'}],
+                      vars:{lo:lo, mid:mid, hi:hi, cnt:cnt}, hlv:hit ? ['cnt'] : [],
+                      seg:seg(lo, hi, '　·　mid = ' + mid + '　·　已扫 ' + (k + 1) + '/' + m + ' 格')})});
+        }
+        const stAll = {};
+        for(let j = 0; j < m; j++) stAll[j] = nums[j] <= mid ? 'in' : 'muted';
+        if(cnt > mid){
+          hi = mid;
+          F.push({hl:[10,11], ok:10, tag:'cnt > mid → 左半', cls:'t-green',
+            msg:'数完了：cnt = ' + cnt + ' &gt; mid = ' + mid + ' → <b>鸽笼挤爆</b>：计入的 ' + cnt + ' 个数（蓝格）取值全部来自 1 ~ ' + mid + ' 这 ' + mid + ' 种值——' + cnt + ' 个数挤 ' + mid + ' 个笼子必有一个笼子塞两个，即某个 ≤ mid 的值重复了。题目保证只有<b>一个</b>重复数 → 它只能在 [lo, mid] = [' + lo + ', ' + hi + '] → <code>hi = mid</code>，右半整体出局。',
+            do: draw({nst:stAll, vars:{lo:lo, mid:mid, hi:hi, cnt:cnt}, hlv:['hi'],
+                      seg:seg(lo, hi, '　←　cnt = ' + cnt + ' &gt; mid = ' + mid + '，砍掉右半')})});
+        } else {
+          lo = mid + 1;
+          F.push({hl:[10,12,13], no:10, tag:'cnt ≤ mid → 右半', cls:'t-orange',
+            msg:'数完了：cnt = ' + cnt + ' ≤ mid = ' + mid + ' → 左半"住得下"，不必重复。反证：若重复数 ≤ mid，则 &gt; mid 的 ' + (m - cnt) + ' 个数（图上的灰格）只能挤 mid+1 ~ ' + n + ' 共 ' + (n - mid) + ' 种值——' + (m - cnt) + ' &gt; ' + (n - mid) + '，又鸽笼必重，重复数就跑到右边去了、与假设矛盾。所以重复数必 &gt; mid → <code>lo = mid + 1</code>，左半出局，新区间 [' + lo + ', ' + hi + ']。',
+            do: draw({nst:stAll, vars:{lo:lo, mid:mid, hi:hi, cnt:cnt}, hlv:['lo'],
+                      seg:seg(lo, hi, '　←　cnt = ' + cnt + ' ≤ mid = ' + mid + '，砍掉左半')})});
+        }
+      }
+
+      F.push({hl:[4], no:4, tag:'区间缩成一点', cls:'t-green',
+        msg:'lo = ' + lo + '、hi = ' + hi + '，区间缩成<b>一个点</b> → <code>while lo &lt; hi</code> 结束。每一轮砍半都靠鸽笼保证"答案仍留在新区间"（两个方向都证过），缩到只剩一个值时它只能是重复数。共 ' + rounds + ' 轮、每轮 O(' + m + ') 次计数 → 总时间 O(n log n)。',
+        do: draw({nst:{}, vars:{lo:lo, hi:hi}, seg:seg(lo, hi, '　·　lo == hi，收敛')})});
+
+      const occ = [];
+      nums.forEach((val, k) => { if(val === lo) occ.push(k); });
+      const occSt = {};
+      occ.forEach(k => { occSt[k] = 'target'; });
+      F.push({hl:[14], tag:'返回重复数', cls:'t-dark',
+        msg:'🎉 <code>return ' + lo + '</code>。验证：值 ' + lo + ' 确实出现 ' + occ.length + ' 次（紫格 = 第 ' + occ.join('、') + ' 格）——鸽笼一路把它逼了出来。全程只读数组：没排序、没改元素、没建哈希表，空间 O(1)。',
+        do: draw({nst:occSt, vars:{lo:lo, hi:hi},
+                  seg:seg(lo, hi, '　·　收敛点 = 重复数'), res:lo})});
+      F.push({hl:[14], tag:'与 Floyd 对照', cls:'t-ink',
+        msg:'和主解法 Floyd 判圈对照：两者都不改数组、都是 O(1) 空间；Floyd 时间 O(n) 更快，但"i → nums[i] 建图找环入口"的转化很吃灵感（主解法图上那圈箭头）。二分计数 O(n log n) 慢一点，胜在套路通用——"答案可单调验证"就能猜，面试先用它保底、再秀 Floyd。' +
+            (floyd === lo ? '主解法 Floyd 对同一输入也算出 ' + floyd + '，两边答案一致 ✓' : ''),
+        do: draw({nst:occSt, vars:{lo:lo, hi:hi}, res:lo})});
+
+      return F;
+    }
+  }
+});
+</script>
+</body>
+</html>

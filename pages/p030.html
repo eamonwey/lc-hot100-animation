@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P030 · 两两交换链表中的节点 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 30, num: 24, title: '两两交换链表中的节点', diff: '中等', cat: '链表',
+  method: 'swapPairs',
+
+  lede: '题目：两两交换相邻的节点——1→2→3→4 变成 2→1→4→3。注意交换的是<b>节点本身</b>（改箭头），不是换里面的数字。' +
+        '套路和"反转链表"同款：<span class="var o">prev</span> 站在一对的前面压阵，<span class="var i">a</span>、<span class="var r">b</span> 是这一对，' +
+        '三步改完箭头，prev 再挪到 a 上准备下一对。看箭头怎么一根根重新接线，比背代码管用。',
+
+  roles: [
+    {c:'green',  code:'prev', text:'这一对前面的节点（第一对时是 dummy）'},
+    {c:'orange', code:'a',    text:'一对中的第一个（换完落到后面）'},
+    {c:'blue',   code:'b',    text:'一对中的第二个（换完升到前面）'},
+    {c:'blue',   code:'箭头', text:'画面上的箭头 = 节点的 next，交换就是重新接线'}
+  ],
+
+  codeTitle: '跟着高亮读代码——三步接线顺序不能乱：先 <code>a.next = b.next</code> 保住后半段，再让 b 反指，最后 prev 牵住 b。while 变<span style="color:var(--green)">绿</span>＝凑齐了一对，变<span style="color:var(--red)">红</span>＝凑不齐了。',
+
+  legend: [
+    {c:'green', text:'prev 压阵'},
+    {c:'orange', text:'a 第一个'},
+    {c:'blue', text:'b 第二个'},
+    {c:'grey', text:'灰色：已换好的部分'}
+  ],
+
+  idea: '每对三根线：a.next = b.next 先斩后路保住后半段 → b.next = a 掉头 → prev.next = b 接上前段；然后 prev 挪到 a，进入下一对。',
+
+  qa: [
+    {q:'为什么需要 dummy？',
+     a:'交换第一对时，牵住新头（b）的"前一个节点"根本不存在——dummy 就是来补位的：<code>prev.next = b</code> 对第一对同样成立，最后 <code>return dummy.next</code> 直接拿到新头，不用特判。'},
+    {q:'三步接线的顺序为什么不能乱？',
+     a:'必须先 <code>a.next = b.next</code>：这一步把 b 后面的那截先挂到 a 身上"保管"。如果先让 b.next = a，b 原来的 next 就被覆盖丢了，后半截链表从此失踪；先改 prev.next 则会成环。'},
+    {q:'奇数个节点怎么办？',
+     a:'while 条件要求 <code>prev.next</code> 和 <code>prev.next.next</code> 都存在——凑不齐一对就不动。所以 1→2→3 只换前一对，最后落单的 3 原地不动。'},
+    {q:'和反转整条链（上一批的 206）什么关系？',
+     a:'206 是把整条链的箭头全部掉头；这里是"局部版"：每两个一组掉头，prev 相当于已处理段的尾巴。把这两题放一起看，链表题的"改箭头三板斧"就凑齐了。'}
+  ],
+
+  complexity: '时间 O(N)　·　空间 O(1)（只动指针，不建新节点）',
+
+  form: [
+    {key:'head', label:'head', type:'list', def:[1,2,3,4]}
+  ],
+  presets: [
+    {label:'1→2→3→4', values:{head:[1,2,3,4]}},
+    {label:'1→2→3（奇数个）', values:{head:[1,2,3]}},
+    {label:'单节点 [1]', values:{head:[1]}},
+    {label:'空链表 []', values:{head:[]}}
+  ],
+
+  code: `class Solution:
+    def swapPairs(self, head):
+        dummy = ListNode(0, head)
+        prev = dummy                    # prev 站在一对的前面压阵
+        while prev.next and prev.next.next:   # 凑得齐一对才换
+            a = prev.next               # 这一对的第一个
+            b = a.next                  # 这一对的第二个
+            a.next = b.next             # ① a 先挂住 b 后面那截
+            b.next = a                  # ② b 反过头指向 a
+            prev.next = b               # ③ 前一段牵住 b
+            prev = a                    # a 换完落在后面, 接着当"前一个"
+        return dummy.next
+`,
+
+  sol(input){
+    const a = (input.head || []).filter(x => x != null);
+    for(let i = 0; i + 1 < a.length; i += 2){
+      const t = a[i]; a[i] = a[i + 1]; a[i + 1] = t;
+    }
+    return a;
+  },
+  expected: [2,1,4,3],
+
+  quiz: [
+    {q:'三步接线里，为什么第①步必须是 a.next = b.next，不能先做 b.next = a？',
+     options:['只是习惯顺序，先②后①结果一样','b.next 里存着后半段的入口。先让 b 反指 a，b 原来的 next 被覆盖，b 身后那截链表从此无人指向、当场失踪；先做①把后半截「保管」到 a 手上，②才敢放心覆盖','因为 a 节点在交换中会被删除回收'],
+     answer:1,
+     explain:'改指针的铁律：覆盖一个指针前，先把它存的内容转移走。b.next 是通往后半段的唯一线索，第①步 a.next = b.next 正是把它转存到 a 身上；之后第②步 b.next = a 随便覆盖，后半段也丢不了。若顺序颠倒，后半截链表直接断链；若先改 prev.next，还会把这一对从链上甩出去成环。口诀：先斩后路、再掉头、最后牵手。',
+     jumpTo:6},
+    {q:'链表 1→2→3→4→5（奇数个节点），两两交换的结果是？',
+     options:['2→1→4→3→5：前两对换位，最后落单的 5 原地不动','2→1→4→5→3：5 会和前面的 3 再换一次','5→4→3→2→1：整条链反转'],
+     answer:0,
+     explain:'while 条件要求 prev 后面凑得齐两个节点。换完第二对后 prev 站在节点 4 上，它后面只剩节点 5 一个——凑不齐一对，循环结束，5 原地不动。结果 2→1→4→3→5。误选 2→1→4→5→3 是忘了「交换必须成对」，落单的节点没有搭档；误选整条反转是把它和 206 反转链表混为一谈——这里只换相邻的每一对，一组一组处理。',
+     jumpTo:17},
+    {q:'一对换完，为什么下一轮的 prev 是挪到 a，而不是 b？',
+     options:['a 换完后落在这对的末尾，正好是下一对的「前一个」；b 已升到前面，站在它身上下一对会插错位置','随便站哪个都行，只要往前移过就行','因为 b 下一轮要被删掉回收'],
+     answer:0,
+     explain:'交换后这对变成 …→b→a→后段：a 沉到末尾，下一对的第一个节点正挂在 a 身后。prev 的职责是「站在一对的前面压阵」，所以必须挪到 a；若站到 b，下一对会插进 b、a 中间，刚换好的顺序全乱。这个 prev = a 和反转链表里 prev 的前移是同一个思想——始终站在「已处理段的尾巴」上。',
+     jumpTo:9},
+  ],
+
+  steps(input){
+    const F = [];
+    const vals = (input.head || []).filter(x => x != null);
+    const N = vals.length;
+    const nodes = vals.map((v, i) => ({key:'a' + i, val:v}));
+
+    let prev = -1;                        // -1 = dummy
+    let edges = [];
+    for(let i = -1; i < N; i++){
+      if(i + 1 < N) edges.push([i < 0 ? '__dummy' : 'a' + i, 'a' + (i + 1)]);
+    }
+
+    const keyOf = i => i < 0 ? '__dummy' : 'a' + i;
+    const setEdge = (fromKey, toKey) => {
+      edges = edges.filter(e => e[0] !== fromKey);
+      if(toKey != null) edges.push([fromKey, toKey]);
+    };
+
+    /* ★ 快照原则：edges.slice()/pointers/vars 都在 F.push 那一刻求值 */
+    const ptrs = aIdx => {
+      const arr = [{key:keyOf(prev), text:'▼ prev', cls:'mg'}];
+      if(aIdx >= 0) arr.push({key:'a' + aIdx, text:'▼ a', cls:'mi'});
+      if(aIdx >= 0) arr.push({key:'a' + (aIdx + 1), text:'▼ b', cls:'mr'});
+      return arr;
+    };
+    const draw = (o) => (v) => {
+      v.list('L', nodes, {label:'链表　·　箭头 = 节点的 <code>next</code>，交换就是重新接线',
+        dummy:true, states:o.states || {}, pointers:o.pointers || [],
+        edges:o.edges, headTag:o.headTag || {key:'a0', text:'head', cls:'mq'}});
+      v.vars('V', o.vars, {label:'变量'});
+      if(o.result) v.result(o.result, {label:'返回结果'});
+    };
+    const varNow = aIdx => ({
+      prev: prev < 0 ? 'dummy' : '节点 ' + vals[prev],
+      a: aIdx >= 0 ? '节点 ' + vals[aIdx] : '—',
+      b: aIdx >= 0 ? '节点 ' + vals[aIdx + 1] : '—'
+    });
+
+    F.push({hl:[1,2,3,4], tag:'初始化', cls:'t-grey',
+      msg:'准备开工：先造一个 <code>dummy</code> 哑节点挂在链表最前面，<code>prev</code> 站在 dummy 上压阵——画面最左边的 ▼绿箭头就是它。' +
+          '为什么需要 dummy？交换第一对时，牵住新头的"前一个节点"本来不存在，有了它，等会儿 <code>prev.next = b</code> 对第一对同样成立，最后 <code>return dummy.next</code> 直接拿到新头，省掉特判。' +
+          '现在链表是 ' + (N ? LCesc(vals.join('→')) : '（空）') + '，规则只有一条：prev 后面凑得齐两个节点，才有得换。',
+      do: draw({edges: edges.slice(), pointers: ptrs(-1), vars: varNow(-1)})});
+
+    F.push({hl:[5], tag:'循环条件', cls:'t-blue',
+      msg:'进 while 先问一句：<code>prev</code>（当前是 ' + (prev < 0 ? 'dummy' : '节点 ' + LCesc(vals[prev])) + '）后面凑得齐两个吗？——要求 <code>prev.next</code> 和 <code>prev.next.next</code> 都存在，缺一个就说明只剩 0 或 1 个节点，没得换。' +
+          (N >= 2 ? '这次后面正好是节点 <b>' + LCesc(vals[0]) + '</b> 和 <b>' + LCesc(vals[1]) + '</b>，凑齐了，进循环！' : '这次后面凑不齐，等会儿直接收工。'),
+      do: draw({edges: edges.slice(), pointers: ptrs(-1), vars: varNow(-1)})});
+
+    // 一对的下标：第一对从 0 起；之后 prev 是上一对的 a，下一对跟着新链走 = prev + 2
+    let a = prev < 0 ? 0 : prev + 2;
+    let b = a + 1;
+    while(b < N){
+
+      F.push({hl:[5], ok:5, tag:'凑齐一对', cls:'t-green',
+        msg:'这一轮 while 条件成立：prev（' + (prev < 0 ? 'dummy' : '节点 ' + LCesc(vals[prev])) + '）后面凑得齐两个——节点 <b>' + LCesc(vals[a]) + '</b> 和 <b>' + LCesc(vals[b]) + '</b>，正是第 ' + (a / 2 + 1) + ' 对。' +
+            '只看"凑不凑得齐"就够了：凑不齐就什么都不动，所以奇数个节点时最后落单的那个天然安全。画面上 ▼橙 a、▼红 b 已点名，接下来三步改箭头。',
+        do: draw({edges: edges.slice(), pointers: ptrs(a),
+                  states:{['a' + a]:'active', ['a' + b]:'in'}, vars: varNow(a)})});
+
+      F.push({hl:[6], tag:'认领 a', cls:'t-ink',
+        msg:'<code>a = prev.next</code>：这一对的第一个是节点 <b>' + LCesc(vals[a]) + '</b>——prev 绿箭头右边紧挨着的那个（画面 ▼橙）。' +
+            '先用变量把两个节点"抓住"再动箭头，等会儿旧线索断了也不至于跟丢；记住 a 是换完要<b>沉到后面</b>的那个。',
+        do: draw({edges: edges.slice(), pointers: ptrs(a),
+                  states:{['a' + a]:'active'}, vars: varNow(a)})});
+
+      F.push({hl:[7], tag:'认领 b', cls:'t-ink',
+        msg:'<code>b = a.next</code>：第二个是节点 <b>' + LCesc(vals[b]) + '</b>（画面 ▼红）——它换完要<b>升到前面</b>。' +
+            'a、b 都拿到名签，这一步是在给下面三步"存档"：箭头一改，旧顺序的线索就断了，先抓住才不会丢。开始动箭头。',
+        do: draw({edges: edges.slice(), pointers: ptrs(a),
+                  states:{['a' + a]:'active', ['a' + b]:'active'}, vars: varNow(a)})});
+
+      setEdge('a' + a, b + 1 < N ? 'a' + (b + 1) : null);
+      F.push({hl:[8], tag:'① a 接后段', cls:'t-orange',
+        msg:'三步接线的第①步 <code>a.next = b.next</code>：节点 ' + LCesc(vals[a]) + ' 的箭头不再指 b，改指' +
+            (b + 1 < N ? '节点 <b>' + LCesc(vals[b + 1]) + '</b>' : '<b>null</b>') + '。' +
+            '为什么必须先做这步？它把 b 身后那截链先"保管"到 a 手上——如果先做第②步让 b 反指，b 原来的 next 会被覆盖，后半截链表从此失踪。画面上 ' + LCesc(vals[a]) + ' 的箭头已经绕过 b 直连后段。',
+        do: draw({edges: edges.slice(), pointers: ptrs(a),
+                  states:{['a' + a]:'active'}, vars: varNow(a)})});
+
+      setEdge('a' + b, 'a' + a);
+      F.push({hl:[9], tag:'② b 反指 a', cls:'t-orange',
+        msg:'第②步 <code>b.next = a</code>：节点 ' + LCesc(vals[b]) + ' 的箭头掉头指向 ' + LCesc(vals[a]) +
+            '——这一对就地换位，b 升到前面、a 沉到后面。' +
+            '画面上出现一根"往回指"的箭头，这就是交换发生的瞬间；因为第①步已把 b 的后继保管在 a 身上，这里才敢放心覆盖 b 的 next。',
+        do: draw({edges: edges.slice(), pointers: ptrs(a),
+                  states:{['a' + b]:'active', ['a' + a]:'block'}, vars: varNow(a)})});
+
+      setEdge(keyOf(prev), 'a' + b);
+      F.push({hl:[10], tag:'③ prev 牵 b', cls:'t-green',
+        msg:'第③步 <code>prev.next = b</code>：' + (prev < 0 ? 'dummy' : '节点 ' + LCesc(vals[prev])) + ' 的箭头改牵节点 ' + LCesc(vals[b]) +
+            '，新的一对正式接进前段。' +
+            '三根线到这里全部接完，画面上这段链已经是 …→ <b>' + LCesc(vals[b]) + ' → ' + LCesc(vals[a]) + '</b> → 后段。' +
+            '接线口诀：先斩后路、再掉头、最后牵手——前两步颠倒就会断链，哪步都不能省。',
+        do: draw({edges: edges.slice(), pointers: ptrs(a),
+                  states:{['a' + b]:'active', ['a' + a]:'block'}, vars: varNow(a)})});
+
+      prev = a;
+      F.push({hl:[11], tag:'prev 前进', cls:'t-ink',
+        msg:'<code>prev = a</code>：节点 ' + LCesc(vals[a]) + ' 换完正好落在这对的末尾——它就是<b>下一对的"前一个"</b>，接着压阵。' +
+            '画面上两个节点变绿＝这一对永远定稿，后面的轮次不再碰它们；下一对从它身后数两个节点。',
+        do: draw({edges: edges.slice(), pointers: ptrs(-1),
+                  states:{['a' + a]:'done', ['a' + b]:'done'}, vars: varNow(-1)})});
+
+      a = prev + 2;                       // 下一对跟着换好后的新链走
+      b = a + 1;
+    }
+
+    F.push({hl:[5], no:5, tag:'凑不齐了', cls:'t-red',
+      msg: N === 0 ? '链表是空的，<code>prev.next</code> 直接是 null → while 第一步就不成立，一对也凑不齐，循环一次都不进。'
+                   : 'prev（' + (prev < 0 ? 'dummy' : '节点 ' + LCesc(vals[prev])) + '）后面' +
+                     (a < N ? '只剩节点 <b>' + LCesc(vals[a]) + '</b> 一个，找不到搭档' : '什么都没有了') +
+                     '，凑不齐一对 → <b>循环结束</b>。落单的原地不动——交换要求成对，一个人没法和自己换。',
+      do: draw({edges: edges.slice(), pointers: ptrs(-1),
+                states:(a < N ? {['a' + a]:'muted'} : (prev >= 0 ? {['a' + prev]:'muted'} : {})),
+                vars: varNow(-1)})});
+
+    const res = vals.slice();
+    for(let i = 0; i + 1 < res.length; i += 2){
+      const t = res[i]; res[i] = res[i + 1]; res[i + 1] = t;
+    }
+    const newHeadKey = N > 1 ? 'a1' : (N === 1 ? 'a0' : '__dummy');
+    F.push({hl:[12], tag:'返回', cls:'t-dark',
+      msg:'<code>return dummy.next</code> 🎉 新链表 ' + (res.length ? res.join('→') : '（空）') +
+          (N > 1 ? '——新头正是原第二个节点 ' + LCesc(vals[1]) + '，第一对换位时 dummy 把它牵了上来' : '') +
+          '。复杂度复盘：每个节点只被重新接线常数次，时间 O(N)、空间 O(1)，全程没建任何新节点。',
+      do: draw({edges: edges.slice(), pointers: ptrs(-1),
+                states:{}, headTag:{key:newHeadKey, text:'新head', cls:'mg'},
+                result: res, vars: varNow(-1)})});
+
+    return F;
+  }
+});
+</script>
+</body>
+</html>

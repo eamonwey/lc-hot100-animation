@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P052 · 课程表 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 52, num: 207, title: '课程表', diff: '中等', cat: '图论',
+  method: 'canFinish',
+
+  lede: '题目：共有 <span class="var r">numCourses</span> 门课，<span class="var r">prerequisites</span> 里每对 [a, b] 表示"修完 b 才能修 a"。' +
+        '问能否修完全部课程？本质就一个问题：<b>这张先修图里有没有环</b>。' +
+        '用 Kahn 入度法：把"课 a 还差几门先修"记成<span class="var o">入度</span>；' +
+        '入度 0 的课随便上，<b>每上一门就给它解锁的课入度 −1</b>，减到 0 就入队。' +
+        '最后全上完 = 无环 = true；卡住了 = 有环 = false。',
+
+  roles: [
+    {c:'orange', code:'active', text:'刚出队、正在上的课'},
+    {c:'green',  code:'done',   text:'已修完的课 / 绿箭头 = 已兑现的先修关系'},
+    {c:'blue',   code:'peek',   text:'在队列里等着上的课'},
+    {c:'grey',   code:'muted',  text:'还没解锁的课'}
+  ],
+
+  codeTitle: '跟着高亮读代码——第 15 行变<span style="color:var(--green)">绿</span>＝某门课的入度减到 0、成功解锁入队，' +
+             '变<span style="color:var(--red)">红</span>＝还差别的先修课，继续等。',
+
+  legend: [
+    {c:'orange', text:'正在上的课'},
+    {c:'green',  text:'已修完'},
+    {c:'blue',   text:'在队列里'},
+    {c:'grey',   text:'还没解锁'}
+  ],
+
+  idea: '入度 = 还差几门先修课；入度 0 就上，上了就给后续课 −1；上不完必有环。',
+
+  qa: [
+    {q:'为什么"全部上完"就等于"没有环"？',
+     a:'环里的课互相等：每门的先修都没齐，入度永远 ≥ 1，永远进不了队列。' +
+       '所以只要图里有环，<code>done</code> 一定数不到 numCourses；反过来能数满就说明无环。'},
+    {q:'入度到底是什么？',
+     a:'指向这门课的箭头条数。箭头 b → a 表示"b 是 a 的先修"，所以 a 的入度 = 它还差几门先修课。' +
+       '入度 0 = 没有任何门槛，随时能上。'},
+    {q:'q.pop() 从队尾拿，顺序乱了不影响结果吗？',
+     a:'不影响。Kahn 只关心"谁能上就上谁"，先上哪门都行——入度减到 0 的课迟早都会入队。' +
+       '想要字典序最小的方案才需要换最小堆（那是另一道题 210 的变体）。'},
+    {q:'复杂度？',
+     a:'每门课入队出队一次、每条边看一次，时间 O(V + E)；邻接表 + 队列，空间 O(V + E)。'}
+  ],
+
+  complexity: '时间 O(V + E)（课数 + 先修对数）　·　空间 O(V + E)（邻接表 + 队列）',
+
+  form: [
+    {key:'numCourses', label:'numCourses', type:'num', def:4},
+    {key:'prerequisites', label:'prerequisites', type:'json', def:[[1,0],[2,1],[3,2]]}
+  ],
+  presets: [
+    {label:'链式 4 门课 → true', values:{numCourses:4, prerequisites:[[1,0],[2,1],[3,2]]}},
+    {label:'交叉依赖 6 门 → true', values:{numCourses:6, prerequisites:[[1,0],[2,0],[3,1],[3,2],[4,3],[5,3]]}},
+    {label:'两门互等（环）→ false', values:{numCourses:2, prerequisites:[[1,0],[0,1]]}},
+    {label:'单课无先修 → true', values:{numCourses:1, prerequisites:[]}}
+  ],
+
+  code: `class Solution:
+    def canFinish(self, numCourses, prerequisites):
+        graph = [[] for _ in range(numCourses)]   # 邻接表: 修完 c 能解锁的课
+        indeg = [0] * numCourses                  # 入度: 还差几门先修课
+        for a, b in prerequisites:
+            graph[b].append(a)                    # 箭头 b → a
+            indeg[a] += 1                         # a 又多了一门先修
+        q = [c for c in range(numCourses) if indeg[c] == 0]  # 入度 0 的直接能上
+        done = 0
+        while q:
+            c = q.pop()                           # 取一门能上的课
+            done += 1                             # 修完它
+            for nxt in graph[c]:                  # 它解锁的课
+                indeg[nxt] -= 1                   # 少了一门先修
+                if indeg[nxt] == 0:               # 门槛全清 → 可以上了
+                    q.append(nxt)
+        return done == numCourses                 # 全上过 = 无环
+`,
+
+  sol(input){
+    const nc = input.numCourses;
+    const graph = Array.from({length: nc}, () => []);
+    const indeg = new Array(nc).fill(0);
+    for(const [a, b] of input.prerequisites){ graph[b].push(a); indeg[a]++; }
+    const q = [];
+    for(let c = 0; c < nc; c++) if(indeg[c] === 0) q.push(c);
+    let done = 0;
+    while(q.length){
+      const c = q.pop(); done++;
+      for(const nxt of graph[c]){
+        indeg[nxt]--;
+        if(indeg[nxt] === 0) q.push(nxt);
+      }
+    }
+    return done === nc;
+  },
+  expected: true,
+
+  quiz: [
+    {q:'先修对 [a, b] 表示「修完 b 才能修 a」。Kahn 建图时该画哪条箭头、给谁的入度 +1?',
+     options:['箭头 a → b,给 b 的入度 +1','箭头 b → a,给 a 的入度 +1','箭头方向随意,入度记在 b 头上'],
+     answer:1,
+     explain:'箭头沿「解锁方向」画:从先修课 b 指向后修课 a。这样课 b 一上完,顺着它的出边正好找到被它解锁的课,逐个入度 −1。入度 = 指向自己的箭头数 = 还差几门先修,自然记在 a 头上。若方向画反(记成 b),「入度 0 = 没有任何门槛、随时能上」这条性质就崩了——明明要先修 a 的课反而被当成公开课。',
+     jumpTo:2},
+    {q:'代入算一算:numCourses = 6,prerequisites = [[1,0],[2,1],[3,2],[4,1],[5,4],[1,3]], Kahn 跑完后有几门课永远修不上?',
+     options:['2 门','3 门','4 门','5 门'],
+     answer:3,
+     explain:'箭头:0→1、1→2、2→3、3→1、1→4、4→5。入度:课1=2(等 0 和 3)、课2=1、课3=1、课4=1、课5=1,只有课 0 入度 0。上完课 0 后,课 1 还差课 3——而课 3 在环 1→2→3→1 里永远等不齐,队列就此空掉。done = 1,剩下课 1、2、3(环上)+ 课 4、5(被环连累,入度永远 ≥ 1)= <b>5 门</b>修不上。选 3 的只数了环上成员,漏了被环"连坐"的下游课程。',
+     jumpTo:23},
+    {q:'如果偷懒不做「入度 −1」,课上完就把它的所有后继直接入队,会出什么问题?',
+     options:['更快,结果一样','后继的先修可能还没修完就入队了,排出顺序违反先修约束;环上的课也会被反复入队,「done < numCourses 即有环」的判据彻底失效','只是代码变长一点,逻辑等价'],
+     answer:1,
+     explain:'入度表就是「还差几门先修」的账本,减到 0 才有资格上——这是拓扑序的正确性来源。不记账直接入队,课 2 可能还欠着课 1 就开上了;更糟的是环上的课会被互相反复入队、无限处理,done 数满 numCourses 也不再等价于无环。每条边只减一次账,正是 O(V + E) 的来源。',
+     jumpTo:15},
+  ],
+
+  steps(input){
+    const F = [];
+    const nc = input.numCourses;
+    const graph = Array.from({length: nc}, () => []);
+    const indeg = new Array(nc).fill(0);
+    const pos = Viz.circle(Array.from({length: nc}, (_, i) => String(i)), {w:420, h:250});
+    const edges = [];                    // ['b','a'] 快照数组
+    const nodeSt = {};                   // 课 -> 状态（生成期, push 时快照）
+    const edgeSt = {};                   // 'b-a' -> 边状态
+    const q = [];                        // 队列里的课
+    let done = 0;
+    const snapNode = (extra) => Object.assign({}, nodeSt, extra || {});
+    const snapEdge = () => Object.assign({}, edgeSt);
+    const qSnap = () => q.map(c => ({key:'k' + c, val:'课' + c}));
+    const ivars = () => {
+      const o = {done:done};
+      for(let c = 0; c < nc; c++) o['indeg[' + c + ']'] = indeg[c];
+      return o;
+    };
+
+    const draw = (o) => (v) => {
+      v.graph('G', pos, o.edges, {
+        label:'先修图　·　箭头 b → a = 修完 b 才能修 a',
+        states:o.states, edgeStates:o.edgeStates || {}, w:420, h:250
+      });
+      v.stack('Q', o.queue, {
+        label:'队列 <code>q</code>　·　顶部 = pop 取出端',
+        states:o.qStates || {}, topTag: o.queue.length ? '取出端' : ''
+      });
+      if(o.vars) v.vars('vars', o.vars, {label:'入度表 / 进度'});
+      if(o.result !== undefined) v.result(o.result, {label:'能否修完'});
+    };
+
+    /* ★ 快照原则：edges/states/queue/vars 全在 F.push 那一刻拷贝 */
+
+    F.push({hl:[1,2,3,4], tag:'建表', cls:'t-grey',
+      msg:nc + ' 门课。先备好两样东西：<code>graph</code> 邻接表（修完一门课能解锁谁）和 <code>indeg</code> 入度表。<b>入度 = 指向这门课的箭头条数 = 它还差几门先修课</b>——比如先修对 [a, b] 就会给 a 的入度记一笔。现在初始全 0，因为还没登记任何先修关系。',
+      do: draw({edges: edges.slice(), states: snapNode(), queue: qSnap(), vars: ivars()})});
+
+    for(const pr of input.prerequisites){
+      const a = pr[0], b = pr[1];
+      graph[b].push(a);
+      edges.push([String(b), String(a)]);
+      edgeSt[b + '-' + a] = 'e-active';
+      F.push({hl:[5,6], tag:'画箭头', cls:'t-blue',
+        msg:'先修对 <code>[' + LCesc(a) + ', ' + LCesc(b) + ']</code>：修完课 ' + LCesc(b) + ' 才能修课 ' + LCesc(a) +
+            ' → 画一条箭头 <code>' + LCesc(b) + ' → ' + LCesc(a) + '</code>。箭头方向就是"解锁方向"：从先修课指向后修课，这样课 ' + LCesc(b) + ' 一上完，顺着箭头正好能通知它解锁的课。',
+        do: draw({edges: edges.slice(), states: snapNode(), edgeStates: snapEdge(),
+                  queue: qSnap(), vars: ivars()})});
+      edgeSt[b + '-' + a] = '';
+      indeg[a] += 1;
+      F.push({hl:[5,7], tag:'入度 +1', cls:'t-ink',
+        msg:'课 ' + LCesc(a) + ' 的入度变 <b>' + indeg[a] + '</b>——"还差几门先修"的账本上又记一笔，必须等 ' + indeg[a] + ' 门先修全部修完才有资格上。画面：新箭头闪过，入度表里 indeg[' + LCesc(a) + '] 同步更新。',
+        do: draw({edges: edges.slice(), states: snapNode(), edgeStates: snapEdge(),
+                  queue: qSnap(), vars: ivars()})});
+    }
+
+    const ready = [];
+    for(let c = 0; c < nc; c++) if(indeg[c] === 0) ready.push(c);
+    ready.forEach(c => { q.push(c); nodeSt[c] = 'peek'; });
+    F.push({hl:[8,9], tag:'初始队列', cls: ready.length ? 't-green' : 't-red',
+      msg: ready.length
+        ? '扫一遍入度表：入度为 0 的课有 <code>' + (ready.join(', ') || '无') + '</code> → 没有任何先修门槛，直接入队（蓝色）。为什么入度 0 才能学？入度 = 还差几门先修，0 就是一门都不差——像没有先修要求的公开课，随时能上。<code>done = 0</code>，开始上课。'
+        : '每一门课都有先修要求（入度全 ≥ 1）→ 队列是<b>空</b>的。第一轮就无人可上：每门课都在等别的课先开，互相等死——这正是环的直观表现，<code>done</code> 只能停在 0。',
+      do: draw({edges: edges.slice(), states: snapNode(), edgeStates: snapEdge(),
+                queue: qSnap(), qStates: ready.length ? {['k' + ready[ready.length - 1]]:'just'} : {},
+                vars: ivars()})});
+
+    while(q.length){
+      F.push({hl:[10], ok:10, tag:'while 检查', cls:'t-blue',
+        msg:'<code>while q</code>：队列里有 <b>' + q.map(c => '课' + LCesc(c)).join('、') + '</b> 等着上 → 继续修。队列 = "门槛已清、随时能上"的课池，它一空整个流程就停。',
+        do: draw({edges: edges.slice(), states: snapNode(), edgeStates: snapEdge(),
+                  queue: qSnap(), vars: ivars()})});
+
+      const c = q.pop();
+      done += 1;
+      const qi = q.length;
+      F.push({hl:[11,12], tag:'上一门课', cls:'t-orange',
+        msg:'<code>课' + LCesc(c) + '</code> 出队、修完！<code>done = ' + done + '</code>/<b>' + nc + '</b>。' +
+            (graph[c].length ? '它指向 ' + graph[c].map(x => '课' + LCesc(x)).join('、') + '——这几门课的先修清单里要划掉课 ' + LCesc(c) + '，马上逐个给它们入度 −1。'
+              : '它后面没有要解锁的课（没有出边），只需把 done 记上。') +
+            '取课顺序无所谓（q.pop() 从哪头拿都行）：Kahn 只要求"能上就上"，最终结果一样。',
+        do: draw({edges: edges.slice(), states: snapNode({[c]:'active'}), edgeStates: snapEdge(),
+                  queue: qSnap(), vars: ivars()})});
+
+      for(const nxt of graph[c]){
+        indeg[nxt] -= 1;
+        edgeSt[c + '-' + nxt] = 'e-done';
+        nodeSt[c] = 'done';
+        F.push({hl:[13,14], tag:'入度 −1', cls:'t-blue',
+          msg:'课 ' + LCesc(c) + ' 上完了，它作为先修的义务兑现 → 课 ' + LCesc(nxt) + ' 的入度 <code>' + (indeg[nxt] + 1) + ' → ' + indeg[nxt] +
+              '</code>。为什么是减一？' + LCesc(nxt) + ' 的先修清单里恰好划掉了课 ' + LCesc(c) + ' 这一门，"还差几门"自然就少 1。绿箭头 = 这条先修关系已兑现。',
+          do: draw({edges: edges.slice(), states: snapNode(), edgeStates: snapEdge(),
+                    queue: qSnap(), vars: ivars()})});
+        if(indeg[nxt] === 0){
+          q.push(nxt);
+          nodeSt[nxt] = 'peek';
+          F.push({hl:[15,16], ok:15, tag:'解锁', cls:'t-green',
+            msg:'课 ' + LCesc(nxt) + ' 的入度归 <b>0</b>：最后一门先修也修完了，门槛全清 → 入队（蓝色），等着上！每门课都要走"灰 → 蓝 → 橙 → 绿"这条变色路：未解锁 → 排队 → 正在上 → 已修完。',
+            do: draw({edges: edges.slice(), states: snapNode(), edgeStates: snapEdge(),
+                      queue: qSnap(), qStates:{['k' + nxt]:'just'}, vars: ivars()})});
+        } else {
+          F.push({hl:[15], no:15, tag:'还差先修', cls:'t-red',
+            msg:'课 ' + LCesc(nxt) + ' 的入度还是 <b>' + indeg[nxt] + '</b> > 0 → 还差 ' + indeg[nxt] + ' 门先修，不能上也不入队，继续灰着等。急不得：跳过它就违反了先修约束，排出的顺序就不叫拓扑序了。',
+            do: draw({edges: edges.slice(), states: snapNode(), edgeStates: snapEdge(),
+                      queue: qSnap(), vars: ivars()})});
+        }
+      }
+    }
+
+    F.push({hl:[10], no:10, tag:'队列空了', cls:'t-red',
+      msg:'队列空了：修完 <code>done = ' + done + '</code> 门（共 ' + nc + ' 门）。' +
+          (done === nc ? '每门课都在"入度归 0"的时刻被准时解锁——全上完了！' : '剩下的 ' + (nc - done) + ' 门入度永远 ≥ 1：环里的课互相等对方先开，谁也凑不齐门槛，永远进不了队列——这就是环卡死算法的原理。'),
+      do: draw({edges: edges.slice(), states: snapNode(), edgeStates: snapEdge(),
+                queue: qSnap(), vars: ivars()})});
+
+    const ok = done === nc;
+    F.push({hl:[17], tag:'返回', cls:'t-dark',
+      msg:'🎉 <code>return done == numCourses → ' + ok + '</code>' + (ok
+        ? '：' + done + ' 门全部修完 = 拓扑序存在 = 图里无环。复杂度复盘：每门课进出队一次、每条边看一次 → 时间 O(V + E)。'
+        : '：' + done + ' &lt; ' + nc + '，有课永远等不齐先修 = 有环 = 拓扑序不存在。画面里没变绿的课就是环上的成员——它们的入度始终 ≥ 1。'),
+      do: draw({edges: edges.slice(), states: snapNode(), edgeStates: snapEdge(),
+                queue: qSnap(), result: ok})});
+
+    return F;
+  }
+});
+</script>
+</body>
+</html>

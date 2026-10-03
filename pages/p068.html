@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P068 · 有效的括号 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 68, num: 20, title: '有效的括号', diff: '简单', cat: '栈',
+  method: 'isValid',
+
+  lede: '题目：字符串里只有 ()[]{} 六种括号，判断它们是否<b>全部正确闭合</b>——顺序不能乱（([)] 不行）、不能交叉、不能有落单的。' +
+        '动画里 <span class="var i">c</span> 逐字符扫描：<b>左括号进栈排队</b>，<b>右括号上门找对象</b>——必须和栈顶那只配成一对，' +
+        '配对成功的一对会闪<span class="var o">紫色</span>。扫完栈还剩人？说明有括号没闭合。',
+
+  roles: [
+    {c:'orange', code:'c',      text:'当前扫到的字符'},
+    {c:'blue',   code:'stack',  text:'还在等配对的左括号（底进顶出）'},
+    {c:'violet', code:'紫格',   text:'刚配对成功的一对括号'},
+    {c:'red',    code:'红格',   text:'对不上 / 没闭合的括号'}
+  ],
+
+  codeTitle: '跟着高亮读代码——第 8 行变<span style="color:var(--green)">绿</span>＝栈顶正好是它的另一半（弹出配对），变<span style="color:var(--red)">红</span>＝栈空或对不上（直接判假）。',
+
+  legend: [
+    {c:'green', text:'已处理 / 已配对'},
+    {c:'orange', text:'当前字符 c'},
+    {c:'violet', text:'配对成功的一对'},
+    {c:'red', text:'失配 / 没闭合'}
+  ],
+
+  idea: '左括号进栈等待，右括号必须和"最近那个没配对的左括号"（栈顶）配对——后进先出，正是栈的本职工作。',
+
+  qa: [
+    {q:'为什么栈顶一定得是它的另一半？',
+     a:'括号的有效结构是"嵌套或并列"，<b>最后打开的必须最先关闭</b>。右括号出现时，能和它配对的只有"最近还没闭合的左括号"，也就是栈顶。栈顶不是它的另一半（如栈顶是 [ 来的却是 )），说明嵌套交叉了，整串直接无效。'},
+    {q:'有哪三种失败方式？',
+     a:'① 右括号来了但<b>栈是空的</b>（如 ]，没有对象可配）；② 栈顶<b>类型对不上</b>（如 ([)]，) 遇到的栈顶是 [）；③ 全部扫完<b>栈里还有剩</b>（如 ((，左括号没闭合完）。动画会分别演示这三种。'},
+    {q:'为什么配对表存"右 → 左"而不是反过来？',
+     a:'做决定的是<b>右括号</b>：它进门时要查"我需要哪种左括号"，<code>pair[c]</code> 一查即得。反过来存的话，右括号还得反查哪个键的值等于栈顶，多绕一步。'},
+    {q:'复杂度？',
+     a:'每个字符只进栈/出栈至多一次，时间 O(n)；最坏（全是左括号）栈存 n 个，空间 O(n)。'}
+  ],
+
+  complexity: '时间 O(n)　·　空间 O(n)（最坏全是左括号）',
+
+  form: [
+    {key:'s', label:'s', type:'str', def:'()[]{}'}
+  ],
+  presets: [
+    {label:'()[]{}（三对齐全）', values:{s:'()[]{}'}},
+    {label:'(]（类型对不上）', values:{s:'(]'}},
+    {label:'([)]（交叉嵌套）', values:{s:'([)]'}},
+    {label:'((（栈里剩左括号）', values:{s:'(('}},
+    {label:']（栈空遇右括号）', values:{s:']'}}
+  ],
+
+  code: `class Solution:
+    def isValid(self, s):
+        pair = {')': '(', ']': '[', '}': '{'}    # 右括号 → 它的另一半
+        stack = []                               # 还在等配对的左括号
+        for c in s:
+            if c in '([{':                       # 左括号: 进栈排队
+                stack.append(c)
+            elif stack and stack[-1] == pair[c]: # 右括号: 栈顶是另一半?
+                stack.pop()                      # 配对成功, 出栈
+            else:                                # 栈空 / 对不上
+                return False
+        return len(stack) == 0                   # 有剩 = 没闭合完
+`,
+
+  sol(input){
+    const pair = {')':'(', ']':'[', '}':'{'};
+    const st = [];
+    for(const c of String(input.s)){
+      if(c === '(' || c === '[' || c === '{') st.push(c);
+      else if(st.length && st[st.length - 1] === pair[c]) st.pop();
+      else return false;
+    }
+    return st.length === 0;
+  },
+  expected: true,
+
+  quiz: [
+    {q:'右括号上门时,为什么必须和栈顶配对,而不能和栈里任意一个未闭合的左括号配?',
+     options:['随便配一个也行,只要类型对上就算有效','合法括号只能嵌套或并列,能配对的只有"最近打开的那个"——正好是栈顶;和更早的配就是交叉','因为栈顶一定是 ( ,其他类型早被弹光了'],
+     answer:1,
+     explain:'有效串的结构只能嵌套或并列:最后打开的盒子必须最先盖上。右括号能闭合的只有"最近那个还没闭合的左括号"——它就在栈顶。若栈顶是 [ 来的却是 )(如 ([)]),说明嵌套交叉了,怎么补救都无效,直接判假。栈"后进先出"的天性,正好替我们免费拿到了这个"最近"。',
+     jumpTo:5},
+    {q:'把 s = "([)]" 喂给算法,会发生什么?',
+     options:['true——三种括号数量都配平了','false——扫到 ) 时栈顶是 [,类型对不上(交叉),当场判假','false——扫到 ) 时栈是空的,没有对象可配'],
+     answer:1,
+     explain:'逐格推:( 进栈、[ 进栈,此时栈里从底到顶是 ( [。接着 ) 找对象:它需要 (,但栈顶是 [ → 对不上,当场 return False。注意这不是"栈空"那种死法——栈里有货,只是类型错。数量配平救不了顺序,这正是 ([)] 的经典陷阱,也是"数括号个数"朴素判法翻车的原因。',
+     jumpTo:5},
+    {q:'s = "(()" 的判定结果和原因是?',
+     options:['true——中间有一对 ( ) 成功配对了','false——扫完后栈里还剩一个 ( 没等到右括号,收尾查栈不空','false——) 出现时栈是空的,无人可配'],
+     answer:1,
+     explain:'( 进栈、( 进栈、) 弹掉栈顶 ( 配对成功——到这里都没毛病。但扫完后栈里还压着一个 (,最后一行 return len(stack) == 0 不成立 → false。所以"每个右括号都配上了"还不够,必须收尾再查一遍栈空。三种死法在此集齐:①栈空遇右括号、②类型对不上、③扫完栈里还有剩。',
+     jumpTo:15},
+  ],
+
+  steps(input){
+    const F = [];
+    const chars = String(input.s).split('');
+    const pair = {')':'(', ']':'[', '}':'{'};
+    let stack = [];     // 存 s 的下标（左括号的位置）
+    let pairs = 0;
+
+    const draw = (o) => (v) => {
+      v.arr('s', chars, {label:'字符串 <code>s</code>', quotes:true,
+                         states:o.states || {}, markers:o.markers || []});
+      v.stack('st', (o.stack || []).map(ix => ({key:ix, val:chars[ix]})),
+              {label:'栈 <code>stack</code>（顶 = 最近进栈的左括号）',
+               states:o.sst || {}, topTag:'栈顶'});
+      v.map('pair', [[')', '('], [']', '['], ['}', '{']],
+            {label:'配对表（右括号 → 左括号）', hlK:o.hlK});
+      v.vars('vars', o.vars || {}, {label:'变量'});
+      if(o.res !== undefined) v.result(o.res, {label:'返回值'});
+    };
+    const mk = i => [{name:'c', idx:i, cls:'mi', text:'▲ c'}];
+    const stOf = (i, hot) => {
+      const s = {};
+      for(let t = 0; t < chars.length; t++) s[t] = t < i ? 'done' : null;
+      if(i >= 0 && i < chars.length) s[i] = 'active';
+      Object.assign(s, hot || {});
+      return s;
+    };
+    const vars = (c, n, p) => ({c:c, '栈里还有':n, '已配对':p});
+
+    F.push({hl:[1,2,3], tag:'准备', cls:'t-grey',
+      msg:'开局摆好三样东西：配对表 ) → (、] → [、} → {（右括号查"我需要哪种左括号"）、空栈、待扫描的 s。核心规则只有一条：右括号出现时，能配对的只有<b>最近那个还没闭合的左括号</b>——像套娃，最后打开的盒子必须最先盖上，后开先关正是栈的本职。所以策略是：左括号进栈排队，右括号一来就必须和栈顶配成一对，配错立刻判假。',
+      do: draw({states: stOf(-1), stack: [], vars: vars('—', 0, 0)})});
+    F.push({hl:[4,5], tag:'开始扫描', cls:'t-ink',
+      msg:'栈里 0 个等待者，c 马上从第 1 个字符开始从左往右扫。右侧的栈就是"未闭合左括号"的<b>等待室</b>：进栈 = 开了一个没盖的盒子，出栈 = 盖上；全程只有栈顶够得着，底下的旧括号插不了手——嵌套结构的天性就是这样。',
+      do: draw({states: stOf(-1), stack: [], vars: vars('—', 0, 0)})});
+
+    for(let i = 0; i < chars.length; i++){
+      const c = chars[i];
+      const isLeft = c === '(' || c === '[' || c === '{';
+      if(isLeft){
+        F.push({hl:[6], ok:6, tag:'左括号', cls:'t-blue',
+          msg:'第 ' + (i + 1) + ' 个字符 <code>' + LCesc(c) + '</code> 是<b>左括号</b> → 6 行成立。它的另一半还没出现，此刻什么都配不了，唯一正确的动作是先记进栈占个位，等右括号上门。',
+          do: draw({states: stOf(i), markers: mk(i), stack: stack.slice(),
+                    vars: vars(c, stack.length, pairs)})});
+        stack.push(i);
+        F.push({hl:[7], tag:'进栈', cls:'t-orange',
+          msg:'<code>' + LCesc(c) + '</code> 进栈压顶，现在压着 ' + stack.length + ' 个等待者（从底到顶是 <code>' + LCesc(stack.map(ix => chars[ix]).join(' ')) + '</code>）。它们都在等各自的右括号，而规矩是：谁在栈顶，谁就必须先被闭合——后来者居上。',
+          do: draw({states: stOf(i, (function(){ const o = {}; o[i] = 'just'; return o; })()),
+                    markers: mk(i), stack: stack.slice(),
+                    sst: (function(){ const o = {}; o[i] = 'just'; return o; })(),
+                    vars: vars(c, stack.length, pairs)})});
+      } else {
+        const empty = stack.length === 0;
+        const topIx = empty ? -1 : stack[stack.length - 1];
+        const okTop = !empty && chars[topIx] === pair[c];
+        F.push({hl:[8,10,11], ok: okTop ? 8 : undefined, no: okTop ? undefined : 8,
+          tag:'找对象', cls: okTop ? 't-green' : 't-red',
+          msg: okTop
+            ? '第 ' + (i + 1) + ' 个字符 <code>' + LCesc(c) + '</code> 是<b>右括号</b>，上门找对象：查配对表（下方高亮行），它需要 <code>' + LCesc(pair[c]) + '</code>；栈非空且栈顶 <code>' + LCesc(chars[topIx]) + '</code> 正好是它 → 8 行成立变绿。为什么只认栈顶？它只能闭合<b>最近</b>打开的那个括号，若栈顶是别的类型（如栈顶是 [ 来的却是 )）就是 ([)] 式交叉，直接判假。（栈空 / 对不上两种死法见预设 ]、(]、([)。）'
+            : (empty
+                ? '第 ' + (i + 1) + ' 个字符 <code>' + LCesc(c) + '</code> 是右括号，可栈是<b>空的</b> → 8 行不成立。空栈 = 之前没有任何未闭合的左括号，这个右括号是无人认领的孤儿（比如串首就是 ]），后面补什么都不可能有效了。'
+                : '第 ' + (i + 1) + ' 个字符 <code>' + LCesc(c) + '</code> 是右括号：栈顶是 <code>' + LCesc(chars[topIx]) + '</code>，但配对表要求 <code>' + LCesc(pair[c]) + '</code> → <b>对不上</b>（8 行不成立）。栈顶是"最近的未闭合左括号"，连它都不是 c 的另一半，说明嵌套<b>交叉</b>了（如 ([)]：) 来时栈顶却是 [）——交叉的括号谁也救不了。'),
+          do: draw({states: stOf(i, empty ? {} : (function(){ const o = {}; o[topIx] = okTop ? 'active' : 'block'; return o; })()),
+                    markers: mk(i), stack: stack.slice(),
+                    sst: empty ? {} : (function(){ const o = {}; o[topIx] = okTop ? 'just' : 'block'; return o; })(),
+                    hlK: c, vars: vars(c, stack.length, pairs)})});
+        if(okTop){
+          F.push({hl:[9], tag:'配对成功', cls:'t-green',
+            msg:'弹出栈顶 <code>' + LCesc(chars[topIx]) + '</code>，和 <code>' + LCesc(c) + '</code> 凑成一对（两格闪紫）——最近打开的盒子盖上了，已配对 ' + (pairs + 1) + ' 对。弹出后新栈顶<b>自动</b>变成"最近的未闭合左括号"，零成本交接，这正是选栈当数据结构白捡的好处。（若 8 行不成立，走的是 10~11 行 return False。）',
+            do: draw({states: stOf(i, (function(){ const o = {}; o[i] = 'target'; o[topIx] = 'target'; return o; })()),
+                      markers: mk(i), stack: stack.slice(0, -1),
+                      vars: vars(c, stack.length - 1, pairs + 1)})});
+          stack.pop();
+          pairs++;
+        } else {
+          F.push({hl:[10,11], tag:'返回 False', cls:'t-dark',
+            msg:'<code>return False</code>：' + (empty
+              ? '右括号没有对象可配（栈空）→ 字符串无效。三种死法此处是第①种；提前退场，后面的字符都不用看了。'
+              : '栈顶对不上，右括号先遇到了错的左括号 → 字符串无效。三种死法此处是第②种：合法结构只能嵌套或并列，绝不能交叉。'),
+            do: draw({states: stOf(i, empty ? {} : (function(){ const o = {}; o[topIx] = 'block'; return o; })()),
+                      markers: mk(i), stack: stack.slice(), hlK: c,
+                      vars: vars(c, stack.length, pairs), res: false})});
+          return F;
+        }
+      }
+    }
+
+    const rest = stack.map(ix => chars[ix]).join(' ');
+    F.push({hl:[12], ok: stack.length === 0 ? 12 : undefined, no: stack.length ? 12 : undefined,
+      tag:'扫完了', cls: stack.length === 0 ? 't-green' : 't-red',
+      msg: stack.length === 0
+        ? '共 ' + chars.length + ' 个字符全部扫完，栈里剩 0 个 → <code>len(stack) == 0</code> 成立 → <b>true</b>。三种死法全躲过：右括号来时栈不空、类型全对上、收尾栈也空了——每个左括号都等到了自己的另一半。'
+        : '共 ' + chars.length + ' 个字符扫完了，栈里还压着 ' + stack.length + ' 个左括号（' + LCesc(rest) + '）没人认领 → <code>len(stack) == 0</code> 不成立 → <b>false</b>。这是三种死法的第③种：这些左括号始终没等到右括号——所以"扫完"不等于"有效"，收尾必须查一遍栈空。',
+      do: draw({states: stOf(chars.length, (function(){
+              const o = {};
+              stack.forEach(ix => { o[ix] = stack.length ? 'block' : 'done'; });
+              return o;
+            })()),
+            markers: [], stack: stack.slice(), vars: vars('—', stack.length, pairs)})});
+    F.push({hl:[12], tag:'返回', cls:'t-dark',
+      msg:'<code>return ' + (stack.length === 0 ? 'True' : 'False') + '</code> 🎉 复盘：每个字符至多进栈、出栈各一次，时间 O(n)；最坏（全是左括号）栈存 n 个，空间 O(n)。口诀收尾——左括号进栈排队，右括号只认栈顶，收工查栈空。',
+      do: draw({states: stOf(chars.length), markers: [], stack: stack.slice(),
+                vars: vars('—', stack.length, pairs), res: stack.length === 0})});
+    return F;
+  }
+});
+</script>
+</body>
+</html>

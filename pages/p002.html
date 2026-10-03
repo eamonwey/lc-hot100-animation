@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P002 · 字母异位词分组 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 2, num: 49, title: '字母异位词分组', diff: '中等', cat: '哈希',
+  method: 'groupAnagrams',
+
+  lede: '题目：把字母相同、只是顺序不同的词归成一堆（eat / tea / ate 是一伙的，tan / nat 是一伙的）。' +
+        '诀窍就一句话：<b>把每个词的字母排序，异位词就会得到同一把“钥匙”</b>（eat 和 tea 排完都是 aet）。' +
+        '动画里 <span class="var i">i</span> 逐个捡单词，<span class="var r">groups</span> 是“钥匙 → 组员名单”的记事本：钥匙相同，就飞进同一组。',
+
+  roles: [
+    {c:'orange', code:'s',   text:'正在处理的单词'},
+    {c:'blue',   code:'key', text:'钥匙 = 字母排序后的词'},
+    {c:'green',  code:'groups', text:'哈希表：钥匙 → 同组单词'}
+  ],
+
+  codeTitle: '跟着高亮读代码——<code>if key not in groups</code> 变<span style="color:var(--green)">绿</span>＝查到了老钥匙直接入组，变<span style="color:var(--red)">红</span>＝新钥匙要先开新组。',
+
+  legend: [
+    {c:'orange', text:'当前单词'},
+    {c:'blue', text:'排序得到的钥匙'},
+    {c:'green', text:'正在入组的那个组'}
+  ],
+
+  idea: '给每个词发一张“排序后的身份证”：异位词身份证必然相同——哈希表按身份证分堆，一组不漏。',
+
+  qa: [
+    {q:'为什么“排序后的串”能当分组凭证？',
+     a:'排序把“字母顺序”这个干扰彻底抹掉：只要两个词字母种类和个数完全一样，排完必然一模一样；只要不一样，就绝不可能是异位词。所以<b>同 key ⇔ 互为异位词</b>，一把钥匙就是一组。'},
+    {q:'不排序、改数字母个数行不行？',
+     a:'行。数出 26 个字母各出现几次，把计数拼成串（如 “a1e1t1”）也能当 key，单词很长时更快（O(k) 对 O(k log k)）。排序版胜在两行写完、面试最不容易写错。'},
+    {q:'复杂度怎么算？',
+     a:'设 n 个单词、每个单词长 k：每个词排序花 O(k log k)，总共 <b>O(n·k log k)</b>；哈希表里要存下所有单词和钥匙，空间 O(n·k)。'}
+  ],
+
+  complexity: '时间 O(n·k log k)（n 个单词，词长 k）　·　空间 O(n·k)（哈希表存全部单词）',
+
+  form: [
+    {key:'strs', label:'strs', type:'strlist', def:['eat','tea','tan','ate','nat','bat']}
+  ],
+  presets: [
+    {label:'eat tea tan ate nat bat', values:{strs:['eat','tea','tan','ate','nat','bat']}},
+    {label:'a（只有一个词）', values:{strs:['a']}},
+    {label:"''（空字符串也组队）", values:{strs:['']}},
+    {label:'aa aa ab（有重复词）', values:{strs:['aa','aa','ab']}}
+  ],
+
+  code: `class Solution:
+    def groupAnagrams(self, strs):
+        groups = {}                     # 钥匙(排序后的词) -> 组员名单
+        for s in strs:                  # 逐个处理单词
+            key = ''.join(sorted(s))    # 异位词排序后长得一模一样
+            if key not in groups:       # 第一次见到这把钥匙?
+                groups[key] = []        # 先开一个新组
+            groups[key].append(s)       # 飞进自己的组
+        return list(groups.values())    # 每串名单就是一组答案
+`,
+
+  sol(input){
+    const groups = new Map();
+    for(const s of input.strs){
+      const key = s.split('').sort().join('');
+      if(!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(s);
+    }
+    return Array.from(groups.values());
+  },
+  expected: [['eat','tea','ate'],['tan','nat'],['bat']],
+
+  quiz: [
+    {q:'为什么拿「排序后的串」当钥匙,而不是直接拿原词当 key?',
+     options:['排序后 eat、tea、ate 的钥匙都是 aet,异位词才能拿到同一把钥匙归成一组;原词互不相同,永远分不了组','排序能让哈希表查询更快','原词太长,哈希表存不下'],
+     answer:0,
+     explain:'哈希分组的前提是「同组的东西 key 必须相同」。eat/tea/ate 原词互不相同,拿原词当 key 就是一个词一组,完全没分。排序把"字母顺序"这个干扰抹掉,只留"字母构成"——构成相同(即互为异位词)的词,排完必然一字不差;差一个字母,钥匙就不同。同 key ⇔ 互为异位词,一把钥匙一组。',
+     jumpTo:3},
+    {q:'strs = ["ab","ba","abc","cab"] 跑完这个算法,最后分成几组?',
+     options:['1 组','2 组','3 组','4 组'],
+     answer:1,
+     explain:'"ab" 排序得 "ab",开新组;"ba" 排序也得 "ab",查到老钥匙直接飞进去;"abc" 得 "abc",再开一组;"cab" 排序得 "abc",也归进去。最终 2 组:["ab","ba"] 和 ["abc","cab"]。答 4 组的是拿原词当了钥匙——忘了排序这一步。',
+     jumpTo:29},
+    {q:'若把「if key not in groups 才开新组」删掉,改成见到词就 groups[key] = [] 再 append,会怎样?',
+     options:['没影响,照样对','每组最后只剩一个词——后面的词每来一次,都把前面攒好的名单整段清空了','直接报错,程序崩掉'],
+     answer:1,
+     explain:'groups[key] = [] 是「赋一个全新的空列表」,不是「取出来往里加」。老钥匙每来一个词都会把已有组员清零,最后每组名单里只剩最后一个词,前面的全丢。所以必须先判"钥匙在不在":不在才开新组,在就只 append——这两步的先后就是本页代码的写法。',
+     jumpTo:5},
+  ],
+
+  steps(input){
+    const F = [];
+    const strs = input.strs || [];
+    const groups = new Map();
+
+    /* ★ 快照原则：map/词表状态都在 F.push 那一刻定死，不在 do() 里读外层 */
+    const mapSnap = () => Array.from(groups.entries()).map(([k, arr]) => [k, arr.join(', ')]);
+    const wordsStates = (wi) => {
+      const st = {};
+      strs.forEach((w, k) => { if(k < wi) st[k] = 'done'; });
+      if(wi < strs.length) st[wi] = 'active';
+      return st;
+    };
+    const allDone = () => {
+      const st = {};
+      strs.forEach((w, k) => { st[k] = 'done'; });
+      return st;
+    };
+    const wordsMarks = (wi) => wi < strs.length ? [{name:'i', idx:wi, cls:'mi', text:'▲ i'}] : [];
+
+    const draw = (o) => (v) => {
+      v.arr('strs', strs, {label:'单词表 <code>strs</code>', quotes:true,
+        states:o.wst || {}, markers:o.wmk || []});
+      if(o.keyArr) v.arr('key', o.keyArr, {label:'钥匙 <code>key</code>（字母排序后）', quotes:true,
+        states:o.keySt || {}});
+      v.map('groups', o.map, {label:'哈希表 <code>groups</code>　·　钥匙 → 组员', hlK:o.hlK});
+      if(o.vars) v.vars('vars', o.vars, {label:'当前变量'});
+      if(o.result != null) v.result(o.result, {label:'分组结果'});
+    };
+
+    F.push({hl:[1,2,3], tag:'初始化', cls:'t-grey',
+      msg:'<code>groups</code> 还是空本子（0 组，表在画面下方）。判异位词有个一劳永逸的办法：两词互为异位词 ⇔ 字母种类和个数完全一样 ⇔ <b>排序后长得一模一样</b>。所以给每个词发一张"排序后的身份证"当钥匙：钥匙相同必是同伙；钥匙不同则字母构成必然不同，永远不会被错归一组。接下来逐个捡词、配钥匙、入册。',
+      do: draw({map:[], vars:{'组数':0}})});
+
+    for(let wi = 0; wi < strs.length; wi++){
+      const s = strs[wi];
+      const key = s.split('').sort().join('');
+      const keyArr = s.split('').sort();
+      const keySt = {};
+      keyArr.forEach((c, k) => { keySt[k] = 'in'; });
+      const exists = groups.has(key);
+
+      F.push({hl:[4], tag:'遍历', cls:'t-ink',
+        msg:'捡起第 <b>' + (wi + 1) + '</b> 个单词 <b>"' + LCesc(s) + '"</b>（▲ i 名牌钉在这格，处理完的词标绿）。此刻表里已有 ' + groups.size + ' 组' + (groups.size ? '：' + mapSnap().map(e => '"' + LCesc(e[0]) + '"→[' + LCesc(e[1]) + ']').join('　') : '（还空着）') + '。这一步只报到：接下来给它配钥匙，决定进哪扇门。',
+        do: draw({wst:wordsStates(wi), wmk:wordsMarks(wi), map:mapSnap(),
+                  vars:{i:wi, s:LCesc(s), key:'？'}})});
+
+      F.push({hl:[5], tag:'配钥匙', cls:'t-blue',
+        msg:'给 "' + LCesc(s) + '" 配钥匙：把它的字母从小到大排，' + keyArr.join(' ') + ' → <code>key = "' + LCesc(key) + '"</code>（下方单独一栏逐字母展示）。为什么排序能当凭证？它把"字母顺序"这个干扰彻底抹掉——两个词只要字母种类和个数相同，排完必然一字不差；差一个字母，钥匙就不同。而且 "' + LCesc(s) + '" 自己不管怎么打乱顺序，排完都还是这把钥匙。',
+        do: draw({wst:wordsStates(wi), wmk:wordsMarks(wi), keyArr:keyArr, keySt:keySt, map:mapSnap(),
+                  vars:{i:wi, s:LCesc(s), key:LCesc(key)}})});
+
+      F.push({hl:[6], ok: exists ? 6 : undefined, no: exists ? undefined : 6, tag:'查表',
+        cls: exists ? 't-green' : 't-red',
+        msg: exists
+          ? '查 <code>groups</code>：钥匙 "' + LCesc(key) + '" <b>已经在表里！</b>（同名钥匙那行被高亮）——说明之前进来过它的同款词，那组名单现在是 [' + LCesc(groups.get(key).join(', ')) + ']。钥匙相同 ⇔ 字母构成完全相同 ⇔ 互为异位词，直接入组，不用开新组。'
+          : '查 <code>groups</code>：没有 "' + LCesc(key) + '" 这把钥匙 ✗——它在全表第一次出现（没有任何一行被高亮）。注意不能硬塞进任何现有组：钥匙不同说明字母构成不同，绝不是异位词，硬塞会让那一组混进外人、答案就错了。正确做法是下一步先开新组。',
+        do: draw({wst:wordsStates(wi), wmk:wordsMarks(wi), keyArr:keyArr, keySt:keySt,
+                  map:mapSnap(), hlK: exists ? key : undefined,
+                  vars:{i:wi, s:LCesc(s), key:LCesc(key)}})});
+
+      if(!exists){
+        F.push({hl:[7], tag:'开新组', cls:'t-orange',
+          msg:'执行 <code>groups["' + LCesc(key) + '"] = []</code>：新组开张（表里多出 "' + LCesc(key) + '" 一行、黄色高亮，名单先空着）。为什么上面非要先判"钥匙不在"才开组？若见到词就无脑赋空列表，会把老组整段清空、组员全丢。顺序也不能反：先 <code>append</code> 会撞上"列表还不存在"。',
+          do: draw({wst:wordsStates(wi), wmk:wordsMarks(wi), keyArr:keyArr, keySt:keySt,
+                    map:mapSnap().concat([[key, '']]), hlK:key,
+                    vars:{i:wi, s:LCesc(s), key:LCesc(key)}})});
+        groups.set(key, []);
+      }
+
+      groups.get(key).push(s);
+      F.push({hl:[8], tag:'飞入', cls:'t-green',
+        msg:'执行 <code>groups[key].append(s)</code>："' + LCesc(s) + '" 飞进 "' + LCesc(key) + '" 组（该行高亮），名单更新为 <b>[' + groups.get(key).map(w => LCesc(w)).join(', ') + ']</b>。这一行对新老钥匙通用：新组的第一名成员、老组的后来者，走的都是同一个 append——所以上一步才要先保证组存在。异位词之间不用互相认识，钥匙相同就自动聚成一群。',
+        do: draw({wst:wordsStates(wi), wmk:wordsMarks(wi), keyArr:keyArr, keySt:keySt,
+                  map:mapSnap(), hlK:key,
+                  vars:{i:wi, s:LCesc(s), key:LCesc(key)}})});
+    }
+
+    F.push({hl:[9], tag:'返回', cls:'t-dark',
+      msg:'所有 ' + strs.length + ' 个词都归队了！<code>groups.values()</code> 里每串名单就是一组异位词，共 <b>' + groups.size + '</b> 组（结果面板已亮出）🎉 复盘：从头到尾没有把任何两个词两两比较过——每个词只做一次排序（词长 k 就是 O(k log k)）加一次 O(1) 入表，全靠"钥匙相同就是一家人"让哈希表自动归堆，总复杂度 O(n·k log k)。',
+      do: draw({wst:allDone(), map:mapSnap(), result:Array.from(groups.values()),
+                vars:{'组数':groups.size}})});
+    return F;
+  }
+});
+</script>
+</body>
+</html>

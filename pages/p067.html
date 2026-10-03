@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P067 · 寻找两个正序数组的中位数 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 67, num: 4, title: '寻找两个正序数组的中位数', diff: '困难', cat: '二分查找',
+  method: 'findMedianSortedArrays',
+
+  lede: '题目：两个<b>已排序</b>数组，O(log(m+n)) 找出合并后的中位数（偶数个取中间两个的平均）。' +
+        '动画演<b>第 k 小淘汰赛</b>：<span class="var r">a</span>、<span class="var r">b</span> 是两边的"存活窗口"（灰格 = 已淘汰），' +
+        '每轮两边各派第 <code>k/2</code> 个比武——输的一方<b>整队淘汰</b>，<span class="var i">k</span> 随之缩水，右侧调用栈记录每层递归。',
+
+  roles: [
+    {c:'blue',   code:'a / b', text:'两边的存活窗口（起点后的格子还活着）'},
+    {c:'orange', code:'a[i-1] / b[j-1]', text:'本轮出场的两个代表'},
+    {c:'blue',   code:'k',     text:'还差：要找合并后第 k 小'},
+    {c:'violet', code:'调用栈', text:'每层递归一个 k，层层返回'}
+  ],
+
+  codeTitle: '跟着高亮读代码——第 12 行变<span style="color:var(--green)">绿</span>＝a 的代表不大于 b 的代表（淘汰 a 前 i 个），变<span style="color:var(--red)">红</span>＝淘汰 b 的前 j 个。',
+
+  legend: [
+    {c:'blue', text:'存活窗口内的格子'},
+    {c:'orange', text:'本轮出场的代表'},
+    {swatch:'var(--violet-soft)', text:'紫格 = 本层答案所在的格子'},
+    {swatch:'var(--grey-soft)', text:'灰格 = 已淘汰'}
+  ],
+
+  idea: '找第 k 小不必合并：两边各看第 k/2 个，较小的那一批前 k/2 个绝不可能是第 k 名——整队淘汰，k 每轮砍半，log 轮见分晓。',
+
+  qa: [
+    {q:'凭什么敢一次淘汰 k/2 个？',
+     a:'设 a 的第 i 个 ≤ b 的第 j 个（i、j ≤ k/2）。a 的前 i 个每个前面最多只有 (i−1) + (j−1) ≤ k−2 个数比它小或与它相等排在前面，所以它们<b>排名都挤不进前 k</b>，第 k 小绝不在其中——整段扔掉绝对安全，答案不变。'},
+    {q:'k 是奇数时 k//2 怎么办？i 或 j 超出数组长度怎么办？',
+     a:'<code>i = min(k//2, len(a))</code>：a 没那么多存货就全押上；两边取的个数不同也没关系——论证只要求"较少一方的个数 ≤ k/2"。k 为奇数时淘汰 k//2 个（向下取整），k 每轮至少减 1，照样收敛。'},
+    {q:'为什么交换保证 a 更短？',
+     a:'<code>len(a) &gt; len(b)</code> 时先交换。这样"i 被 len(a) 截断"只发生在短数组上，边界情况只剩一种；同时 a 空的判定也简单：a 空了答案直接是 b 的第 k 个。'},
+    {q:'复杂度为什么是 O(log(m+n))？',
+     a:'每轮 k 至少砍半（淘汰 min(i,j) ≥ … 个），递归深度 O(log k) = O(log(m+n))；每层只做 O(1) 次比较。对比"合并再取中"的 O(m+n)，这正是本题要求 log 的意义。'}
+  ],
+
+  complexity: '时间 O(log(m+n))　·　空间 O(log(m+n))（递归栈）',
+
+  form: [
+    {key:'nums1', label:'nums1', type:'arr', def:[1,3]},
+    {key:'nums2', label:'nums2', type:'arr', def:[2]}
+  ],
+  presets: [
+    {label:'[1,3] 和 [2]（奇数个）', values:{nums1:[1,3], nums2:[2]}},
+    {label:'[1,2] 和 [3,4]（偶数个）', values:{nums1:[1,2], nums2:[3,4]}},
+    {label:'[1,3,5,7] 和 [2,4,6]（多层递归）', values:{nums1:[1,3,5,7], nums2:[2,4,6]}},
+    {label:'[0,0] 和 [0,0]（重复数）', values:{nums1:[0,0], nums2:[0,0]}}
+  ],
+
+  code: `class Solution:
+    def findMedianSortedArrays(self, nums1, nums2):
+        def kth(a, b, k):                 # 合并后第 k 小(k 从 1 起)
+            if len(a) > len(b):           # 让 a 恒为较短的那个
+                return kth(b, a, k)
+            if not a:                     # a 空了: 答案就是 b 的第 k 个
+                return b[k - 1]
+            if k == 1:                    # 两边都非空: 小者即第 1 小
+                return min(a[0], b[0])
+            i = min(k // 2, len(a))       # a 派第 i 个应战
+            j = min(k // 2, len(b))       # b 派第 j 个应战
+            if a[i - 1] <= b[j - 1]:      # a 的第 i 个不大于 b 的第 j 个
+                return kth(a[i:], b, k - i)   # a 前 i 个挤不进前 k 名, 淘汰
+            return kth(a, b[j:], k - j)       # 否则淘汰 b 的前 j 个
+        total = len(nums1) + len(nums2)
+        if total % 2:                     # 奇数: 中位数 = 正中那一个
+            return kth(nums1, nums2, total // 2 + 1)
+        return (kth(nums1, nums2, total // 2) +      # 偶数: 中间两个取平均
+                kth(nums1, nums2, total // 2 + 1)) / 2
+`,
+
+  sol(input){
+    const a0 = input.nums1, b0 = input.nums2;
+    function kth(a, b, k){
+      if(a.length > b.length) return kth(b, a, k);
+      if(!a.length) return b[k - 1];
+      if(k === 1) return Math.min(a[0], b[0]);
+      const i = Math.min(k >> 1, a.length);
+      const j = Math.min(k >> 1, b.length);
+      if(a[i - 1] <= b[j - 1]) return kth(a.slice(i), b, k - i);
+      return kth(a, b.slice(j), k - j);
+    }
+    const total = a0.length + b0.length;
+    if(total % 2) return kth(a0, b0, (total >> 1) + 1);
+    return (kth(a0, b0, total >> 1) + kth(a0, b0, (total >> 1) + 1)) / 2;
+  },
+  expected: 2,
+
+  quiz: [
+    {q:'比武中 a 的代表 ≤ b 的代表,被判「整队淘汰」的是哪一侧?为什么?',
+     options:['b 队——它的代表更大,先出局','a 队的前 i 个——他们<b>太小</b>:每个前面最多只有 k−2 个数,连前 k 名都挤不进,绝不可能成为第 k 小;代表大的 b 队反而继续留场','随机挑一边,反正都能淘汰一半'],
+     answer:1,
+     explain:'方向感容易记反:淘汰的理由是「太小、当不上第 k 名」,不是「太大」。a 的第 i 个 ≤ b 的第 j 个,说明 b 从第 j 个起整段 ≥ a 的前 i 个——a 这 i 个前面最多 i−1 + j−1 ≤ k−2 个数,最远排第 k−1 位,第 k 小绝不在其中,扔掉零风险。而 b 的代表比 a 的大,b 侧完全可能藏着第 k 小,一个都不敢动。记住:比的是谁更没资格当前 k 名。',
+     jumpTo:9},
+    {q:'代入算一算:nums1 = [5,6,7]、nums2 = [1,2,3],合并后的中位数是多少?',
+     options:['3','4','4.5','5'],
+     answer:1,
+     explain:'合并排序是 [1,2,3,5,6,7],共 6 个(偶数),中位数 = (第 3 小 + 第 4 小) ÷ 2 = (3 + 5) ÷ 2 = <b>4</b>。注意两数组并不是"前半后半"关系而是交错咬合:5、6、7 全部大于 1、2、3——找第 3 小时,代表比武几轮就把 nums2 前排和 nums1 的前排逐一淘汰干净。选 4.5 的人把第 3、4 小认成了 3 和 6;选 3 的人只取了中间偏左没取平均。',
+     jumpTo:17},
+    {q:'淘汰 a 的前 i 个之后,为什么递归找的是「第 k − i 小」,而不是继续找「第 k 小」?',
+     options:['因为 a 变短了,数字也要跟着变','出局的 i 个全部排在目标<b>前面</b>——它们"退赛"后目标名次自动前进 i 位:存活者里的第 k−i 小就是原来的第 k 小,同一个数换了座位号','为了让递归快点结束,随意减的'],
+     answer:1,
+     explain:'上一步已论证:被淘汰的 i 个里没有第 k 名,且它们个个排在它前面。好比长跑,你前面的 i 名退赛,你的名次自动前进 i 位——人没变,序号变了。所以下一层在存活窗口里找第 k−i 小,拿回来的就是本层要的第 k 小。k 一轮至少减 1、通常砍半,减到 1(两队首比大小)或 a 被掏空(直接抄 b 的第 k 个)就触底返回。',
+     jumpTo:10},
+  ],
+
+  steps(input){
+    const F = [];
+    const nums1 = input.nums1, nums2 = input.nums2;
+    const total = nums1.length + nums2.length;
+    let seq = 0;
+
+    const vals = ref => (ref.arr === 0 ? nums1 : nums2).slice(ref.start);
+
+    // 两个数组的着色快照：ref = {arr:0|1, start}；hot = [{arr, idx, st}] 覆盖色
+    function paint(ra, rb, hot){
+      function one(ai){
+        const arr = ai === 0 ? nums1 : nums2;
+        const ref = ra.arr === ai ? ra : rb;
+        const s = {};
+        for(let t = 0; t < arr.length; t++) s[t] = (ref && t >= ref.start) ? 'in' : 'muted';
+        return s;
+      }
+      const s1 = one(0), s2 = one(1);
+      (hot || []).forEach(h => { (h.arr === 0 ? s1 : s2)[h.idx] = h.st; });
+      return [s1, s2];
+    }
+    function roleTags(ra, rb){
+      return [
+        ra.arr === 0 ? 'a = nums1[' + ra.start + ':]' : 'b = nums1[' + rb.start + ':]',
+        ra.arr === 1 ? 'a = nums2[' + ra.start + ':]' : 'b = nums2[' + rb.start + ':]'
+      ];
+    }
+    const draw = (o) => (v) => {
+      const tags = o.tags || ['', ''];
+      v.arr('n1', nums1, {label:'数组 <code>nums1</code>　·　' + tags[0], states:o.s1 || {}, labels:o.lb1 || {}});
+      v.arr('n2', nums2, {label:'数组 <code>nums2</code>　·　' + tags[1], states:o.s2 || {}, labels:o.lb2 || {}});
+      v.stack('rec', o.stack || [], {label:'递归调用栈（顶 = 正在算的这层）', topTag:'栈顶', states:o.sst || {}});
+      v.vars('vars', o.vars || {}, {label:'当前层的变量'});
+      if(o.res !== undefined) v.result(o.res, {label:'中位数'});
+    };
+
+    // 一层 kth 的完整动画（镜像 Python 递归），返回该层求出的第 k 小
+    function run(ra, rb, k, stack){
+      const id = 'c' + (++seq);
+      stack.push({key:id, val:'kth(k=' + k + ')'});
+      const sst = () => { const o = {}; o[id] = 'active'; return o; };
+      const tags = () => roleTags(ra, rb);
+      const vv = extra => Object.assign({
+        k:k,
+        a:'nums' + (ra.arr + 1) + '[' + ra.start + ':]',
+        b:'nums' + (rb.arr + 1) + '[' + rb.start + ':]',
+        i:'—', j:'—'
+      }, extra || {});
+
+      let p1, p2;
+      [p1, p2] = paint(ra, rb);
+      F.push({hl:[3], tag:'进入调用', cls:'t-blue',
+        msg:'进入一层 <code>kth</code>：存活窗口 a = <code>' + vv().a + '</code> = [' + vals(ra).join(', ') + ']，b = <code>' + vv().b + '</code> = [' + vals(rb).join(', ') + ']，灰格是之前轮次淘汰出局的，亮格才有参赛资格。本层任务：在存活者里找第 <b>' + k + '</b> 小——深层递归里这个 k 已比最初小：每淘汰一批，被淘汰的都排在目标前面，目标的名次就往前挪。右侧调用栈压入新帧，栈顶就是正在算的这层。',
+        do: draw({s1:p1, s2:p2, tags: tags(), stack: stack.slice(), sst: sst(), vars: vv()})});
+
+      if(vals(ra).length > vals(rb).length){
+        [p1, p2] = paint(ra, rb);
+        F.push({hl:[4,5], ok:4, tag:'交换', cls:'t-violet',
+          msg:'本层 a 有 ' + vals(ra).length + ' 个、b 只有 ' + vals(rb).length + ' 个，a 反而更长 → 4 行成立，<b>交换</b>两边。为什么强求 a 恒短？下一步 <code>i = min(k//2, len(a))</code> 里"存货不足、全押上"的截断只可能砸在短数组头上——固定让 a 短，特殊边界就只剩一种，不容易漏。画面此刻是交换前的站位，下一帧起 a、b 对调。',
+          do: draw({s1:p1, s2:p2, tags: tags(), stack: stack.slice(), sst: sst(), vars: vv()})});
+        const tmp = ra; ra = rb; rb = tmp;
+      } else {
+        [p1, p2] = paint(ra, rb);
+        F.push({hl:[4], no:4, tag:'长度检查', cls:'t-ink',
+          msg:'a 有 ' + vals(ra).length + ' 个，不长于 b 的 ' + vals(rb).length + ' 个 → 4 行不成立，不用交换直接开工。约定"短者为 a"的好处现在兑现：<code>i = min(k//2, len(a))</code> 里"存货不足全押上"的截断只可能发生在 a 上，b 那边只会正常出牌——边界少想一半。',
+          do: draw({s1:p1, s2:p2, tags: tags(), stack: stack.slice(), sst: sst(), vars: vv()})});
+      }
+
+      if(vals(ra).length === 0){
+        const ans = vals(rb)[k - 1];
+        const hot = [{arr:rb.arr, idx:rb.start + k - 1, st:'target'}];
+        [p1, p2] = paint(ra, rb, hot);
+        F.push({hl:[6,7], ok:6, tag:'a 空了', cls:'t-green',
+          msg:'a 被淘汰光了（存活 0 个）→ 6 行成立，递归出口到了。为什么能直接抄答案？b 本身<b>有序</b>，存活窗口里剩的就是全部候选，第 ' + k + ' 小当然是 <code>b[' + (k - 1) + '] = ' + ans + '</code>（紫色那格）。一路淘汰把一边掏空，问题就退化成"在单个有序数组里取第 k 个"，O(1) 收工。',
+          do: draw({s1:p1, s2:p2, tags: tags(), stack: stack.slice(), sst: sst(), vars: vv()})});
+        stack.pop();
+        [p1, p2] = paint(ra, rb, hot);
+        F.push({hl:[7], tag:'返回 ' + ans, cls:'t-green',
+          msg:'kth 返回 <b>' + ans + '</b>：本层收工，栈顶弹出、答案交还上层；若这已是最外层调用，它就是最终答案。',
+          do: draw({s1:p1, s2:p2, tags: tags(), stack: stack.slice(), sst: sst(), vars: vv()})});
+        return ans;
+      }
+      [p1, p2] = paint(ra, rb);
+      F.push({hl:[6,7], no:6, tag:'a 有货', cls:'t-ink',
+        msg:'a 还剩 ' + vals(ra).length + ' 个，没被掏空 → 6 行不成立（7 行是给"a 空了"准备的出口，换个用例多淘汰几轮就会真的走到）。下一个出口是 k == 1：看看是不是只差最后一个数了。',
+        do: draw({s1:p1, s2:p2, tags: tags(), stack: stack.slice(), sst: sst(), vars: vv()})});
+
+      if(k === 1){
+        const va = vals(ra), vb = vals(rb);
+        const pickA = va[0] <= vb[0];
+        const ans = Math.min(va[0], vb[0]);
+        const hot = [{arr:ra.arr, idx:ra.start, st: pickA ? 'target' : 'active'},
+                     {arr:rb.arr, idx:rb.start, st: pickA ? 'active' : 'target'}];
+        [p1, p2] = paint(ra, rb, hot);
+        F.push({hl:[8,9], ok:8, tag:'第 1 小', cls:'t-green',
+          msg:'<code>k = 1</code> 且两边都非空 → 8 行成立，出口到了：两个存活窗口各自<b>有序</b>，全局最小必然站在两个队首之一，<code>min(' + va[0] + ', ' + vb[0] + ') = ' + ans + '</code>（紫色那格）。为什么 k = 1 要单独处理？比武规则要派"第 k//2 个"代表，k//2 = 0 时没有"第 0 个"可派，只能直接亮牌定胜负。',
+          do: draw({s1:p1, s2:p2, tags: tags(), stack: stack.slice(), sst: sst(), vars: vv()})});
+        stack.pop();
+        [p1, p2] = paint(ra, rb, hot);
+        F.push({hl:[9], tag:'返回 ' + ans, cls:'t-green',
+          msg:'kth 返回 <b>' + ans + '</b>：本层收工，栈顶弹出、答案交还上层；若这已是最外层调用，它就是最终答案。',
+          do: draw({s1:p1, s2:p2, tags: tags(), stack: stack.slice(), sst: sst(), vars: vv()})});
+        return ans;
+      }
+      [p1, p2] = paint(ra, rb);
+      F.push({hl:[8], no:8, tag:'还不到第 1 小', cls:'t-ink',
+        msg:'<code>k = ' + k + ' &gt; 1</code> → 8 行不成立，进入淘汰环节。本轮规则：两边各派第 <code>k//2 = ' + (k >> 1) + '</code> 个代表比武（k ≥ 2 才有代表可派），谁家代表小，谁家的前 i（或 j）个<b>整队出局</b>。别小看这一比——它能一次安全淘汰一大截，下面几帧细说为什么。',
+        do: draw({s1:p1, s2:p2, tags: tags(), stack: stack.slice(), sst: sst(), vars: vv()})});
+
+      const i = Math.min(k >> 1, vals(ra).length);
+      const ai = ra.start + i - 1;
+      [p1, p2] = paint(ra, rb, [{arr:ra.arr, idx:ai, st:'active'}]);
+      F.push({hl:[10], tag:'a 派代表', cls:'t-blue',
+        msg:'a 派代表：<code>i = min(k//2, len(a)) = min(' + (k >> 1) + ', ' + vals(ra).length + ') = ' + i + '</code>。存货充足（len(a) ≥ k//2）就按规矩派第 k//2 个；存货不足就<b>倾巢而出</b>全押上——安全论证并不要求两边派一样多，只要求"淘汰个数 ≤ k//2"。出场的是 a 的第 ' + i + ' 个：值 <b>' + vals(ra)[i - 1] + '</b>（橙格）。',
+        do: draw({s1:p1, s2:p2, tags: tags(),
+                  lb1: ra.arr === 0 ? (function(){ const o = {}; o[ai] = 'a 第' + i + '个'; return o; })() : {},
+                  lb2: ra.arr === 1 ? (function(){ const o = {}; o[ai] = 'a 第' + i + '个'; return o; })() : {},
+                  stack: stack.slice(), sst: sst(), vars: vv({i:i})})});
+      const j = Math.min(k >> 1, vals(rb).length);
+      const bj = rb.start + j - 1;
+      [p1, p2] = paint(ra, rb, [{arr:rb.arr, idx:bj, st:'active'}]);
+      F.push({hl:[11], tag:'b 派代表', cls:'t-blue',
+        msg:'b 派代表：<code>j = min(k//2, len(b)) = min(' + (k >> 1) + ', ' + vals(rb).length + ') = ' + j + '</code> → b 的第 ' + j + ' 个（值 <b>' + vals(rb)[j - 1] + '</b>，橙格）出场。两位代表到齐，马上正面对决——注意两边取的个数可以不同，这不影响淘汰的安全性。',
+        do: draw({s1:p1, s2:p2, tags: tags(),
+                  lb1: rb.arr === 0 ? (function(){ const o = {}; o[bj] = 'b 第' + j + '个'; return o; })() : {},
+                  lb2: rb.arr === 1 ? (function(){ const o = {}; o[bj] = 'b 第' + j + '个'; return o; })() : {},
+                  stack: stack.slice(), sst: sst(), vars: vv({j:j})})});
+
+      const awin = vals(ra)[i - 1] <= vals(rb)[j - 1];
+      [p1, p2] = paint(ra, rb, [{arr:ra.arr, idx:ai, st:'active'}, {arr:rb.arr, idx:bj, st:'active'}]);
+      F.push({hl:[12,13,14], ok: awin ? 12 : undefined, no: awin ? undefined : 12,
+        tag:'比武', cls: awin ? 't-green' : 't-red',
+        msg: awin
+          ? '<b>比武</b>：a 的代表 <code>a[' + (i - 1) + '] = ' + vals(ra)[i - 1] + '</code> ≤ b 的代表 <code>b[' + (j - 1) + '] = ' + vals(rb)[j - 1] + '</code>（12 行变绿）。<b>为什么敢一次淘汰 a 的前 ' + i + ' 个？</b>两边各自有序：a 的前 ' + i + ' 个是 a 存活段里最小的 ' + i + ' 个，而 b 的第 ' + j + ' 个 ≥ a 的第 ' + i + ' 个，说明 b 从第 ' + j + ' 个起<b>整段</b>都 ≥ 它们。于是这 ' + i + ' 个里随便哪一个，敢排在它前面的最多是：a 这边 ' + (i - 1) + ' 个 + b 那边前 ' + (j - 1) + ' 个里严格更小的那些，合计 ≤ ' + (i + j - 2) + '（≤ k − 2）个 → 它最远排到第 ' + (i + j - 1) + ' 位，到不了第 ' + k + ' 位——<b>第 ' + k + ' 名绝不在其中</b>，整队淘汰毫发无损。走 13 行。'
+          : '<b>比武</b>：a 的代表 <code>a[' + (i - 1) + '] = ' + vals(ra)[i - 1] + '</code> &gt; b 的代表 <code>b[' + (j - 1) + '] = ' + vals(rb)[j - 1] + '</code>（12 行不成立变红）。把上一帧的论证 a、b 角色互换<b>原样照抄</b>：b 的第 ' + j + ' 个更小 → b 的前 ' + j + ' 个是 b 存活段里最小的 ' + j + ' 个，而 a 从第 ' + i + ' 个起整段都 &gt; 它们——这 ' + j + ' 个里任何一个前面最多 ' + (i + j - 2) + '（≤ k − 2）个，最远排到第 ' + (i + j - 1) + ' 位，<b>第 ' + k + ' 名也绝不在其中</b>，走 14 行整队淘汰。两个数组在规则面前完全平等：谁家代表小，谁家前排出局。',
+        do: draw({s1:p1, s2:p2, tags: tags(),
+                  lb1: (function(){ const o = {}; o[ai] = 'a[' + (i - 1) + ']'; return o; })(),
+                  lb2: (function(){ const o = {}; o[bj] = 'b[' + (j - 1) + ']'; return o; })(),
+                  stack: stack.slice(), sst: sst(), vars: vv({i:i, j:j})})});
+
+      if(awin){
+        const newA = {arr:ra.arr, start:ra.start + i};
+        const hot = [];
+        for(let t = ra.start; t < newA.start; t++) hot.push({arr:ra.arr, idx:t, st:'stale'});
+        const na = 'nums' + (newA.arr + 1) + '[' + newA.start + ':]';
+        const nb = 'nums' + (rb.arr + 1) + '[' + rb.start + ':]';
+        [p1, p2] = paint(newA, rb, hot);
+        F.push({hl:[13], tag:'淘汰 a 前 ' + i + ' 个', cls:'t-orange',
+          msg:'a 的前 ' + i + ' 个（值 ' + vals(ra).slice(0, i).join(', ') + '）出局（虚框，随后变灰）。为什么 k 要减成 ' + (k - i) + '？这 ' + i + ' 个全排在目标<b>前面</b>（上一帧已证）——好比赛跑里你前面的 ' + i + ' 名退赛了，你的名次自动前进 ' + i + ' 位：原第 ' + k + ' 小在存活者里正好退居第 <b>' + (k - i) + '</b> 小 → 递归 <code>kth</code> 交给下一层。',
+          do: draw({s1:p1, s2:p2, tags: roleTags(newA, rb), stack: stack.slice(), sst: sst(),
+                    vars:{k:(k - i), a:na, b:nb, i:'—', j:'—'}})});
+        const sub = run(newA, rb, k - i, stack);
+        stack.pop();
+        [p1, p2] = paint(newA, rb);
+        F.push({hl:[13], tag:'本层返回', cls:'t-green',
+          msg:'下一层带回第 ' + (k - i) + ' 小 = <b>' + sub + '</b>。它为什么就是本层的答案？本层要的是"存活者里的第 ' + k + ' 小"，而出局的 ' + i + ' 个全排在它前面——同一批存活者里，"第 ' + (k - i) + ' 小"和"第 ' + k + ' 小"是同一个人。原样上交，本层出栈。',
+          do: draw({s1:p1, s2:p2, tags: roleTags(newA, rb), stack: stack.slice(),
+                    vars:{k:k, a:na, b:nb, i:'—', j:'—'}})});
+        return sub;
+      }
+      const newB = {arr:rb.arr, start:rb.start + j};
+      const hot2 = [];
+      for(let t = rb.start; t < newB.start; t++) hot2.push({arr:rb.arr, idx:t, st:'stale'});
+      const na2 = 'nums' + (ra.arr + 1) + '[' + ra.start + ':]';
+      const nb2 = 'nums' + (newB.arr + 1) + '[' + newB.start + ':]';
+      [p1, p2] = paint(ra, newB, hot2);
+      F.push({hl:[14], tag:'淘汰 b 前 ' + j + ' 个', cls:'t-orange',
+        msg:'b 的前 ' + j + ' 个（值 ' + vals(rb).slice(0, j).join(', ') + '）出局（虚框，随后变灰）。同理 k 减成 ' + (k - j) + '：出局的 ' + j + ' 个都排在目标前面，它们"退赛"后，目标的名次前进 ' + j + ' 位——原第 ' + k + ' 小在存活者里正好是第 <b>' + (k - j) + '</b> 小 → 递归 <code>kth</code>。',
+        do: draw({s1:p1, s2:p2, tags: roleTags(ra, newB), stack: stack.slice(), sst: sst(),
+                  vars:{k:(k - j), a:na2, b:nb2, i:'—', j:'—'}})});
+      const sub2 = run(ra, newB, k - j, stack);
+      stack.pop();
+      [p1, p2] = paint(ra, newB);
+      F.push({hl:[14], tag:'本层返回', cls:'t-green',
+        msg:'下一层带回第 ' + (k - j) + ' 小 = <b>' + sub2 + '</b>——出局的 ' + j + ' 个都在它前面，"存活者的第 ' + (k - j) + ' 小"与"第 ' + k + ' 小"是同一个数。原样上交，本层出栈。',
+        do: draw({s1:p1, s2:p2, tags: roleTags(ra, newB), stack: stack.slice(),
+                  vars:{k:k, a:na2, b:nb2, i:'—', j:'—'}})});
+      return sub2;
+    }
+
+    const pStart = paint({arr:0, start:0}, {arr:1, start:0});
+    F.push({hl:[1,2], tag:'开场', cls:'t-grey',
+      msg:'nums1 = [' + nums1.join(', ') + ']，nums2 = [' + nums2.join(', ') + ']，合并共 ' + total + ' 个数，中位数就藏在正中间。<b>不合并</b>（合并要 O(m+n)，题目偏要 log）——改打"第 k 小淘汰赛"：每轮两边各派第 k//2 个代表比武，<b>输的一方整队淘汰</b>，k 随之缩水，约 log 轮见分晓。画面上两张表的亮格是"存活窗口"（灰格 = 已出局的），右侧调用栈每层递归记一个 k。',
+      do: draw({s1:pStart[0], s2:pStart[1], tags:['a = nums1[0:]', 'b = nums2[0:]'], stack:[],
+                vars:{k:'—', a:'nums1[0:]', b:'nums2[0:]', i:'—', j:'—'}})});
+
+    if(total % 2){
+      const k = (total >> 1) + 1;
+      F.push({hl:[15,16,17,18,19], ok:16, tag:'奇数个', cls:'t-blue',
+        msg:'total = ' + total + ' 是<b>奇数</b> → 16 行成立：中位数 = 正中那<b>一个</b>。total 个排好序的数里，正中那位的序号恰好是 total//2 + 1 = <b>' + k + '</b>（比如 3 个数的正中是第 2 个）——任务收拢成一句话：找第 ' + k + ' 小。18~19 行的偶数分支（中间两个取平均）这次不执行，[1,2] [3,4] 预设会演示。开找！',
+        do: draw({s1:pStart[0], s2:pStart[1], tags:['a = nums1[0:]', 'b = nums2[0:]'], stack:[],
+                  vars:{k:k, a:'nums1[0:]', b:'nums2[0:]', i:'—', j:'—'}})});
+      const ans = run({arr:0, start:0}, {arr:1, start:0}, k, []);
+      F.push({hl:[17], tag:'收工', cls:'t-dark',
+        msg:'第 ' + k + ' 小 = <b>' + ans + '</b>，total 是奇数，它就是中位数 🎉 复盘：每一轮都靠"输的一队整队淘汰"把 k 砍掉一小半，自始至终没动过两个数组的其他元素。下方把两数组真的合并排好序验证——是 [' + nums1.concat(nums2).sort((x, y) => x - y).join(', ') + ']，正中间那位正是 ' + ans + '，对上了。',
+        do: draw({s1:pStart[0], s2:pStart[1], tags:['a = nums1[0:]', 'b = nums2[0:]'], stack:[],
+                  vars:{k:k, a:'—', b:'—', i:'—', j:'—'}, res: ans})});
+      return F;
+    }
+
+    const k1 = total >> 1;
+    F.push({hl:[15,16,18,19], no:16, tag:'偶数个', cls:'t-blue',
+      msg:'total = ' + total + ' 是<b>偶数</b> → 16 行不成立，走 18~19 行：偶数个数的正中夹着<b>两个</b>数（比如 4 个数的正中是第 2、第 3 个），中位数 = (第 ' + k1 + ' 小 + 第 ' + (k1 + 1) + ' 小) ÷ 2。这意味着要打<b>两轮</b>第 k 小淘汰赛——先找第 ' + k1 + ' 小：',
+      do: draw({s1:pStart[0], s2:pStart[1], tags:['a = nums1[0:]', 'b = nums2[0:]'], stack:[],
+                vars:{k:k1, a:'nums1[0:]', b:'nums2[0:]', i:'—', j:'—'}})});
+    const m1 = run({arr:0, start:0}, {arr:1, start:0}, k1, []);
+    {
+      const [q1, q2] = paint({arr:0, start:0}, {arr:1, start:0});
+      F.push({hl:[18], tag:'左中位数', cls:'t-green',
+        msg:'第 ' + k1 + ' 小 = <b>' + m1 + '</b> 到手（左边那位正中数）。还差一位：再来一轮淘汰赛找第 ' + (k1 + 1) + ' 小——注意这是从<b>原始数组</b>重新开始的独立查询：存活窗口全部复位（灰格复活），调用栈也从零压起。',
+        do: draw({s1:q1, s2:q2, tags:['a = nums1[0:]', 'b = nums2[0:]'], stack:[],
+                  vars:{k:(k1 + 1), a:'nums1[0:]', b:'nums2[0:]', i:'—', j:'—'}})});
+    }
+    const m2 = run({arr:0, start:0}, {arr:1, start:0}, k1 + 1, []);
+    const med = (m1 + m2) / 2;
+    F.push({hl:[18,19], tag:'收工', cls:'t-dark',
+      msg:'(第 ' + k1 + ' 小 + 第 ' + (k1 + 1) + ' 小) ÷ 2 = (' + m1 + ' + ' + m2 + ') ÷ 2 = <b>' + med + '</b> → 中位数 🎉 复盘复杂度：每轮比武至少淘汰 1 个、通常约 k/2 个，k 从 ' + total + ' 一路砍半到 1，递归深度 O(log(m+n))，每层只做 O(1) 次比较——这正是题目敢要求 log 的底气；对比"合并再取中"的 O(m+n)，数组越大越划算。',
+      do: draw({s1:pStart[0], s2:pStart[1], tags:['a = nums1[0:]', 'b = nums2[0:]'], stack:[],
+                vars:{k:'—', a:'—', b:'—', i:'—', j:'—'}, res: med})});
+    return F;
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P029 · 删除链表的倒数第 N 个结点 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 29, num: 19, title: '删除链表的倒数第 N 个结点', diff: '中等', cat: '链表',
+  method: 'removeNthFromEnd',
+
+  lede: '题目：删掉链表中<b>倒数第 n 个</b>节点（n 从 1 算起），返回新链表，要求尽量一趟扫完。' +
+        '难点是"倒数"——单链表不能回头。妙招：<span class="var r">fast</span> 先走 n+1 步打头阵，' +
+        '然后 <span class="var i">slow</span> 和它手拉手同步走；fast 撞到 null 时，slow 不多不少正好站在<b>被删节点的前一个</b>，' +
+        '一步 <span class="var v">slow.next = slow.next.next</span> 就把目标摘掉了。',
+
+  roles: [
+    {c:'blue',   code:'fast',  text:'先走的探路针，负责"量距离"'},
+    {c:'orange', code:'slow',  text:'后走的，最终停在被删节点的前一个'},
+    {c:'violet', code:'dummy', text:'哑节点：就算删的是头，slow 也有地方站'}
+  ],
+
+  codeTitle: '跟着高亮读代码——<code>while fast</code> 行变<span style="color:var(--green)">绿</span>＝fast 还没走到尾，两针继续同步；变<span style="color:var(--red)">红</span>＝fast 到了 null，slow 已经就位。',
+
+  legend: [
+    {c:'blue', text:'fast 先走 n+1 步'},
+    {c:'orange', text:'slow 停在被删节点前一个'},
+    {c:'violet', text:'虚线节点：即将被删'}
+  ],
+
+  idea: '用"距离"换"回头"：fast 先走 n+1 步，让两针永远隔着 n+1；fast 落到 null 时，slow 与末尾恰好隔 n 个——它就是被删节点的前驱，一步跳过即可。',
+
+  qa: [
+    {q:'为什么 dummy 哑节点是必需的？',
+     a:'删除节点要改的是"<b>前一个</b>节点的 next"。如果删的是头节点，它没有前一个——dummy 恰好补上这个位置：slow 停在 dummy 上，<code>slow.next = slow.next.next</code> 照样能删头，代码零特判。'},
+    {q:'fast 为什么先走 n+1 步，而不是 n 步？',
+     a:'要让 slow 停在<b>被删节点的前一个</b>，slow 与链尾（null）要隔着 n 个节点，所以两针间隔得是 n+1。fast 从 dummy 出发走 n+1 步后落地，之后同步走，fast 变 null 时距离刚好对上。'},
+    {q:'这真的是"一趟扫描"吗？',
+     a:'是。fast 从头走到尾，slow 跟着走一小段，两个指针都只前进不后退，总移动次数是 O(N) 常数倍——比"先数长度再删"的两趟法更优。'},
+    {q:'n 正好等于链表长度会怎样？',
+     a:'那就是删头。fast 先走 n+1 步直接落到 null，同步循环一次都不跑，slow 留在 dummy 上——删除动作不变，返回 dummy.next 就是第二个节点。动画预设里有这个例子。'}
+  ],
+
+  complexity: '时间 O(N)（一趟扫描）　·　空间 O(1)',
+
+  form: [
+    {key:'head', label:'head', type:'list', def:[1,2,3,4,5]},
+    {key:'n', label:'n', type:'num', def:2}
+  ],
+  presets: [
+    {label:'1→2→3→4→5, n=2', values:{head:[1,2,3,4,5], n:2}},
+    {label:'删头：n=5', values:{head:[1,2,3,4,5], n:5}},
+    {label:'单节点 7, n=1', values:{head:[7], n:1}},
+    {label:'1→2, n=2', values:{head:[1,2], n:2}}
+  ],
+
+  code: `class Solution:
+    def removeNthFromEnd(self, head, n):
+        dummy = ListNode(0, head)     # 哑节点: 删头也不用特判
+        fast = slow = dummy
+        for _ in range(n + 1):        # fast 先走 n+1 步
+            fast = fast.next
+        while fast:                   # 两个一起走到尾
+            fast = fast.next
+            slow = slow.next
+        slow.next = slow.next.next    # 跳过被删节点
+        return dummy.next
+`,
+
+  sol(input){
+    const a = (input.head || []).filter(x => x != null);
+    const n = Math.min(Math.max(1, Math.round(Number(input.n) || 1)), a.length);
+    let fast = -1, slow = -1;               // -1 = dummy，a.length = null
+    for(let s = 0; s < n + 1; s++) fast++;  // fast 先走 n+1 步
+    while(fast < a.length){ fast++; slow++; }
+    return a.filter((_, i) => i !== slow + 1);
+  },
+  expected: [1,2,3,5],
+
+  quiz: [
+    {q:'fast 为什么要先走 n+1 步，而不是 n 步？',
+     options:['多走一步只是保险，先走 n 步结果完全一样','要让 slow 停在被删节点的「前一个」：fast 落到 null 时，slow 与链尾要恰好隔 n 个节点，所以两针间隔必须是 n+1；只走 n 步 slow 会停在被删节点自己身上，无从执行「改前驱的 next」','因为 fast 负责探路，多走一步能提前发现 n 超界'],
+     answer:1,
+     explain:'删除靠 slow.next = slow.next.next 跳过目标——前提是 slow 站在目标的前驱上。fast 先走 n+1 步后，两针固定隔 n+1；fast 走到 null 时，slow 与 null 之间恰好隔 n 个节点，它自己就是倒数第 n+1 个——正是被删节点的前一个。少走一步的话 slow 会站到被删节点上，而单链表的「删除」必须改前驱的箭头，站在自己身上无从下手。',
+     jumpTo:2},
+    {q:'链表 1→2→3→4→5→6→7、n = 3：fast 先走完站在哪？同步结束后 slow 站在哪？最终删掉谁？',
+     options:['fast 站在下标 3（节点 4）；slow 停在节点 4（下标 3），删掉节点 5 → 1→2→3→4→6→7','fast 站在下标 4（节点 5）；slow 停在节点 5，删掉节点 5','fast 站在下标 3；slow 会停在被删节点自己身上，删除失败'],
+     answer:0,
+     explain:'fast 从 dummy 出发先走 n+1 = 4 步，落到下标 3（节点 4）。此后两针同步：fast 从下标 3 走到 null（下标 7）共 4 步，slow 也走 4 步，从 dummy 走到下标 3（节点 4）——正是被删节点的前一个。倒数第 3 个 = 正数第 5 个（下标 4，值 5），slow.next 从节点 5 跨到节点 6，新链表 1→2→3→4→6→7。fast 多走的那 1 步，就是把 slow 顶到「前驱」位置的关键。',
+     jumpTo:14},
+    {q:'n 正好等于链表长度（删头节点）时，同步循环跑几轮？slow 停在哪？结果对吗？',
+     options:['0 轮——fast 先走 n+1 步直接落到 null，slow 原地留在 dummy 上，dummy.next 跨过原头节点 → 正确返回 2→3→4→5','5 轮——slow 停在节点 5 上，把尾节点删了','1 轮——slow 停在头节点上，删除失败返回原链'],
+     answer:0,
+     explain:'以 [1,2,3,4,5]、n=5 为例：fast 先走 6 步，链上只有 5 个节点，第 6 步空走落到 null，while 一次都不跑，slow 留在 dummy 上——这正是「删的是头」的信号：头节点没有真实前驱，dummy 就是替它垫底的前驱。slow.next = slow.next.next 让 dummy 直接跨过原头节点，返回 2→3→4→5，零特判。dummy 在这里兑现了它存在的全部意义。',
+     jumpTo:1},
+  ],
+
+  steps(input){
+    const F = [];
+    const vals = (input.head || []).filter(x => x != null);
+    const N = vals.length;
+    if(!N){
+      F.push({hl:[1,2,3,4], tag:'空链表', cls:'t-grey',
+        msg:'链表是空的：没有节点可删，dummy 建好后 fast、slow 都站在 dummy 上，什么也不用做。返回 <code>dummy.next</code> 就是 None——空进空出，算法主体根本不会跑。',
+        do: (v) => { v.list('L', [], {label:'链表', dummy:true}); }});
+      F.push({hl:[11], tag:'返回', cls:'t-dark',
+        msg:'<code>return dummy.next</code> → 空链表 []：链表里本来就没有节点，删完自然还是空。金色输出框里就是返回值。',
+        do: (v) => { v.list('L', [], {label:'链表', dummy:true}); v.result([], {label:'返回结果'}); }});
+      return F;
+    }
+    const n = Math.min(Math.max(1, Math.round(Number(input.n) || 1)), N);
+    const nodes = vals.map((v, i) => ({key:'a' + i, val:v}));
+    const tgt = N - n;                    // 被删节点的下标（真实计算）
+
+    let fast = -1, slow = -1;             // -1 = dummy；N 代表 null
+
+    /* ★ 快照原则：pointers/ln/vars 都在 F.push 那一刻求值定死 */
+    const ptrF = () => fast >= 0 && fast < N ? [{key:'a' + fast, text:'▼ fast', cls:'mr'}] : [];
+    const ptrS = () => [{key: slow < 0 ? '__dummy' : 'a' + slow, text:'▼ slow', cls:'mi'}];
+    const lnFull = () => nodes.slice();
+    const lnDrop = () => nodes.filter((_, i) => i !== tgt);
+
+    const draw = (o) => (v) => {
+      v.list('L', o.ln, {label:'链表　·　<code>dummy</code> 是哑节点，<code>n = ' + n + '</code>',
+        dummy:true, states:o.states || {}, pointers:o.pointers || [],
+        edges:o.edges,
+        headTag:o.ln.length ? {key:o.ln[0].key, text:'head', cls:'mq'} : null});
+      v.vars('V', o.vars, {label:'变量'});
+      if(o.result) v.result(o.result, {label:'返回结果'});
+    };
+    const varNow = () => ({n:n,
+      fast: fast >= N ? 'null' : (fast < 0 ? 'dummy' : '节点 ' + vals[fast]),
+      slow: slow < 0 ? 'dummy' : '节点 ' + vals[slow]});
+
+    F.push({hl:[1,2,3,4], tag:'初始化', cls:'t-grey',
+      msg:'目标：删掉倒数第 ' + n + ' 个节点（本链共 ' + N + ' 个节点，它是下标 ' + tgt + '、值 ' + LCesc(vals[tgt]) + ' 的节点——但"倒数"得删完才知道，先按住不表）。单链表不能回头，就用<b>距离换回头</b>：让 fast 先走 ' + (n + 1) + ' 步打头阵，之后两针保持 ' + (n + 1) + ' 步间隔同步走，fast 撞到 null 时，slow 不多不少正好站在被删节点的<b>前一个</b>。现在两针都站在哑节点 dummy 上（虚线格）——dummy 垫底，是为了等下删头时 slow 也有前驱可站。',
+      do: draw({ln: lnFull(), pointers: ptrF().concat(ptrS()), vars: varNow()})});
+
+    for(let j = 1; j <= n + 1; j++){
+      fast++;
+      const on = fast < N;
+      F.push({hl:[5,6], tag:'fast 先走', cls:'t-blue',
+        msg:'fast 先行第 ' + j + ' / ' + (n + 1) + ' 步：' + (on ? '站到节点 <b>' + LCesc(vals[fast]) + '</b>（下标 ' + fast + '）' : '走出链尾落到 null（fast 名牌暂时消失）——这一步虽是空走，也要走满') +
+            '。slow 仍按兵不动。这 ' + (n + 1) + ' 步是在"量距离"：量完两针就固定隔 ' + (n + 1) + ' 步，这个间隔正是稍后锁定倒数第 ' + n + ' 个的钥匙。',
+        do: draw({ln: lnFull(), pointers: ptrF().concat(ptrS()),
+                  states: on ? {['a' + fast]:'active'} : {}, vars: varNow()})});
+    }
+
+    while(fast < N){
+      F.push({hl:[7], ok:7, tag:'同步检查', cls:'t-blue',
+        msg:'<code>while fast</code>：fast 站在节点 ' + LCesc(vals[fast]) + '（下标 ' + fast + '），还没到尾 → <b>条件成立</b>，两针一起往前挪。两针隔着 ' + (n + 1) + ' 步、像手拉手一样同步前进——距离锁死不变，是整个算法的不变式。',
+        do: draw({ln: lnFull(), pointers: ptrF().concat(ptrS()),
+                  states:{['a' + fast]:'active'}, vars: varNow()})});
+      fast++;
+      F.push({hl:[8], tag:'fast 右移', cls:'t-ink',
+        msg:'<code>fast = fast.next</code>：' + (fast < N ? 'fast 来到节点 ' + LCesc(vals[fast]) + '（下标 ' + fast + '）。fast 的使命就是探路报信——它离"撞线"还有多远，就决定 slow 还能走几步。' : 'fast 落到 null——<b>它先撞线了</b>！下一帧 slow 走完最后一步，就会停在关键位置。'),
+        do: draw({ln: lnFull(), pointers: ptrF().concat(ptrS()),
+                  states: fast < N ? {['a' + fast]:'active'} : {}, vars: varNow()})});
+      slow++;
+      F.push({hl:[9], tag:'slow 右移', cls:'t-orange',
+        msg:'<code>slow = slow.next</code>：slow 跟进到' + (slow < 0 ? ' dummy（还在起跑线上没动窝）' : '节点 <b>' + LCesc(vals[slow]) + '</b>（下标 ' + slow + '）') +
+            '。两针距离始终是 ' + (n + 1) + ' 步——一边一步、间隔锁死，所以 fast 撞线那一刻，slow 的位置就被"距离"精确算死了。',
+        do: draw({ln: lnFull(), pointers: ptrF().concat(ptrS()),
+                  states: slow >= 0 ? {['a' + slow]:'in'} : {}, vars: varNow()})});
+    }
+
+    F.push({hl:[7], no:7, tag:'同步结束', cls:'t-red',
+      msg:'fast = null → <b>条件不成立</b>，同步阶段结束。读数：' + (slow < 0
+        ? 'slow 还站在 <b>dummy</b> 上一步都没挪——这正是"删的正好是头节点"的信号：头节点没有真实前驱，垫底的 dummy 就是它的前驱。'
+        : 'slow 站在节点 <b>' + LCesc(vals[slow]) + '</b>（下标 ' + slow + '），它的下一个 <b>' + LCesc(vals[slow + 1]) + '</b> 正是从尾数第 ' + n + ' 个——要删的就是它。') +
+        '把账算明白：fast 撞线时与 slow 还隔着 ' + n + ' 个节点，所以 slow 与 null 之间恰好隔 n 个，它自己必是倒数第 ' + (n + 1) + ' 个——正是被删节点的前驱。',
+      do: draw({ln: lnFull(), pointers: ptrS(),
+                states:{['a' + (slow + 1)]:'target'}, vars: varNow()})});
+
+    F.push({hl:[10], tag:'确认目标', cls:'t-violet',
+      msg:'复核：倒数第 ' + n + ' 个 = 下标 ' + (N - n) + '（值 ' + LCesc(vals[tgt]) + '，画面染紫），和刚才推的位置完全对上！接下来执行 <code>slow.next = slow.next.next</code>——注意单链表删除改的是<b>前驱的箭头</b>，节点没法真的"拿走"，所以 slow 必须停在目标前一个。前面 dummy 垫底、fast 多走一步，全是为这一步铺路。',
+      do: draw({ln: lnFull(), pointers: ptrS(),
+                states:{['a' + slow]:'in', ['a' + tgt]:'target'}, vars: varNow()})});
+
+    const skipEdges = () => {
+      const e = [];
+      for(let i = -1; i < N; i++){
+        const from = i < 0 ? '__dummy' : 'a' + i;
+        const to = (i === slow) ? slow + 2 : i + 1;   // slow 的箭头跨过被删节点
+        if(to < N) e.push([from, 'a' + to]);
+      }
+      return e;
+    };
+    F.push({hl:[10], tag:'摘除', cls:'t-orange',
+      msg:'<code>slow.next = slow.next.next</code>：' + (slow < 0 ? '<b>dummy</b>' : '节点 ' + LCesc(vals[slow])) + ' 的箭头不再指向 ' + LCesc(vals[tgt]) +
+          '，直接跨过去指向' + (tgt + 1 < N ? '节点 ' + LCesc(vals[tgt + 1]) : 'null') + '——画面上那条新箭头从被删节点头顶越过。单链表"删除"的真面目就是让前驱跳过它：目标节点一动没动，只是从此再没人指向它。',
+      do: draw({ln: lnFull(), edges: skipEdges(), pointers: ptrS(),
+                states:{['a' + tgt]:'stale'}, vars: varNow()})});
+
+    F.push({hl:[10], tag:'节点消失', cls:'t-orange',
+      msg:'节点 <b>' + LCesc(vals[tgt]) + '</b> 没有任何指针指向它了，从画面上淡出（内存里稍后会被垃圾回收，链上再无痕迹）。其余节点的箭头本来就接好，链表重新完整——删除完成。',
+      do: draw({ln: lnDrop(), pointers: ptrS(), vars: varNow()})});
+
+    const res = vals.filter((_, i) => i !== tgt);
+    F.push({hl:[11], tag:'返回', cls:'t-dark',
+      msg:'<code>return dummy.next</code> 🎉 新链表 ' + (res.length ? res.join('→') : '（空）') +
+          '。回头看：fast 负责"量距离"（先走 n+1 步），slow 负责"找前驱"（停在被删节点前一个）——两者一配合，摸不着的"倒数"就变成了能跳转的"正数"。全程一趟扫描 O(N)、两个指针 O(1) 空间，比"先数全长再删第二遍"的两趟法更优。',
+      do: draw({ln: lnDrop(), pointers: ptrS(), result: res, vars: varNow()})});
+
+    return F;
+  }
+});
+</script>
+</body>
+</html>

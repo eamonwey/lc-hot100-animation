@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P010 · 和为 K 的子数组 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 10, num: 560, title: '和为 K 的子数组', diff: '中等', cat: '子串',
+  method: 'subarraySum',
+
+  lede: '题目：给一个整数数组和整数 <span class="var i">k</span>，数一数<b>和正好等于 k 的子数组</b>有几段（元素连续、可正可负）。' +
+        '逐段暴力求和是 O(n²)。动画用<span class="var r">前缀和 pre</span>（从第 1 个数加到这里的累积和）加账本 <span class="var r">cnt</span>（每种前缀和出现过几次）：' +
+        '每走到一格就翻一次旧账——<b>查 "pre − k" 在账本里出现过几次，就有几段以当前格结尾、和为 k 的子数组</b>。',
+
+  roles: [
+    {c:'orange', code:'x / pre', text:'当前数 与 前缀和'},
+    {c:'blue',   code:'cnt',     text:'账本：前缀和 → 出现次数'},
+    {c:'violet', code:'pre-k',   text:'要翻的旧账：差多少凑成 k'},
+    {c:'green',  code:'ans',     text:'累计找到的段数'}
+  ],
+
+  codeTitle: '跟着高亮读代码——<code>cnt.get(pre - k, 0)</code> 变<span style="color:var(--green)">绿</span>＝账本里翻到了旧前缀，每一条对应一段答案；<b>先翻账、后登记</b>，顺序不能反。',
+
+  legend: [
+    {c:'violet', text:'命中的子数组（和 = k）'},
+    {c:'blue', text:'账本里被查的那一行'},
+    {c:'orange', text:'i 当前格'}
+  ],
+
+  idea: '子数组的和 = 两段前缀相减。在第 i 格查"前缀和等于 pre−k 的旧前缀有几个"，一个旧前缀对应一段答案——哈希账本把 O(n²) 压成 O(n)，还不怕负数。',
+
+  qa: [
+    {q:'为什么查 pre − k 而不是 pre + k？',
+     a:'子数组 (j, i] 的和 = prefix(i) − prefix(j)。要它等于 k，就得 prefix(j) = pre − k。所以在 i 处问的是"以前出现过几个 pre−k"，拿旧前缀来配对，而不是往前找 pre+k。'},
+    {q:'为什么必须先翻账、再登记当前前缀？',
+     a:'若先登记，当 k = 0 时当前前缀 pre 会和自己配上对，凭空数出"空子数组"。先翻后登，保证每段答案至少含一个元素。'},
+    {q:'cnt 里为什么一开始就有 {0: 1}？',
+     a:'"空前缀"（一个数都没取）的和是 0。没有它，"从第 1 格开头"的子数组（如 nums[0..1] 对 k=2）就没有旧账可配，会被漏数。'},
+    {q:'数组有负数为什么还能用？滑动窗口不行吗？',
+     a:'前缀和法只做加减和查表，完全不怕负数。滑动窗口依赖"窗口和随伸缩单调变化"，一有负数就失灵——这题正是前缀和 + 哈希的招牌场。'}
+  ],
+
+  complexity: '时间 O(n)（一趟扫描）　·　空间 O(n)（账本最多 n+1 种前缀和）',
+
+  form: [
+    {key:'nums', label:'nums', type:'arr', def:[1,1,1]},
+    {key:'k', label:'k', type:'num', def:2}
+  ],
+  presets: [
+    {label:'[1,1,1] k=2', values:{nums:[1,1,1], k:2}},
+    {label:'[1,2,3] k=3', values:{nums:[1,2,3], k:3}},
+    {label:'[3,4,7,2,-3,1,4,2] k=7（有负数）', values:{nums:[3,4,7,2,-3,1,4,2], k:7}},
+    {label:'[1,-1,0] k=0（零与负）', values:{nums:[1,-1,0], k:0}}
+  ],
+
+  code: `class Solution:
+    def subarraySum(self, nums, k):
+        pre = 0                        # 当前前缀和
+        cnt = {0: 1}                   # 账本: 前缀和 -> 出现次数
+        ans = 0
+        for x in nums:
+            pre += x                   # 前缀和走到当前格
+            ans += cnt.get(pre - k, 0) # 有几个旧前缀 = pre-k
+            cnt[pre] = cnt.get(pre, 0) + 1  # 登记当前前缀(先查后记!)
+        return ans
+`,
+
+  sol(input){
+    const nums = (input.nums || []).map(Number);
+    const k = Number(input.k);
+    let pre = 0, ans = 0;
+    const cnt = new Map([[0, 1]]);
+    for(const x of nums){
+      pre += x;
+      ans += cnt.get(pre - k) || 0;
+      cnt.set(pre, (cnt.get(pre) || 0) + 1);
+    }
+    return ans;
+  },
+  expected: 2,
+
+  quiz: [
+    {q:'账本为什么开局就有 {0: 1} 这条「空前缀」?没有它会漏数什么?',
+     options:['为了让哈希表不为空,纯属占位','「从第 1 个元素开头」且和为 k 的子数组,要靠空前缀(前缀和 0)来配对;没有它,凡是开头就凑成 k 的段全被漏数','为了防止 pre 计算出错'],
+     answer:1,
+     explain:'子数组和 = 两段前缀相减:nums[0..i] 的和 = prefix(i) − 空前缀(0)。比如 nums=[1,1]、k=2:走到第 2 格 pre=2,查 pre−k=0——账本里若没有 {0:1} 这条,[1,1] 这段"从开头切到中间"的答案就丢了。空前缀代表「一个数都没取」,它出现 1 次,所以记 0:1。',
+     jumpTo:1},
+    {q:'nums = [1,2,1,3]、k = 3,和为 3 的子数组有几段?',
+     options:['1 段','2 段','3 段','4 段'],
+     answer:2,
+     explain:'前缀和依次是 1、3、4、7。i=1 时 pre=3,查 pre−k=0:空前缀在账本里 → [1,2] 命中;i=2 时 pre=4,查 1:前缀 1 出现过 1 次 → [2,1] 命中;i=3 时 pre=7,查 4:前缀 4 出现过 1 次 → [3] 命中。共 3 段。注意 [1,3] 不连续,不算子数组。',
+     jumpTo:8},
+    {q:'为什么必须「先翻旧账、再登记当前前缀」?顺序反了会怎样?',
+     options:['顺序无所谓,只是习惯','先登记的话,当 k=0 时当前 pre 会在账本里查到自己,凭空数出「空子数组」;先翻后登保证每段答案至少含一个元素','先登记会数组越界'],
+     answer:1,
+     explain:'翻账查的是 pre−k,登记的是 pre。若先登记再翻,k=0 时 pre−k = pre 自己——刚登记的当前前缀被自己翻出来,等于让「一个元素都不取的空段」也算成 k,虚报答案。先翻后登,查到的旧前缀位置必然在当前格左边,切出的子数组至少含一个元素,账才干净。',
+     jumpTo:5},
+  ],
+
+  steps(input){
+    const F = [];
+    const nums = (input.nums || []).map(Number);
+    const k = Number(input.k);
+    const n = nums.length;
+    const cnt = new Map([[0, 1]]);
+    const prefixLast = new Map([[0, 0]]);   // 前缀和 -> 最近一次出现的位置(前 t 个元素)
+    let pre = 0, ans = 0;
+    const ranges = [];
+
+    const ents = () => Array.from(cnt.entries());
+    const mk = (i) => [{name:'i', idx:i, cls:'mi', text:'▲ i'}];
+    const range = (a, b, cls) => {
+      const st = {};
+      for(let z = Math.max(0, a); z <= b; z++) st[z] = cls;
+      return st;
+    };
+    /* ★ 快照原则：o 里的数据全部在 push 那一刻定死 */
+    const draw = (o) => (v) => {
+      v.arr('nums', nums, {
+        label:'数组 <code>nums</code>　·　目标和 <code>k = ' + k + '</code>',
+        states:o.states || {}, markers:o.marks || []
+      });
+      v.map('cnt', o.cnt || [], {label:'前缀和账本 <code>cnt</code>（前缀和 → 出现次数）', hlK:o.hlK});
+      v.vars('vars', o.vars, {label:'变量'});
+      if(o.result !== undefined) v.result(o.result, {label:'和为 k 的子数组个数'});
+    };
+
+    F.push({hl:[1,2,3,4,5], tag:'准备账本', cls:'t-grey',
+      msg:'<code>pre = 0</code>；账本开局先记 <code>cnt = {0: 1}</code>——一个数都还没加时，前缀和就是 0，出现 1 次（账本第一行，高亮的就是它）。这个"空前缀"专门跟"从第 1 格开头"的子数组配对：没有它，从开头切到中间的和为 k 的段就翻不到旧账、会被漏数。核心公式先记住：<b>子数组的和 = 两段前缀相减</b>，整题都在用这一句。',
+      do: draw({states:{}, marks:[], cnt:ents(), hlK:'0',
+                vars:{x:'—', pre:pre, 'pre-k':'—', ans:ans}})});
+
+    for(let i = 0; i < n; i++){
+      const x = nums[i];
+      F.push({hl:[6], tag:'取数', cls:'t-ink',
+        msg:'轮到第 <b>' + i + '</b> 格，<code>x = ' + x + '</code>（橙色当前格）。此刻 ans = ' + ans + '、账本 ' + cnt.size + ' 行。每格固定三拍：<b>先把 pre 加上 x → 翻一次旧账 → 把新 pre 登记进账本</b>，顺序是铁律，反了会数出假答案（到"登记"那步细说）。',
+        do: draw({states:{[i]:'active'}, marks:mk(i), cnt:ents(), hlK:null,
+                  vars:{x:x, pre:pre, 'pre-k':'…', ans:ans}})});
+
+      const oldPre = pre;
+      pre += x;
+      F.push({hl:[7], tag:'前缀和前进', cls:'t-blue',
+        msg:'<code>pre = ' + oldPre + ' + ' + x + ' = ' + pre + '</code>：从第 1 个数一直累加到第 ' + (i + 1) + ' 个的和（变量面板读数）。前缀和就像走路时的里程表——只累加不回退，走一段路 = 拿两个读数一减。这正是"子数组和 = 两段前缀相减"的具体形态，待会翻旧账全靠它。',
+        do: draw({states:{[i]:'active'}, marks:mk(i), cnt:ents(), hlK:null,
+                  vars:{x:x, pre:pre, 'pre-k':pre - k, ans:ans}})});
+
+      const need = pre - k;
+      const t = cnt.get(need) || 0;
+      F.push({hl:[8], ok:t > 0 ? 8 : undefined, no:t > 0 ? undefined : 8,
+        tag:'翻旧账', cls:t > 0 ? 't-green' : 't-red',
+        msg:t > 0
+          ? '查 <code>pre - k = ' + need + '</code>：账本里有 <b>' + t + '</b> 条旧账（高亮那几行）！设旧前缀是 prefix(j)，则 prefix(i) − prefix(j) = pre − (pre − k) = ' + k + '——每一个"前缀和 = ' + need + '"的旧位置 j，都能切出一段以第 ' + i + ' 格结尾、和恰好为 ' + k + ' 的子数组，一条旧账就是一段答案。'
+          : '查 <code>pre - k = ' + need + '</code>：账本里没有 ✗ → 没有任何以第 ' + i + ' 格结尾、和为 ' + k + ' 的子数组。为什么偏偏查 pre−k？要 prefix(i) − prefix(j) = k，就必须 prefix(j) = pre − k，问别的都对不上账。',
+        do: draw({states:{[i]:'active'}, marks:mk(i), cnt:ents(), hlK:t > 0 ? String(need) : null,
+                  vars:{x:x, pre:pre, 'pre-k':need, ans:ans}})});
+
+      if(t > 0){
+        const j0 = prefixLast.get(need);
+        ans += t;
+        ranges.push([j0, i]);
+        F.push({hl:[8], ok:8, tag:'入账', cls:'t-green',
+          msg:'<code>ans += ' + t + ' → ' + ans + '</code>，' + t + ' 段新答案一次性入账。画面紫色的是其中一段：nums[' + j0 + '..' + i + ']，两段前缀一减，和恰好 = ' + k + '。踩坑提醒：ans 加的是<b>条数 t 而不是 1</b>——同一个前缀和可能出现过多次（有负数时很常见），每条旧账起点不同、各对应一段独立答案，漏一条就少一数。',
+          do: draw({states:range(j0, i, 'target'), marks:mk(i), cnt:ents(), hlK:String(need),
+                    vars:{x:x, pre:pre, 'pre-k':need, ans:ans}})});
+      }
+
+      cnt.set(pre, (cnt.get(pre) || 0) + 1);
+      prefixLast.set(pre, i + 1);
+      F.push({hl:[9], tag:'登记前缀', cls:'t-orange',
+        msg:'把当前前缀和 <code>pre = ' + pre + '</code> 登记进账本（现在出现过 ' + cnt.get(pre) + ' 次，新行高亮）——它将来的使命就是给别人当旧账。<b>先翻账、后登记</b>的顺序是铁律：反过来的话，k = 0 时当前 pre 会在账本里查到自己，凭空数出"空子数组"；先翻后登则保证每段答案至少含一个元素。',
+        do: draw({states:{[i]:'done'}, marks:mk(i), cnt:ents(), hlK:String(pre),
+                  vars:{x:x, pre:pre, 'pre-k':need, ans:ans}})});
+    }
+
+    const stFinal = {};
+    ranges.forEach(([a, b]) => { for(let z = a; z <= b; z++) stFinal[z] = 'target'; });
+    F.push({hl:[10], tag:'返回', cls:'t-dark',
+      msg:'扫完整个数组：<b>' + ans + '</b> 段子数组的和为 ' + k +
+          (ranges.length ? '（' + ranges.map(([a, b]) => 'nums[' + a + '..' + b + ']').join('、') + '，画面紫色）' : '') + ' 🎉 每段都来自"两段前缀相减"，没有一段是硬扫出来的。这招不怕负数（只做加减和查表）；滑动窗口依赖"伸缩时窗口和单调变化"，一遇负数就失灵——所以这题是前缀和 + 哈希的招牌场，O(n) 一趟扫完。',
+      do: draw({states:stFinal, marks:n ? mk(n - 1) : [], cnt:ents(), hlK:null,
+                vars:{x:'—', pre:pre, 'pre-k':'—', ans:ans}, result:ans})});
+    return F;
+  }
+});
+</script>
+</body>
+</html>

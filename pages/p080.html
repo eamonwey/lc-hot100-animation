@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P080 · 爬楼梯 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 80, num: 70, title: '爬楼梯', diff: '简单', cat: '动态规划',
+  method: 'climbStairs',
+
+  lede: '题目：要爬 <span class="var v">n</span> 阶楼梯，每次能爬 <b>1 阶或 2 阶</b>，问有多少种不同的爬法。' +
+        '想想到第 i 阶的最后一步：<b>要么从 i−1 迈 1 步，要么从 i−2 跨 2 步</b>，再没别的来路——所以 ' +
+        '<span class="var r">f(i) = f(i−1) + f(i−2)</span>。动画里 <span class="var o">a</span>、<span class="var b">b</span> 是滚动的两个"来源"，' +
+        '蓝色柱子从第 1 阶开始逐阶长高，长到第 n 阶就是答案。',
+
+  roles: [
+    {c:'orange', code:'a', text:'f(i−2)：前前阶的方法数'},
+    {c:'blue',   code:'b', text:'f(i−1)：上一阶的方法数'},
+    {c:'violet', code:'c', text:'新算出来的 f(i) = a + b'},
+    {c:'green',  code:'柱子', text:'每阶的方法数，逐格生长'}
+  ],
+
+  codeTitle: '跟着高亮读代码——<code>if n &lt;= 2</code> 变<span style="color:var(--green)">绿</span>＝小 n 直接给答案；递推那三行是"算新值 → 窗口右移"的滚动三连。',
+
+  legend: [
+    {c:'green',  text:'已算好的 f 值（柱子）'},
+    {swatch:'var(--green-soft)', text:'虚绿柱 = 刚算出、还没落位的 c'},
+    {c:'orange', text:'a 的位置'},
+    {c:'blue',   text:'b 的位置'}
+  ],
+
+  idea: '最后一步只有两种来路：从 i−1 迈 1 步、从 i−2 跨 2 步 → f(i) = f(i−1) + f(i−2)。只留 a、b 两个滚动变量，空间 O(1)。',
+
+  qa: [
+    {q:'为什么 f(i) = f(i−1) + f(i−2)？会不会漏情况或算重？',
+     a:'盯着<b>最后一步</b>分类：到第 i 阶的最后一步要么迈 1 步（此前必在 i−1），要么跨 2 步（此前必在 i−2）——两类不重叠、又盖满所有走法。所以走法数直接相加，这正是"加法原理"，也是这道题的 DP 转移方程。'},
+    {q:'这题怎么就跟斐波那契扯上关系了？',
+     a:'把 f(1)=1、f(2)=2 代进 f(i)=f(i−1)+f(i−2)，得到的正是斐波那契数列错开一位：1, 2, 3, 5, 8, 13…。所以 f(5) = 8。凡是转移长这样的题（青蛙跳台阶、铺地砖），都是同一个套路。'},
+    {q:'为什么只用 a、b 两个变量就够了？',
+     a:'算 f(i) 时真正用到的只有 f(i−1) 和 f(i−2)，更早的值<b>再也不会被访问</b>。所以不必开 dp 数组存全表，让 a、b 当"滑动窗口"往右滚即可——空间从 O(n) 降到 O(1)。'},
+    {q:'为什么 n ≤ 2 要单独返回？',
+     a:'递推从第 3 阶才开始有意义：f(3) 需要 f(1)、f(2) 打底。而 f(1)=1、f(2)=2 一眼能看出，硬塞进循环反而要多绕一圈——直接返回最干净，这也是这道题的边界。'}
+  ],
+
+  complexity: '时间 O(n)（一循环到顶）　·　空间 O(1)（滚动变量 a、b、c）',
+
+  form: [
+    {key:'n', label:'n', type:'num', def:5}
+  ],
+  presets: [
+    {label:'n=5 → 8', values:{n:5}},
+    {label:'n=1 → 1（边界）', values:{n:1}},
+    {label:'n=2 → 2（边界）', values:{n:2}},
+    {label:'n=10 → 89', values:{n:10}}
+  ],
+
+  code: `class Solution:
+    def climbStairs(self, n):
+        if n <= 2:                 # 前 2 阶: 答案就是 n
+            return n
+        a, b = 1, 2                # f(1)=1, f(2)=2
+        for i in range(3, n + 1):  # 从第 3 阶递推到第 n 阶
+            c = a + b              # f(i) = f(i-1) + f(i-2)
+            a = b                  # 窗口右移: a <- f(i-1)
+            b = c                  # b <- f(i)
+        return b                   # f(n)
+`,
+
+  sol(input){
+    const n = input.n;
+    if(n <= 2) return n;
+    let a = 1, b = 2;
+    for(let i = 3; i <= n; i++){ const c = a + b; a = b; b = c; }
+    return b;
+  },
+  expected: 8,
+
+  quiz: [
+    {q:'f(i) = f(i−1) + f(i−2)——为什么这样相加既不会数重、也不会漏掉走法?',
+     options:['因为 1 步和 2 步本身就是两种独立操作,乘起来 f(i−1)×f(i−2) 才对','按"最后一步"分类:最后一步要么从 i−1 迈 1 步、要么从 i−2 跨 2 步,两类落脚方式不同互不重叠,又盖满所有可能——加法原理直接相加','因为斐波那契数列就是这么定义的,套公式就行'],
+     answer:1,
+     explain:'盯着最后一步分类是 DP 方程的标准推导法:任何一种爬法必然有唯一的"最后一步",它要么是 1 阶(此前必在 i−1)、要么是 2 阶(此前必在 i−2),没有第三种落脚——所以两类不重;两类合起来又是全部走法——所以不漏。选乘法的是把"独立选择"和"互斥分类"搞混了;斐波那契只是算出来长得像,不是理由。',
+     jumpTo:1},
+    {q:'n = 7 时有多少种爬法?',
+     options:['13','21','34'],
+     answer:1,
+     explain:'递推:f(1)=1、f(2)=2、f(3)=3、f(4)=5、f(5)=8、f(6)=13、f(7)=21。答案 21。选 13 是停在 f(6) 差了一阶;选 34 是多滚了一轮的 f(8)。小技巧防手滑:把 f(1)~f(7) 一列写出来再对号取值,比心算滚动变量稳得多。',
+     jumpTo:14},
+    {q:'全程只留 a、b 两个滚动变量就够了,为什么不必开 dp 数组存下全部 f(1)…f(n)?',
+     options:['因为数组会浪费内存,编译器自动优化掉了','因为算 f(i) 时真正用到的只有 f(i−1) 和 f(i−2),更早的值再也不会被访问——让 a、b 当滑动窗口往右滚,空间从 O(n) 压到 O(1)','因为 Python 的变量可以无限大,存不下才需要数组'],
+     answer:1,
+     explain:'递推的"依赖半径"是 2:每轮 a 右移接过 f(i−1)、b 落位接住 f(i),被甩掉的 f(i−2) 历史使命完成、再无人问津。只要转移方程只依赖常数个前驱,都能这样滚——这是 DP 空间优化的通用套路(本题时间不变,仍是 O(n))。',
+     jumpTo:5},
+  ],
+
+  steps(input){
+    const F = [];
+    const n = Math.max(0, Math.floor(Number(input.n) || 0));
+    let a = 1, b = 2;
+    const fVals = [];              // 已落位的柱子：f(1), f(2), …（跑算法时同步生长）
+    let aIdx = 0, bIdx = 1;        // a、b 各自站在哪根柱子上
+    // 只为柱状图定最大刻度，不剧透数值
+    let sa = 1, sb = 2;
+    for(let i = 3; i <= n; i++){ const sc = sa + sb; sa = sb; sb = sc; }
+    const scale = Math.max(n, sb, 2);
+
+    /* ---- 快照绘制（铁律 5：vals/vars 全部在 push 那一刻定死） ---- */
+    const draw = (o) => (v) => {
+      v.bars('f', o.vals, {
+        label:'楼梯各阶的方法数　·　柱子长到第 <code>n = ' + n + '</code> 阶',
+        max:scale, chartH:150, cw:44,
+        states:o.st || {}, markers:o.marks || [], labels:o.labels || {}
+      });
+      v.vars('vars', o.vars, {label:'变量', hl:o.hl || []});
+      if(o.res !== undefined) v.result(o.res, {label:'爬到第 ' + n + ' 阶的方法数'});
+    };
+    const mk = (ai, bi) => {
+      const m = [];
+      if(ai != null && ai < fVals.length) m.push({name:'a', idx:ai, cls:'mi', text:'▲ a'});
+      if(bi != null && bi < fVals.length) m.push({name:'b', idx:bi, cls:'mr', text:'▲ b'});
+      return m;
+    };
+    const labels = (len) => { const o = {}; for(let t = 0; t < len; t++) o[t] = 'f(' + (t + 1) + ')'; return o; };
+    const snap = (extra) => Object.assign({
+      vals:fVals.slice(), st:{}, marks:[], labels:labels(fVals.length),
+      vars:{}, hl:[], res:undefined
+    }, extra);
+
+    F.push({hl:[1,2,3,4,5], tag:'初始化', cls:'t-grey',
+      msg:'先想清楚"怎么站上第 i 阶"：你<b>最后一步</b>要么从第 i−1 阶<b>迈 1 步</b>上来，要么从第 i−2 阶<b>跨 2 步</b>上来——落脚方式只有这两种，再没第三条路。两类走法的最后一步不同、绝不会数重，又盖满了所有走法，所以方法数直接相加：<b>f(i) = f(i−1) + f(i−2)</b>，和斐波那契同款。下面让蓝色柱子从 f(1) 开始逐阶长高，一直长到第 n = ' + n + ' 阶。',
+      do: draw(snap({vars:{n:n, a:'—', b:'—'}}))});
+
+    if(n <= 2){
+      fVals.push(1); if(n >= 2) fVals.push(2);
+      F.push({hl:[3,4], ok:3, tag:'小 n 直返', cls:'t-green',
+        msg:'<code>n = ' + n + ' ≤ 2</code> → 直接 <code>return n = ' + n + '</code>，不用进循环。' +
+            (n === 1 ? '1 阶只有"迈 1 步"这 1 种走法；' : '2 阶有"1+1"和"一步跨 2"这 2 种走法；') +
+            '它们是递推的地基——f(3) 起就要靠 f(1)、f(2) 相加，小 n 提前返回最干净。',
+        do: draw(snap({st:{[fVals.length - 1]:'just'}, marks:mk(null, fVals.length - 1),
+                       vars:{n:n}, res:n}))});
+      return F;
+    }
+
+    a = 1; b = 2;
+    fVals.push(1, 2);
+    F.push({hl:[5], tag:'地基', cls:'t-blue',
+      msg:'<code>a = f(1) = 1</code>：站上 1 阶只有"迈 1 步"一种来路；<code>b = f(2) = 2</code>："1+1"或"一步跨 2"。这两根绿柱是递推的种子——▲橙 a、▲蓝 b 两块名牌标出它们的位置，接下来每一轮都只用这对"最近的两阶"算出下一阶。',
+      do: draw(snap({st:{0:'done', 1:'done'}, marks:mk(aIdx, bIdx),
+                     vars:{n:n, a:a, b:b}, hl:['a','b']}))});
+
+    for(let i = 3; i <= n; i++){
+      F.push({hl:[6], ok:6, tag:'第 ' + i + ' 轮', cls:'t-blue',
+        msg:'<code>i = ' + i + '</code>：第 ' + i + ' 阶的方法数还没算出来 → 进入本轮。算它只需要两个来源——▲橙 <code>a = f(' + (i - 2) + ') = ' + a + '</code>（跨 2 步的起跳台）、▲蓝 <code>b = f(' + (i - 1) + ') = ' + b + '</code>（迈 1 步的起跳台）；再早的阶从此再也不会被访问，这就是后面能只留两个滚动变量的原因。',
+        do: draw(snap({st:{[fVals.length - 1]:'done'}, marks:mk(aIdx, bIdx),
+                       vars:{i:i, a:a, b:b, c:'…'}}))});
+
+      const c = a + b;
+      F.push({hl:[7], tag:'算新值', cls:'t-violet',
+        msg:'<code>c = a + b = ' + a + ' + ' + b + ' = ' + c + '</code>：拆开看——最后一步从第 ' + (i - 1) + ' 阶迈 1 步的走法有 f(' + (i - 1) + ') = ' + b + ' 种，从第 ' + (i - 2) + ' 阶跨 2 步的走法有 f(' + (i - 2) + ') = ' + a + ' 种；两类按"最后一步"划分，不重叠也不遗漏，所以直接相加。灰色虚柱就是刚算出的 f(' + i + ')，马上落位。',
+        do: draw(snap({vals:fVals.concat([c]), labels:labels(fVals.length + 1),
+                       st:{[fVals.length]:'peek'}, marks:mk(aIdx, bIdx),
+                       vars:{i:i, a:a, b:b, c:c}, hl:['c']}))});
+
+      a = b;
+      F.push({hl:[8], tag:'a 右移', cls:'t-orange',
+        msg:'<code>a = b</code>：窗口右移一格——a 从 f(' + (i - 2) + ') 换成 f(' + (i - 1) + ') = ' + a + '。下一轮要算 f(' + (i + 1) + ')，需要的是 f(' + (i - 1) + ') 和 f(' + i + ')，f(' + (i - 2) + ') 的历史使命完成、被窗口甩掉——只留"最近两阶"正是空间能压到 O(1) 的诀窍。',
+        do: draw(snap({vals:fVals.concat([c]), labels:labels(fVals.length + 1),
+                       st:{[fVals.length]:'peek'}, marks:mk(aIdx + 1, bIdx),
+                       vars:{i:i, a:a, b:b, c:c}, hl:['a']}))});
+
+      b = c;
+      fVals.push(c);
+      aIdx = aIdx + 1; bIdx = fVals.length - 1;
+      F.push({hl:[9], tag:'b 落位', cls:'t-green',
+        msg:'<code>b = c = ' + b + '</code>：f(' + i + ') = <b>' + b + '</b> 正式落位，新柱子长出来了！此刻 a = f(' + (i - 1) + ') = ' + a + '、b = f(' + i + ') = ' + b + '，"最近两阶"又凑齐，滚向第 ' + (i + 1) + ' 轮——每轮都是"相加 → 右移 → 落位"这三连。',
+        do: draw(snap({st:{[fVals.length - 1]:'just'}, marks:mk(aIdx, bIdx),
+                       vars:{i:i, a:a, b:b, c:c}, hl:['b']}))});
+    }
+
+    F.push({hl:[6], no:6, tag:'递推完毕', cls:'t-red',
+      msg:'<code>i</code> 走到 n + 1 = ' + (n + 1) + '，for 收工：从第 3 阶到第 ' + n + ' 阶，每轮都重复"相加 → 右移 → 落位"，全部方法数都长在图上了。注意全程只滚 a、b 两个变量，一根 dp 数组都没开——空间 O(1)。',
+      do: draw(snap({st:{[fVals.length - 1]:'done'}, marks:mk(aIdx, bIdx),
+                     vars:{i:n + 1, a:a, b:b}}))});
+
+    F.push({hl:[10], tag:'返回', cls:'t-dark',
+      msg:'<code>return b = f(' + n + ') = ' + b + '</code> 🎉 到第 ' + n + ' 阶一共 <b>' + b + '</b> 种爬法（数列 1, 2, 3, 5, 8… 的第 ' + n + ' 项，即斐波那契错开一位）。记住这套路的钥匙：按"最后一步"分类、不重不漏 → 两类相加，DP 转移方程就出来了。',
+      do: draw(snap({st:{[fVals.length - 1]:'target'}, marks:mk(aIdx, bIdx),
+                     vars:{n:n, a:a, b:b}, res:b}))});
+
+    return F;
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P091 · 最小路径和 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 91, num: 64, title: '最小路径和', diff: '中等', cat: '多维动态规划',
+  method: 'minPathSum',
+
+  lede: '题目：从 m×n 网格的<b>左上角</b>走到<b>右下角</b>，每步只能向右或向下，路径上所有数字加起来最小是多少？' +
+        '动画摆了两张表：左边是原网格 <span class="var r">grid</span>（走进每格的花费），右边是 <span class="var o">dp</span> 表——' +
+        '<code>dp[r][c]</code> = 走到 (r,c) 的最小路径和，逐格填：把<span class="var i">上、左</span>两个来源里<b>较便宜</b>的那个加上自己的花费。末帧还会从终点<b>倒推</b>，把最短路径整条标紫。',
+
+  roles: [
+    {c:'orange', code:'(r,c)', text:'正在填的格子'},
+    {c:'blue',   code:'上/左', text:'两个来源格：dp[r−1][c] 与 dp[r][c−1]'},
+    {c:'violet', code:'min',   text:'较便宜的那个来源（紫框）'},
+    {c:'green',  code:'定格',  text:'已填好的 dp 格'},
+    {c:'violet', code:'路径',  text:'末帧倒推出的最短路径'}
+  ],
+
+  codeTitle: '跟着高亮读代码——第 12 行是全题灵魂：min(上, 左) + 自己。第一行只能从左来、第一列只能从上来，没有选择。',
+
+  legend: [
+    {c:'orange', text:'(r,c) 正在填'},
+    {c:'blue',   text:'来源格（上/左）'},
+    {c:'violet', text:'min 选中的来源 / 路径格'},
+    {c:'green',  text:'已定格'}
+  ],
+
+  idea: 'dp[r][c] = min(dp[r−1][c], dp[r][c−1]) + grid[r][c]：前半程先便宜到上格或左格，再付这一格的过路费。',
+
+  qa: [
+    {q:'为什么取 min(上, 左) 再加自己？',
+     a:'到 (r,c) 的最后一步只有"从上来"或"从左来"两种。到达上格/左格各自的最小花费已经算好了，整条路要最省，前半程也必须最省（最优子结构），所以挑两者中便宜的，再付本格过路费 grid[r][c]。'},
+    {q:'为什么第一行、第一列要单独处理？',
+     a:'第一行的格子没有"上面"这条来路，第一列没有"左边"——只有一个来源，谈不上比较，只能累加：dp[0][c] = dp[0][c−1] + grid[0][c]。它们是递推的边界。'},
+    {q:'为什么不能贪心"每步走最小的数"？',
+     a:'眼前便宜不等于全程便宜（局部最优 ≠ 全局最优）。比如默认例子里右下角附近的 1 看着诱人，但真正的最优路径绕道上方。DP 把每个格子的全局最优都存进表，互相引用，不漏解。'},
+    {q:'复杂度？',
+     a:'每格一次比较一次加法：时间 O(m×n)；dp 表 O(m×n)（可原地改写 grid 压到 O(1) 额外空间）。末帧回溯路径只多 O(m+n)。'}
+  ],
+
+  complexity: '时间 O(m × n)　·　空间 O(m × n)（dp 表，可原地压缩）',
+
+  form: [
+    {key:'grid', label:'grid（每行一行）', type:'grid', def:[[1,3,1],[1,5,1],[4,2,1]]}
+  ],
+  presets: [
+    {label:'经典例 → 7', values:{grid:[[1,3,1],[1,5,1],[4,2,1]]}},
+    {label:'2×3 → 12', values:{grid:[[1,2,3],[4,5,6]]}},
+    {label:'1×1 → 1（边界）', values:{grid:[[1]]}},
+    {label:'带 0 的格子 → 1', values:{grid:[[0,1],[2,0]]}}
+  ],
+
+  code: `class Solution:
+    def minPathSum(self, grid):
+        m, n = len(grid), len(grid[0])
+        dp = [[0] * n for _ in range(m)]    # dp[r][c]: 到 (r,c) 的最小路径和
+        dp[0][0] = grid[0][0]               # 起点的最小和 = 自己的值
+        for c in range(1, n):               # 第一行: 只能从左边来
+            dp[0][c] = dp[0][c - 1] + grid[0][c]
+        for r in range(1, m):               # 第一列: 只能从上面来
+            dp[r][0] = dp[r - 1][0] + grid[r][0]
+        for r in range(1, m):               # 其余格子: 上/左取小的
+            for c in range(1, n):
+                dp[r][c] = min(dp[r - 1][c], dp[r][c - 1]) + grid[r][c]
+        return dp[m - 1][n - 1]
+`,
+
+  sol(input){
+    const grid = (input.grid || []).map(r => (r || []).map(Number));
+    const m = grid.length, n = m ? grid[0].length : 0;
+    if(!m || !n) return 0;
+    const dp = [];
+    for(let r = 0; r < m; r++) dp.push(new Array(n).fill(0));
+    dp[0][0] = grid[0][0];
+    for(let c = 1; c < n; c++) dp[0][c] = dp[0][c - 1] + grid[0][c];
+    for(let r = 1; r < m; r++) dp[r][0] = dp[r - 1][0] + grid[r][0];
+    for(let r = 1; r < m; r++)
+      for(let c = 1; c < n; c++)
+        dp[r][c] = Math.min(dp[r - 1][c], dp[r][c - 1]) + grid[r][c];
+    return dp[m - 1][n - 1];
+  },
+  expected: 7,
+
+  quiz: [
+    {q:'默认例 grid=[[1,3,1],[1,5,1],[4,2,1]]:若改用贪心"每步挑较小的相邻格",会走出哪条路?',
+     options:['1→3→1→1→1 = 7,贪心也能拿到最优','1→1→4→2→1 = 9——起点处贪心先踩了更小的 1(向下),却一头撞进第一列 4、2 的重税区,局部便宜带偏了全局','1→1→2→1 = 5,贪心反而更快'],
+     answer:1,
+     explain:'贪心在 (0,0) 看到右边 3、下面 1,当然挑 1;接着第一列是 4、再 2——每一步都"眼前最便宜",总价却到 9。真正的最优 1→3→1→1→1 = 7 是先忍下 3,换上方整条 1 的高速带。DP 的做法是把"到每格的全局最小和"全部存进表互相引用,min(上,左)+自己 保证任何绕道的优解都不会被漏掉——这正是"局部最优 ≠ 全局最优"的标准反例。',
+     jumpTo:19},
+    {q:'grid = [[1,4,1],[2,1,1],[3,2,1]],走到右下角的最小路径和是几?',
+     options:['5','6','7','8'],
+     answer:1,
+     explain:'逐格填:第一行 1,5,6;第一列 1,3,6;内部 (1,1)=min(5,3)+1=4、(1,2)=min(6,4)+1=5、(2,1)=min(4,6)+2=6、(2,2)=min(5,6)+1=6 → 答案 6,路径 1→2→1→1→1(先向下再横穿中带)。选 7 的大概把 (2,1) 的过路费 2 漏加了一次;选 8 的是走了 1→4→1→1→1 那条第一行直达线——看似笔直,却比绕中带贵 2。到 (1,1) 的最小和 4 = 左格 3 + 本格 1,min 挑对来源,后面每格才都踩在全局最优上。',
+     jumpTo:19},
+    {q:'第一行、第一列为什么要单独累加,不能直接套主公式 min(上格, 左格)?',
+     options:['只是为了让代码好读,套主公式结果一模一样','边界格天生缺一个来源:第一行没有"上格"、第一列没有"左格",min 里会读到表外不存在的值——只能按仅有的那条单行道照单累加','因为边界格的花费规定为 0,没法参与 min'],
+     answer:1,
+     explain:'主公式要求上、左两个来源都真实存在,而第一行再往上就出界、第一列再往左就出界,"缺的那个来源"根本没有候选值,谈不上比较——所以只能 dp[0][c] = dp[0][c−1] + grid[0][c] 这样单路累加。工程里常见的偷懒是给 dp 表外圈加一圈 ∞ 哨兵再统一套主公式:∞ 永远输给真实来源,效果等同"只沿单行道走"——本质上还是把这层边界逻辑显式建模了出来。',
+     jumpTo:5},
+  ],
+
+  steps(input){
+    const F = [];
+    let grid = (input.grid || []).map(row => (row || []).map(Number));
+    const notes = [];
+    if(!grid.length || !grid[0].length){ grid = [[1]]; notes.push('空网格，按 1×1 演示'); }
+    let m = grid.length, n = grid[0].length;
+    if(m > 5){ m = 5; grid = grid.slice(0, 5); notes.push('行数限 5'); }
+    if(n > 5){ n = 5; grid = grid.map(r => r.slice(0, 5)); notes.push('列数限 5'); }
+    grid = grid.map(r => { const rr = r.slice(0, n); while(rr.length < n) rr.push(0); return rr; });
+
+    // 真实跑一遍（与 Python 同逻辑）：null = 还没填
+    const dp = [];
+    for(let r = 0; r < m; r++) dp.push(new Array(n).fill(null));
+
+    /* ---- 绘制（o 全是帧生成那一刻的快照，铁律 5） ---- */
+    const disp = () => dp.map(row => row.map(x => x == null ? '·' : x));
+    const doneSt = () => {
+      const st = {};
+      for(let r = 0; r < m; r++) for(let c = 0; c < n; c++) if(dp[r][c] != null) st[r + ',' + c] = 'done';
+      return st;
+    };
+    const draw = (o) => (v) => {
+      v.grid('g', grid, {label:'原网格 <code>grid</code>　·　每格 = 走进它的花费', states:o.st || {}, cw:46});
+      v.grid('dp', o.mat, {label:'DP 表 <code>dp</code>　·　<code>dp[r][c]</code> = 到 (r,c) 的最小路径和　·　' + o.note, states:o.st || {}, cw:46});
+      if(o.vars) v.vars('vars', o.vars, {label:'当前变量', hl:o.hlv || []});
+      if(o.pathTxt) v.text('path', o.pathTxt, {label:'最短路径（从终点倒推）', html:true});
+      if(o.res !== undefined) v.result(o.res, {label:'返回结果'});
+    };
+
+    F.push({hl:[1,2,3,4], tag:'题意与开表', cls:'t-grey',
+      msg:'从左上 (0,0) 走到右下 (' + (m - 1) + ',' + (n - 1) + ')，每步向右或向下，求沿途数字之和的最小值。左边摆花费网格 grid，右边开 dp 表（· = 没填），<code>dp[r][c]</code> = 走到 (r,c) 的最小总和。公式：<b>dp[r][c] = min(上格, 左格) + grid[r][c]</b>——最后一步要么从上来、要么从左来；整条路要最省，走到前一格的那段也必须最省（不然换条更省的前半程，整条就省更多），所以从两个来源里挑便宜的，再付本格过路费。提醒一句：贪心"每步踩最小的数"会翻车——眼前便宜不代表后面不吃大亏，DP 把每格的全局最优都存进表互相引用，才不漏掉绕道的优解。' + (notes.length ? '（' + notes.join('；') + '）' : ''),
+      do: draw({mat:disp(), note:'· = 还没填', vars:{m:m, n:n}})});
+
+    dp[0][0] = grid[0][0];                            // 真实更新
+    F.push({hl:[5], tag:'起点', cls:'t-blue',
+      msg:'<code>dp[0][0] = grid[0][0] = ' + grid[0][0] + '</code>：一步还没走，但起点格的花费本身就得付（路径包含出发格），所以到起点的最小和 = 它自己的值 ' + grid[0][0] + '。它是全表递推的种子——后面每个格子都踩着它累加。画面上 dp 表 (0,0) 亮橙并定格。',
+      do: draw({mat:disp(), note:'绿 = 已定格', st:Object.assign(doneSt(), {'0,0':'active'}),
+                vars:{r:0, c:0, 'dp[0][0]':dp[0][0]}})});
+
+    for(let c = 1; c < n; c++){
+      dp[0][c] = dp[0][c - 1] + grid[0][c];           // 真实更新
+      F.push({hl:[6,7], tag:'填第一行', cls:'t-blue',
+        msg:'第一行 (0,' + c + ') 再往上就出界——"从上来"这个选项根本不存在，谈不上 min 比较，只能照单全收：<code>dp[0][' + c + '] = dp[0][' + (c - 1) + '] + grid[0][' + c + '] = ' + dp[0][c - 1] + ' + ' + grid[0][c] + ' = ' + dp[0][c] + '</code>，沿途花费一个不少。这就是第一行/第一列要单独算的原因：主公式需要上、左两个来源，而边界格天生缺一个，只有一条笔直的来路。画面上 dp 表左格亮蓝、当前格亮橙。',
+        do: draw({mat:disp(), note:'蓝 = 来源格', st:Object.assign(doneSt(), {
+                  ['0,' + (c - 1)]:'in', ['0,' + c]:'active'}),
+                  vars:{r:0, c:c, ['dp[0][' + (c - 1) + ']']:dp[0][c - 1], ['grid[0][' + c + ']']:grid[0][c], ['dp[0][' + c + ']']:dp[0][c]}})});
+    }
+
+    for(let r = 1; r < m; r++){
+      dp[r][0] = dp[r - 1][0] + grid[r][0];           // 真实更新
+      F.push({hl:[8,9], tag:'填第一列', cls:'t-blue',
+        msg:'对称地，第一列 (' + r + ',0) 再往左就出界，唯一来路是上格，同样没有比较可做：<code>dp[' + r + '][0] = dp[' + (r - 1) + '][0] + grid[' + r + '][0] = ' + dp[r - 1][0] + ' + ' + grid[r][0] + ' = ' + dp[r][0] + '</code>。上边界、左边界两条"单行道"先铺好，里面的格子才都有上、左两个来源可比——DP 的边界条件从来都是这个角色。',
+        do: draw({mat:disp(), note:'蓝 = 来源格', st:Object.assign(doneSt(), {
+                  [(r - 1) + ',0']:'in', [r + ',0']:'active'}),
+                  vars:{r:r, c:0, ['dp[' + (r - 1) + '][0]']:dp[r - 1][0], ['grid[' + r + '][0]']:grid[r][0], ['dp[' + r + '][0]']:dp[r][0]}})});
+    }
+
+    for(let r = 1; r < m; r++){
+      for(let c = 1; c < n; c++){
+        const a = dp[r - 1][c], b = dp[r][c - 1];     // 快照：两个来源值
+        F.push({hl:[10,11], tag:'到 (r,c)=(' + r + ',' + c + ')', cls:'t-orange',
+          msg:'轮到 (' + r + ',' + c + ')，两个来源都是现成的全局最优：从上面来的半程最少要 ' + a + '（dp[' + (r - 1) + '][' + c + ']），从左边来的半程最少要 ' + b + '（dp[' + r + '][' + (c - 1) + ']）。敢只看这两格、敢直接挑小的，依据是<b>最优子结构</b>：最后一步只有从上/从左两种；而最优路径的前半段必然也是到那一格的最优路（否则换上更省的前半段，整条会更省，矛盾）——所以比较两个来源的 dp 值取 min，不会漏掉任何可能。画面上两个来源格亮蓝、当前格亮橙。',
+          do: draw({mat:disp(), note:'蓝 = 来源格', st:Object.assign(doneSt(), {
+                    [(r - 1) + ',' + c]:'in', [r + ',' + (c - 1)]:'in', [r + ',' + c]:'active'}),
+                    vars:{r:r, c:c, 'dp[r-1][c]':a, 'dp[r][c-1]':b}})});
+        const take = Math.min(a, b);
+        dp[r][c] = take + grid[r][c];                 // 真实更新
+        F.push({hl:[12], tag:'写入', cls:'t-green',
+          msg:'<code>min(' + a + ', ' + b + ') = ' + take + '</code>，前半程锁定较便宜的来源' + (a === b ? '（两边一样贵，选谁都行）' : '') + '，再付本格过路费 grid[' + r + '][' + c + '] = ' + grid[r][c] + ' → <b>dp[' + r + '][' + c + '] = ' + dp[r][c] + '</b>，定格。画面上紫框标出被选中的来源、落选的变灰——这格的"最优前驱"就此记下，末帧倒推最短路径全靠它。',
+          do: draw({mat:disp(), note:'紫框 = min 选中的来源', st:Object.assign(doneSt(), {
+                    [take === a ? (r - 1) + ',' + c : r + ',' + (c - 1)]:'pivot',
+                    [take === a ? r + ',' + (c - 1) : (r - 1) + ',' + c]:'muted'}),
+                    vars:{r:r, c:c, 'min(上,左)':take, 'grid[r][c]':grid[r][c], ['dp[' + r + '][' + c + ']']:dp[r][c]},
+                    hlv:['dp[' + r + '][' + c + ']']})});
+      }
+    }
+
+    // 末帧回溯：从终点倒推，每步挑 dp 值较小的来源（真实查 dp 表）
+    let r = m - 1, c = n - 1;
+    const path = [[r, c]];
+    const pathTxt = ps => {
+      const seq = ps.slice().reverse().map(([rr, cc]) => '<b>' + grid[rr][cc] + '</b><small>(' + rr + ',' + cc + ')</small>');
+      return seq.join(' → ') + '　·　当前和 = ' + ps.reduce((s, [rr, cc]) => s + grid[rr][cc], 0);
+    };
+    while(!(r === 0 && c === 0)){
+      const pr = r, pc = c;
+      let nr = r, nc = c, why;
+      if(r === 0){ nc = c - 1; why = '已到第一行，只能一路向左。'; }
+      else if(c === 0){ nr = r - 1; why = '已到第一列，只能一路向上。'; }
+      else if(dp[r - 1][c] <= dp[r][c - 1]){ nr = r - 1; why = '上面格 dp[' + (r - 1) + '][' + c + '] = ' + dp[r - 1][c] + ' ≤ 左边格 dp[' + r + '][' + (c - 1) + '] = ' + dp[r][c - 1] + ' → 最优路径从<b>上面</b>来。'; }
+      else { nc = c - 1; why = '左边格 dp[' + r + '][' + (c - 1) + '] = ' + dp[r][c - 1] + ' &lt; 上面格 dp[' + (r - 1) + '][' + c + '] = ' + dp[r - 1][c] + ' → 最优路径从<b>左边</b>来。'; }
+      r = nr; c = nc;
+      path.push([r, c]);
+      const snap = path.slice();                      // 快照：当前已锁定的路径
+      F.push({hl:[13], tag:'倒推路径', cls:'t-violet',
+        msg:'倒推：站在 (' + pr + ',' + pc + ')（本格花费 ' + grid[pr][pc] + '），问"最优路径是从哪格来的？"——' + why + '判据就是填表时的 min：dp 值较小的那个来源正是当初被选中的前驱（它的 dp + 本格花费才等于本格 dp）。每锁定一步就把格子标紫，一路退回 (0,0)，整条最短路径就拼出来了。',
+        do: draw({mat:disp(), note:'紫 = 最短路径', st:(function(){ const st = doneSt(); snap.forEach(([rr, cc]) => st[rr + ',' + cc] = 'target'); return st; })(),
+                  pathTxt:pathTxt(snap), vars:{当前:'(' + r + ',' + c + ')', '路径格数':snap.length}})});
+    }
+
+    const fullPath = path.slice().reverse().map(([rr, cc]) => grid[rr][cc]).join(' → ');
+    F.push({hl:[13], tag:'返回', cls:'t-dark',
+      msg:'路径定格（正向）：<b>' + fullPath + '</b>，沿途花费相加 = ' + path.reduce((s, [rr, cc]) => s + grid[rr][cc], 0) + '，与 <code>dp[' + (m - 1) + '][' + (n - 1) + ']</code> 完全对账 → <code>return ' + dp[m - 1][n - 1] + '</code> 🎉。回溯能走通，是因为填表时每格都"记住"了自己从哪个更便宜的格来；从终点逆流而上，自然还原出一条最优路径。整题复杂度：填表 O(m×n)，回溯只多 O(m+n)。',
+      do: draw({mat:disp(), note:'紫 = 最短路径', st:(function(){ const st = doneSt(); path.forEach(([rr, cc]) => st[rr + ',' + cc] = 'target'); return st; })(),
+                pathTxt:pathTxt(path), vars:{['dp[' + (m - 1) + '][' + (n - 1) + ']']:dp[m - 1][n - 1]}, res:dp[m - 1][n - 1]})});
+    return F;
+  }
+});
+</script>
+</body>
+</html>

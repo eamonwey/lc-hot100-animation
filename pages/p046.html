@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P046 · 从前序与中序遍历序列构造二叉树 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 46, num: 105, title: '从前序与中序遍历序列构造二叉树', diff: '中等', cat: '二叉树',
+  method: 'buildTree',
+
+  lede: '题目：给<b>前序</b>和<b>中序</b>两个遍历序列，把唯一的二叉树还原出来。两个序列各管一件事：' +
+        '<span class="var r">前序</span> = [根 | 左子树 | 右子树]，第一个永远是根；' +
+        '<span class="var i">中序</span> = [左子树 | 根 | 右子树]，找到根的位置就能<b>切开左右两半</b>。' +
+        '动画里每一步：上排前序点出根 → 下排中序找到切点 → 树上长出一个新节点，左右两段继续递归。',
+
+  roles: [
+    {c:'orange', code:'active', text:'前序段第一个 = 当前根'},
+    {c:'blue',   code:'in',     text:'当前正在处理的一段'},
+    {c:'violet', code:'pivot',  text:'根在中序里的位置 mid'},
+    {c:'green',  code:'done',   text:'已建好的部分'}
+  ],
+
+  codeTitle: '跟着高亮读代码——第 6 行"取根"、第 7 行"切中序"是每层的两板斧；下面两行递归把左右半段各自建好再挂上来。',
+
+  legend: [
+    {c:'orange', text:'前序段首 = 根'},
+    {c:'blue', text:'当前递归段'},
+    {c:'violet', text:'mid 切分点'},
+    {c:'green', text:'已建好的子树'}
+  ],
+
+  idea: '前序第一个是根，中序里根的左边全是左子树、右边全是右子树——切一刀，左右两段递归，树就长出来了。',
+
+  qa: [
+    {q:'为什么前序第一个一定是根？',
+     a:'前序的定义是"根 → 左子树 → 右子树"：访问任何（子）树时<b>第一个到达的必然是它的根</b>。递归到哪一段，这段前序的开头就是这段的根。'},
+    {q:'中序为什么能切分左右？',
+     a:'中序是"左子树 → 根 → 右子树"：根出现在正中间，<b>它左边的所有数只可能来自左子树，右边的只可能来自右子树</b>。数一数左边有 mid−l 个，就知道该从前序里划多少个给左子树。'},
+    {q:'为什么答案唯一？',
+     a:'本题保证节点值互不相同，根在中序里的位置唯一 → 每次切分方式唯一 → 递归全程没有第二种选择。若允许重复值，切分点会有歧义，答案就可能不唯一。'},
+    {q:'一定要切片（slice）吗？',
+     a:'切片写法直观但每次复制数组，总代价 O(n²)。工程上常用"左右下标 + 哈希表存中序位置"，每层 O(1) 定位、总 O(n)。本页为了好看懂用切片版，逻辑完全一致。'}
+  ],
+
+  complexity: '时间 O(n²)（切片版；下标 + 哈希可优化到 O(n)）　·　空间 O(n)（切片开销 + 递归栈 O(h)）',
+
+  form: [
+    {key:'preorder', label:'preorder', type:'arr', def:[3,9,20,15,7]},
+    {key:'inorder', label:'inorder', type:'arr', def:[9,3,15,20,7]}
+  ],
+  presets: [
+    {label:'[3,9,20,15,7] + [9,3,15,20,7]', values:{preorder:[3,9,20,15,7], inorder:[9,3,15,20,7]}},
+    {label:'满树 [4,2,1,3,6,5,7] + [1,2,3,4,5,6,7]', values:{preorder:[4,2,1,3,6,5,7], inorder:[1,2,3,4,5,6,7]}},
+    {label:'左斜 [1,2,3] + [3,2,1]', values:{preorder:[1,2,3], inorder:[3,2,1]}},
+    {label:'单节点 [1] + [1]', values:{preorder:[1], inorder:[1]}}
+  ],
+
+  code: `class Solution:
+    def buildTree(self, preorder, inorder):
+        def build(pre, ino):
+            if not ino:                    # 这段没数 -> 空子树
+                return None
+            root = TreeNode(pre[0])        # 前序第一个 = 根
+            mid = ino.index(root.val)      # 根把中序切成两半
+            root.left = build(pre[1:mid+1], ino[:mid])     # 左半段
+            root.right = build(pre[mid+1:], ino[mid+1:])   # 右半段
+            return root
+        root = build(preorder, inorder)
+        out, q = [], [root]                # 以下只是层序化, 方便展示对拍
+        while q:
+            n = q.pop(0)
+            if n is None: out.append(None); continue
+            out.append(n.val); q.append(n.left); q.append(n.right)
+        while out and out[-1] is None: out.pop()
+        return out
+`,
+
+  sol(input){
+    const pre = input.preorder || [], ino = input.inorder || [];
+    function build(pLo, pHi, iLo, iHi){
+      if(iLo > iHi) return null;
+      const rootVal = pre[pLo];
+      const mid = ino.indexOf(rootVal);
+      const leftLen = mid - iLo;
+      return {
+        val: rootVal,
+        left: build(pLo + 1, pLo + leftLen, iLo, mid - 1),
+        right: build(pLo + leftLen + 1, pHi, mid + 1, iHi)
+      };
+    }
+    const root = build(0, pre.length - 1, 0, ino.length - 1);
+    const out = [], q = [root];
+    while(q.length){
+      const nd = q.shift();
+      if(nd == null){ out.push(null); continue; }
+      out.push(nd.val); q.push(nd.left); q.push(nd.right);
+    }
+    while(out.length && out[out.length - 1] == null) out.pop();
+    return out;
+  },
+  expected: [3, 9, 20, null, null, 15, 7],
+
+  quiz: [
+    {q:'还原二叉树时,两个序列各自提供什么关键信息?',
+     options:['中序第一个是根,前序用来切分左右','前序第一个是根——前序是"根→左→右",递归进入任何一段,段首必是这段的根;中序负责切分——根左边的数全归左子树、右边的全归右子树','两个序列作用重复,随便用一个就能建树'],
+     answer:1,
+     explain:'两个"岗位"不能互换:中序的第一个是最左下的节点,不是根——拿它当根必错。分工是:前序管"点根"(每段开头必是根),中序管"切左右"(根的位置一确定,左右子树的成员立刻划清)。还差一个信息——左子树有多少个:由中序里根左边的个数给出,再用"个数相等"回前序里划走同样多个,两段就完全对齐了。',
+     jumpTo:3},
+    {q:'把输入换成前序 [4,2,1,3,6,5,7]、中序 [1,2,3,4,5,6,7],建出的树层序输出是?',
+     options:['[4,2,6,1,3,5,7]','[1,2,3,4,5,6,7]','[4,2,1,3,6,5,7]'],
+     answer:0,
+     explain:'前序首 4 是根;中序里 4 在下标 3 → 左边 [1,2,3](3 个)归左子树、右边 [5,6,7] 归右子树;回前序划走根后面的 3 个 [2,1,3]。递归:左段根是 2(孩子 1、3),右段根是 6(孩子 5、7)。层序化 → [4,2,6,1,3,5,7]。选 2 是把输入原样当输出——建树要的是还原结构,不是复读序列。',
+     jumpTo:37},
+    {q:'页面解法每层都用切片复制数组、线性扫描找 mid,总复杂度 O(n²);怎么优化到 O(n)?',
+     options:['改用层序遍历建树','把两个序列先各自排序','用左右下标表示区间代替切片,再用哈希表存"值 → 中序下标",每层 O(1) 定位切分点'],
+     answer:2,
+     explain:'切片每层都复制整段,是 O(n²) 的主因;index 又要线性扫。两处都能省:递归只需知道"当前段是哪一块"——传 (pLo, pHi, iLo, iHi) 四个下标,零复制;找 mid 改查预先建好的哈希表(值在中序的下标),从 O(段长) 降到 O(1)。总时间 O(n),空间 O(n)。排序帮不上忙:建树靠的是结构信息,不是大小顺序。',
+     jumpTo:4},
+  ],
+
+  steps(input){
+    const F = [];
+    const pre = (input.preorder || []).slice();
+    const ino = (input.inorder || []).slice();
+    if(pre.length !== ino.length) pre.length = Math.min(pre.length, ino.length); // 兜底: 长度对齐
+    const inoIdx = {};
+    ino.forEach((v, i) => { if(inoIdx[v] == null) inoIdx[v] = i; });
+    const byKey = {};
+    const created = [];          // 已造出的节点 key
+    const finIno = new Set();    // 子树已完成的中序下标
+    const finNode = new Set();   // 子树已完成的节点 key
+    let nextKey = 0, maxD = 0;
+
+    const segStr = (arr, lo, hi) => '[' + arr.slice(lo, hi + 1).map(x => LCesc(String(x))).join(', ') + ']';
+    const escV = x => LCesc(String(x));
+
+    /* ★ 快照原则：所有 states/layout/vars 都在 push 那一刻按当前进度现算成新对象 */
+    const draw = o => (v) => {
+      v.arr('pre', pre, {
+        label:'前序 <code>preorder</code>　·　[根 | 左子树 | 右子树]',
+        states: o.preStates, idxCls: o.preCls,
+        markers: o.preMarkers || []
+      });
+      v.arr('ino', ino, {
+        label:'中序 <code>inorder</code>　·　[左子树 | 根 | 右子树]',
+        states: o.inoStates, idxCls: o.inoCls,
+        markers: o.inoMarkers || []
+      });
+      v.tree('T', o.layout, {label:'构造中的树　·　橙 = 刚造出 蓝 = 递归路径 绿 = 已完成', states: o.treeStates, tags: o.tags || {}});
+      if(o.vars) v.vars('vars', o.vars, {label:'当前这一段', hl:o.hlVars || []});
+      if(o.result != null) v.result(o.result, {label:'构造结果（层序）'});
+    };
+
+    function layoutNow(){
+      const nodes = created.map(k => {
+        const nd = byKey[k];
+        return {key:k, val:nd.val, x: 6 + inoIdx[nd.val] * 70, y: 6 + nd.d * 74,
+                leaf: nd.left == null && nd.right == null};
+      });
+      const edges = [];
+      created.forEach(k => {
+        if(byKey[k].left != null) edges.push([k, byKey[k].left]);
+        if(byKey[k].right != null) edges.push([k, byKey[k].right]);
+      });
+      return {nodes, edges,
+              w: Math.max(120, 12 + ino.length * 70 - 24),
+              h: Math.max(60, 12 + (maxD + 1) * 74)};
+    }
+    function preStates(pLo, pHi){
+      const s = {};
+      pre.forEach((x, i) => {
+        if(i < pLo) s[i] = 'done';
+        else if(i === pLo) s[i] = 'active';
+        else if(i <= pHi) s[i] = 'in';
+      });
+      return s;
+    }
+    function inoStates(iLo, iHi, mid, mids){
+      const s = {};
+      finIno.forEach(i => { s[i] = 'done'; });
+      for(let i = iLo; i <= iHi; i++){ if(s[i] == null) s[i] = 'in'; }
+      if(mid != null) s[mid] = 'pivot';
+      (mids || []).forEach(i => { if(s[i] == null || s[i] === 'in') s[i] = 'pivot'; });
+      return s;
+    }
+    function treeStates(kk){
+      const s = {};
+      finNode.forEach(k => { s[k] = 'done'; });
+      created.forEach(k => { if(s[k] == null) s[k] = 'in'; });
+      if(kk != null) s[kk] = 'active';
+      return s;
+    }
+
+    function build(pLo, pHi, iLo, iHi, d, mids){
+      maxD = Math.max(maxD, d);
+      /* 入口检查 */
+      if(iLo > iHi){
+        F.push({hl:[4,5], ok:4, tag:'空段返回', cls:'t-grey',
+          msg:'中序这一段没有数（l = ' + iLo + ' &gt; r = ' + iHi + '）→ <b>return None</b>：这个位置挂的是<b>空子树</b>。空段也要老老实实递归一趟——父亲要靠这个 None 才知道"我这边没有孩子"，而不是漏建了一个节点。类比：点名没人应，要登记"此职位空缺"，而不是把这一栏划掉装没看见。',
+          do: draw({
+            preStates: preStates(pLo, pHi), preCls:{}, preMarkers:[{name:'pre', idx:pLo, cls:'mi', text:'▲ 段首'}],
+            inoStates: inoStates(iLo, iHi, null, mids), inoCls:{}, inoMarkers:[],
+            layout: layoutNow(), treeStates: treeStates(null),
+            vars:{'中序段': '空', '返回': 'None'}
+          })});
+        return null;
+      }
+      F.push({hl:[4,5], no:4, tag:'进入一段', cls:'t-blue',
+        msg:'开始建一段子树：中序段 <code>ino[' + iLo + '..' + iHi + ']</code> = ' + segStr(ino, iLo, iHi) +
+            '，共 ' + (iHi - iLo + 1) + ' 个数 → 对应前序段 ' + segStr(pre, pLo, pHi) + '（同样是 ' + (iHi - iLo + 1) + ' 个）。为什么两段个数必然相等？它们是<b>同一批节点</b>排的两次队：一次按"根左右"、一次按"左根右"。画面：两排数组里的蓝色格子就是当前段，接下来在这一小段里重复"点根 → 切分"两板斧。',
+        do: draw({
+          preStates: preStates(pLo, pHi), preCls:{}, preMarkers:[],
+          inoStates: inoStates(iLo, iHi, null, mids), inoCls:{}, inoMarkers:[],
+          layout: layoutNow(), treeStates: treeStates(null),
+          vars:{'中序段': iLo + '..' + iHi, '个数': iHi - iLo + 1}
+        })});
+
+      /* 取根 + 造节点 */
+      const rootVal = pre[pLo];
+      const kk = nextKey++;
+      byKey[kk] = {val: rootVal, left:null, right:null, d};
+      created.push(kk);
+      F.push({hl:[6], tag:'取根造点', cls:'t-orange',
+        msg:'<code>root = TreeNode(前序段首)</code>：前序第一个 <b>' + escV(rootVal) + '</b>（下标 ' + pLo + '）就是这段的根。为什么敢这么肯定？前序的定义是"根 → 左子树 → 右子树"——递归进入任何一段，<b>第一个被访问到的必然是这段的根</b>，左右子树都得排在它后面。画面：树上冒出新橙点 ' + escV(rootVal) + '，前序段首标上 ▲ 根。',
+        do: draw({
+          preStates: preStates(pLo, pHi), preCls:{[pLo]:'on-i'}, preMarkers:[{name:'根', idx:pLo, cls:'mi', text:'▲ 根'}],
+          inoStates: inoStates(iLo, iHi, null, mids), inoCls:{}, inoMarkers:[],
+          layout: layoutNow(), treeStates: treeStates(kk),
+          tags:{[kk]:{text:'新节点', cls:'mi'}},
+          vars:{'根': rootVal, '中序段': iLo + '..' + iHi}
+        })});
+
+      /* 中序找根切分 */
+      const mid = ino.indexOf(rootVal, iLo);
+      const leftLen = mid - iLo, rightLen = iHi - mid;
+      F.push({hl:[7], tag:'中序切分', cls:'t-violet',
+        msg:'<code>mid = inorder.index(' + escV(rootVal) + ') = ' + mid + '</code>：中序是"左 → 根 → 右"，根 ' + escV(rootVal) + ' 一现身，两边的归属立刻明确——左边 ' + leftLen + ' 个 ' + segStr(ino, iLo, mid - 1) + ' 全归<b>左子树</b>，右边 ' + rightLen + ' 个 ' + segStr(ino, mid + 1, iHi) + ' 全归<b>右子树</b>。这个 leftLen = ' + leftLen + ' 是关键情报：前序里紧跟在根后面、划给左子树的也正好是 ' + leftLen + ' 个——两个序列的对应关系全靠"个数相等"焊死。画面：紫色 ▲ mid 是切分点，紫色格子是被切出的左右两段。',
+        do: draw({
+          preStates: preStates(pLo, pHi), preCls:{}, preMarkers:[{name:'根', idx:pLo, cls:'mi', text:'▲ 根'}],
+          inoStates: inoStates(iLo, iHi, mid, mids), inoCls:{[mid]:'on-i'},
+          inoMarkers:[{name:'mid', idx:mid, cls:'mv', text:'▲ mid'}],
+          layout: layoutNow(), treeStates: treeStates(kk),
+          vars:{'根': rootVal, mid: mid, '左段': leftLen + ' 个', '右段': rightLen + ' 个'},
+          hlVars:['mid']
+        })});
+
+      /* 左子树 */
+      const L = build(pLo + 1, pLo + leftLen, iLo, mid - 1, d + 1, (mids || []).concat([mid]));
+      byKey[kk].left = L;
+      if(L != null){
+        for(let i = iLo; i <= mid - 1; i++) finIno.add(i);
+        finNode.add(L);
+        F.push({hl:[8], tag:'左子树建好', cls:'t-green',
+          msg:'左子树造好了，挂到 ' + escV(rootVal) + ' 左边（变绿）。复盘这一刀的区间对应：前序 ' + segStr(pre, pLo + 1, pLo + leftLen) + ' ↔ 中序 ' + segStr(ino, iLo, mid - 1) + '，两边都是 ' + leftLen + ' 个——前序丢掉根之后，紧接着的 ' + leftLen + ' 个全给了左子树；中序里则是根前面的那一段。画面：绿色 = 已完成的子树。',
+          do: draw({
+            preStates: preStates(pLo + leftLen + 1, pHi), preCls:{},
+            preMarkers:[{name:'根', idx:pLo, cls:'mi', text:'▲ 已用'}],
+            inoStates: inoStates(mid + 1, iHi, null, mids), inoCls:{},
+            inoMarkers:[{name:'mid', idx:mid, cls:'mv', text:'▲ mid'}],
+            layout: layoutNow(), treeStates: treeStates(kk),
+            vars:{'根': rootVal, mid: mid, '左子树': '✓ 已挂'}
+          })});
+      } else {
+        F.push({hl:[8], tag:'左边为空', cls:'t-grey',
+          msg:'左半段没数 → <code>root.left = None</code>：' + escV(rootVal) + ' 没有左孩子。这不是漏建——中序里根的左边本来就一格都没有，说明左子树是空的，None 是如实登记，不是出错。',
+          do: draw({
+            preStates: preStates(pLo + leftLen + 1, pHi), preCls:{}, preMarkers:[],
+            inoStates: inoStates(mid + 1, iHi, null, mids), inoCls:{}, inoMarkers:[],
+            layout: layoutNow(), treeStates: treeStates(kk),
+            vars:{'根': rootVal, mid: mid, '左子树': 'None'}
+          })});
+      }
+
+      /* 右子树 */
+      const R = build(pLo + leftLen + 1, pHi, mid + 1, iHi, d + 1, (mids || []).concat([mid]));
+      byKey[kk].right = R;
+      if(R != null){
+        for(let i = mid + 1; i <= iHi; i++) finIno.add(i);
+        finNode.add(R);
+        F.push({hl:[9], tag:'右子树建好', cls:'t-green',
+          msg:'右子树也造好了，挂到 ' + escV(rootVal) + ' 右边（变绿）。区间对应：前序 ' + segStr(pre, pLo + leftLen + 1, pHi) + ' ↔ 中序 ' + segStr(ino, mid + 1, iHi) + '——前序里左子树用完、剩下的全归右边；中序里则是根后面的那段。左右都挂牢，' + escV(rootVal) + ' 这一段就收工了。',
+          do: draw({
+            preStates: preStates(pHi + 1, pHi), preCls:{}, preMarkers:[],
+            inoStates: inoStates(-1, -2, null, mids), inoCls:{}, inoMarkers:[],
+            layout: layoutNow(), treeStates: treeStates(kk),
+            vars:{'根': rootVal, mid: mid, '左子树': '✓', '右子树': '✓ 已挂'}
+          })});
+      } else {
+        F.push({hl:[9], tag:'右边为空', cls:'t-grey',
+          msg:'右半段没数 → <code>root.right = None</code>：' + escV(rootVal) + ' 没有右孩子。中序里根的右边一格都没有 → 右子树为空，如实登记 None。',
+          do: draw({
+            preStates: preStates(pHi + 1, pHi), preCls:{}, preMarkers:[],
+            inoStates: inoStates(-1, -2, null, mids), inoCls:{}, inoMarkers:[],
+            layout: layoutNow(), treeStates: treeStates(kk),
+            vars:{'根': rootVal, mid: mid, '左子树': '✓', '右子树': 'None'}
+          })});
+      }
+
+      /* 本段完成 */
+      finIno.add(mid);
+      finNode.add(kk);
+      const isTop = d === 0;
+      F.push({hl:[10, 11], tag: isTop ? '构造完成' : '本段返回', cls: isTop ? 't-dark' : 't-green',
+        msg: isTop
+          ? '🎉 <code>return root</code>：整棵树建好了！复盘套路：每个节点只做两件事——<b>前序段首点根</b>、<b>中序找根切两半</b>，剩下的交给递归；根节点就是最开始那个 ' + escV(ino.length ? pre[0] : '') + '。对照画面：每个节点都各就各位，没有任何猜的成分，所以答案唯一。'
+          : '以 <b>' + escV(rootVal) + '</b> 为根的子树完整建好（左右孩子都挂牢），<code>return</code> 交给上一层挂接——递归就是这样一层层"完工上交"。',
+        do: draw({
+          preStates: preStates(pre.length, pre.length - 1), preCls:{}, preMarkers:[],
+          inoStates: inoStates(-1, -2, null, []), inoCls:{}, inoMarkers:[],
+          layout: layoutNow(), treeStates: treeStates(null),
+          vars:{'根': rootVal, mid: mid, '状态': '完成'}
+        })});
+      return kk;
+    }
+
+    function layerArr(){
+      const root = created.length ? 0 : null;   // key 0 = 最后 return 的顶层根
+      const out = [], q = root == null ? [] : [root];
+      while(q.length){
+        const k = q.shift();
+        if(k == null){ out.push(null); continue; }
+        out.push(byKey[k].val); q.push(byKey[k].left); q.push(byKey[k].right);
+      }
+      while(out.length && out[out.length - 1] == null) out.pop();
+      return out;
+    }
+    function layerStr(){
+      return layerArr().map(x => x == null ? 'null' : escV(x)).join(', ');
+    }
+
+    F.push({hl:[1,2,3], tag:'初始化', cls:'t-grey',
+      msg:'两个序列各司其职：<b>前序 = [根 | 左子树 | 右子树]</b> 负责点根（每一段的第一个必是根），<b>中序 = [左子树 | 根 | 右子树]</b> 负责切左右（根左边的全归左子树）。为什么答案唯一？题目保证节点值互不相同 → 根在中序里的位置唯一 → 每一刀的切法唯一，全程没有第二种选择。读数：前序 ' + segStr(pre, 0, pre.length - 1) + '、中序 ' + segStr(ino, 0, ino.length - 1) + '，递归 <code>build(前序段, 中序段)</code> 已就位，开始建树！',
+      do: draw({
+        preStates: preStates(0, pre.length - 1), preCls:{}, preMarkers:[],
+        inoStates: inoStates(0, ino.length - 1, null, []), inoCls:{}, inoMarkers:[],
+        layout: layoutNow(), treeStates: treeStates(null),
+        vars:{'前序长度': pre.length, '中序长度': ino.length}
+      })});
+
+    build(0, pre.length - 1, 0, ino.length - 1, 0, []);
+
+    F.push({hl:[12,13,14,15,16,17,18], tag:'层序化输出', cls:'t-dark',
+      msg:'<code>build</code> 返回的是树本身（LeetCode 收卷格式是层序数组）；末尾把它按<b>层序</b>铺平成 <b>[' + layerStr() + ']</b>（null = 空位），方便与答案对拍。核心算法到上一帧就结束了：前序定根、中序分左右，两把刀切完整棵树。',
+      do: draw({
+        preStates: preStates(pre.length, pre.length - 1), preCls:{}, preMarkers:[],
+        inoStates: inoStates(-1, -2, null, []), inoCls:{}, inoMarkers:[],
+        layout: layoutNow(), treeStates: treeStates(null),
+        vars:{'输出': '层序数组'},
+        result: layerArr()
+      })});
+
+    return F;
+  }
+});
+</script>
+</body>
+</html>

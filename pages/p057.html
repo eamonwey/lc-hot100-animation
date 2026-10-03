@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P057 · 组合总和 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 57, num: 39, title: '组合总和', diff: '中等', cat: '回溯',
+  method: 'combinationSum',
+
+  lede: '题目：从 candidates 里挑数字（<b>同一个数可以重复挑</b>），凑出 target 的所有组合。' +
+        '对每个数只有两个动作——<b>再选一次</b>（递归时 i 不动）或<b>跳过它</b>（i+1）。' +
+        '<span class="var r">left</span> 一路记录"还差多少"：减到 0 收获答案，减到负数立即<span class="var i">剪枝</span>（红色闪光）。',
+
+  roles: [
+    {c:'orange', code:'i',    text:'当前考虑的候选数下标'},
+    {c:'red',    code:'left', text:'还差多少（left<0 → 剪枝）'},
+    {c:'blue',   code:'path', text:'已选的数（可重复）'},
+    {c:'green',  code:'ans',  text:'凑齐的组合'}
+  ],
+
+  codeTitle: '跟着高亮读代码——<code>left == 0</code> 变<span style="color:var(--green)">绿</span>＝凑齐了、收集答案；剪枝行变<span style="color:var(--red)">红</span>＝超过 target 或没数可挑，这条路放弃。',
+
+  legend: [
+    {c:'orange', text:'正在选的候选数'},
+    {c:'red',    text:'left<0 超限 → 剪枝'},
+    {c:'violet', text:'撤销并跳过'},
+    {c:'green',  text:'凑齐 target 的组合'}
+  ],
+
+  idea: '两个动作走天下：再选一次当前数（i 不动），或者跳过它（i+1）。left 减到 0 收答案，减到负数立刻剪枝。',
+
+  qa: [
+    {q:'为什么"再选一次"时递归 dfs(i, …) 的 i 不加 1？',
+     a:'因为同一个数允许重复用：选完 2 后 left 变小，下一层还能接着选 2。"跳过"分支才 i+1，表示 2 的戏份演完了。这样组合内部始终按候选顺序排列，天然不会同时出现 [2,3] 和 [3,2] 两份重复。'},
+    {q:'剪枝是怎么发生的？',
+     a:'每层都带着 left（还差多少）往下走，一旦 left<0 说明和已经超过 target——再选只会更超，这整棵子树直接放弃。本题靠"超了就停"；若先把候选排序，还可以在 for 里提前 break，剪得更狠。'},
+    {q:'和排列/子集的回溯差别在哪？',
+     a:'组合不关心顺序，所以每层只向后看（i 不回头），杜绝 [2,3]/[3,2] 重复；排列每层从头扫、靠 used 查重；子集是"每位二选一"。三题一个框架，差别只在"每层能选什么、怎么去重"。'}
+  ],
+
+  complexity: '时间 最坏指数级 O(n^(T/M))（n=候选个数, T=target, M=最小候选值）　·　空间 O(T/M)（递归栈 + path）',
+
+  form: [
+    {key:'candidates', label:'candidates', type:'arr', def:[2,3,6,7]},
+    {key:'target', label:'target', type:'num', def:7}
+  ],
+  presets: [
+    {label:'[2,3,6,7] 目标7（默认）', values:{candidates:[2,3,6,7], target:7}},
+    {label:'[2,3] 目标4', values:{candidates:[2,3], target:4}},
+    {label:'[2] 目标3（无解）', values:{candidates:[2], target:3}},
+    {label:'[2,3,5] 目标8', values:{candidates:[2,3,5], target:8}}
+  ],
+
+  code: `class Solution:
+    def combinationSum(self, candidates, target):
+        ans, path = [], []
+
+        def dfs(i, left):              # 从 candidates[i] 开始挑, 还差 left
+            if left == 0:              # 一分不差 → 找到一组
+                ans.append(path[:])
+                return
+            if i == len(candidates) or left < 0:   # 没数可挑 / 超了 → 剪枝
+                return
+            path.append(candidates[i]) # 选 candidates[i]
+            dfs(i, left - candidates[i])   # i 不动: 同一个数还能再选
+            path.pop()                 # 撤销
+            dfs(i + 1, left)           # 跳过它, 试下一个数
+
+        dfs(0, target)
+        return ans
+`,
+
+  sol(input){
+    const cands = input.candidates || [], target = input.target;
+    const ans = [], path = [];
+    (function dfs(i, left){
+      if(left === 0){ ans.push(path.slice()); return; }
+      if(i === cands.length || left < 0) return;
+      path.push(cands[i]);
+      dfs(i, left - cands[i]);
+      path.pop();
+      dfs(i + 1, left);
+    })(0, target);
+    return ans;
+  },
+  expected: [[2,2,3],[7]],
+
+  quiz: [
+    {q:'「再选一次」递归写成 dfs(i, left − candidates[i]),i 故意不动。如果手滑写成 dfs(i + 1, …),结果会怎样?',
+     options:['结果一样,只是更快','每个数最多只能选一次,[2,2,3] 这类带重复数字的组合全部丢失,只剩 [7]','会死循环'],
+     answer:1,
+     explain:'i 不动 = "选完 2 后下一层还能接着选 2",这正是「同一个数可重复使用」的实现机关;写成 i+1 就退化成"每个数至多一次"的组合总和 II 语义,target=7 时只剩 [7],漏掉 [2,2,3]。而「跳过它」那条分支才是 i+1——两个动作各管一件事:重复靠 i 不动,翻篇靠 i+1。',
+     jumpTo:2},
+    {q:'i 不动、同一个数可以一直再选,为什么不会无限递归下去?',
+     options:['因为用了 visited 数组记录选过的数','left 每层减掉正的 candidates[i] 严格变小:减到 0 收答案、减到负数剪枝——递归深度天然有上界','靠 Python 的递归深度上限兜底'],
+     answer:1,
+     explain:'仪表盘 left 每次都被扣掉一个正数,单调递减、不可逆,所以任何一条路的长度最多 T/M 层(T=target, M=最小候选)。left == 0 准时刹车收答案,left < 0 当场剪枝——两条出口保证每个分支必然终止。剪枝还顺带保证正确性:候选全是正数,超了以后绝无"后面捞回来"的可能,砍掉的子树里不可能藏解。',
+     jumpTo:6},
+    {q:'代入算一算:candidates = [2,3,5]、target = 8,一共几组凑法?',
+     options:['2 组','3 组','4 组','5 组'],
+     answer:1,
+     explain:'逐个数:8 = 2+2+2+2;= 2+3+3;= 3+5。共 <b>3 组</b>。注意不会有 [5,3]——"每层只从 i 向后看"让组合内部永远按候选顺序排,3+5 和 5+3 只算一份,所以这题连 used 数组都不需要。选 4 的人多半把 [2,2,2,2] 和 [2,2,4] 之类记混了——4 不在候选里。',
+     jumpTo:84},
+  ],
+
+  steps(input){
+    const F = [];
+    let cands = (input.candidates || []).filter(x => x != null);
+    let truncated = false;
+    if(cands.length > 4){ cands = cands.slice(0, 4); truncated = true; }
+    const n = cands.length;
+    const target = Number(input.target) || 0;
+    const path = [];
+    const ans = [];
+    const chips = [];
+    let fid = 0;
+    const stack = [];
+
+    const mkI = i => [{name:'i', idx:i, cls:'mi', text:'▲ i'}];
+    const nst = (idx, state) => {
+      const st = {};
+      if(idx != null) st[idx] = state || 'active';
+      return st;
+    };
+    const sumOf = () => path.reduce((a, b) => a + b, 0);
+    const pathHtml = (flash) => '<code>path</code> = [' +
+      path.map((x, j) => '<span class="' + (flash && j === path.length - 1 ? 'mk-a' : 'mk-b') + '">' + x + '</span>').join(' + ') + ']' +
+      (path.length ? '　和 = ' + sumOf() : '');
+
+    const draw = (o) => (v) => {
+      v.arr('cands', cands, {label:'候选数组 <code>candidates</code>　·　<code>target = ' + target + '</code>', states:o.nst, markers:o.mk || []});
+      v.vars('vars', {i:o.vi, left:o.vleft, target:target}, {label:'当前状态', hl:o.hlVars || []});
+      v.text('path', o.pHtml, {label:'当前路径', html:true});
+      v.stack('S', o.stk, {label:'递归调用栈', topTag:'栈顶'});
+      v.set('ans', o.chips, {label:'ans 已收集的组合（' + o.chips.length + ' 组）', color:'g'});
+      if(o.res !== undefined) v.result(o.res, {label:'返回结果'});
+    };
+
+    function dfs(i, left){
+      stack.push({key:'f' + (++fid), val:'dfs(' + i + ',' + left + ')'});
+      if(left === 0){
+        const snap = path.slice();
+        ans.push(snap);
+        chips.push(snap.join('+'));
+        F.push({hl:[6,7,8], ok:6, tag:'凑齐了！', cls:'t-green',
+          msg:'left = 0：一分不差！<code>path</code> = [' + snap.join(', ') + '] 正好凑满 target = ' + target + '，复制一份收进 <code>ans</code>（第 ' + ans.length + ' 组）。收拷贝是必须的——path 还要继续被回溯改动，收引用的话 ans 里最后全是空壳。然后 return，回上层换别的凑法。',
+          do: draw({nst:nst(), mk:[], vi:i, vleft:left, hlVars:['left'], pHtml:pathHtml(true),
+                    stk:stack.slice(), chips:chips.slice()})});
+        stack.pop();
+        return;
+      }
+      if(i === n || left < 0){
+        const over = left < 0;
+        F.push({hl:[9,10], no:9, tag: over ? '超了→剪枝' : '没数可挑', cls: over ? 't-red' : 't-grey',
+          msg: over
+            ? 'left = ' + left + ' &lt; 0：path = [' + path.join(', ') + '] 的和已经<b>超过 target = ' + target + '</b>。候选全是正数，再往下选只会让 left 更负、绝无"后面捞回来"的可能 → <b>剪枝</b>，这条支路整段放弃 ✂。放心砍：被砍的子树里不可能藏任何答案，剪枝不会漏解。'
+            : 'i = ' + i + '：下标越过最后一个候选（共 ' + n + ' 个），left = ' + left + ' 还没凑够——这条路走到头也没有答案，空手返回。这和 left &lt; 0 的"中途砍断"不同，属于把候选试完的自然结束。',
+          do: draw({nst:nst(i, over ? 'block' : 'stale'), mk:mkI(i), vi:i, vleft:left, hlVars:['left'],
+                    pHtml:pathHtml(false), stk:stack.slice(), chips:chips.slice()})});
+        stack.pop();
+        return;
+      }
+      // 选 candidates[i](与进入本层合并成一步)
+      path.push(cands[i]);
+      F.push({hl:[5,6,11,12], no:6, tag:'选 ' + cands[i], cls:'t-orange',
+        msg:'dfs(' + i + ', ' + left + ')：left ≠ 0、还有候选，先<b>选 ' + cands[i] + '</b>：path → [' + path.join(', ') + ']，left 相应减成 ' + (left - cands[i]) + '。递归写成 dfs(' + i + ', …) 而不是 i+1——<b>i 不动，同一个数下一层还能接着选</b>，这正是"数字可重复使用"的实现机关。',
+        do: draw({nst:nst(i), mk:mkI(i), vi:i, vleft:left - cands[i], hlVars:['left'],
+                  pHtml:pathHtml(true), stk:stack.slice(), chips:chips.slice()})});
+      dfs(i, left - cands[i]);
+      // 撤销 + 跳过(合并成一步)
+      path.pop();
+      F.push({hl:[13,14], tag:'撤销·跳过', cls:'t-violet',
+        msg:'"选 ' + cands[i] + '"的世界全试完了：<code>path.pop()</code> 弹回 [' + path.join(', ') + ']——现场复原，不弹会污染后续分支。接着<b>跳过 ' + cands[i] + '</b>：dfs(' + (i + 1) + ', ' + left + ')，它的戏份演完，left 原封不动交给下一个数。弹出 + 换路连起来，就是回溯的"撤销"一拍。',
+        do: draw({nst:nst(i, 'stale'), mk:mkI(i), vi:i + 1, vleft:left, hlVars:['i'],
+                  pHtml:pathHtml(false), stk:stack.slice(), chips:chips.slice()})});
+      dfs(i + 1, left);
+      stack.pop();
+    }
+
+    F.push({hl:[1,2,3,16], tag:'初始化', cls:'t-grey',
+      msg:'从空 path 出发，dfs(0, ' + target + ')：带着两样记忆下潜——<code>i</code>＝轮到哪个候选数，<code>left</code>＝还差多少凑够 target，它是全场的仪表盘。每层只有两个动作：<b>再选一次当前数</b>（递归时 i 不动，同一个数允许重复用）或<b>跳过它换下一个</b>（i+1）。left 减到 0 收答案，减成负数立刻剪枝。' +
+          (truncated ? '（候选超过 4 个，动画只演示前 4 个）' : ''),
+      do: draw({nst:nst(), mk:[], vi:0, vleft:target, pHtml:'<code>path</code> = []　和 = 0',
+                stk:[], chips:[]})});
+
+    dfs(0, target);
+
+    F.push({hl:[17], tag:'递归结束', cls:'t-dark',
+      msg:'搜索结束，<code>ans</code> 里共 ' + ans.length + ' 组：' + (chips.map(c => '[' + c + ']').join('、') || '（无解，空列表）') +
+          '。复盘两个机关："i 不动"实现重复选、"i+1"实现翻篇，两条腿交替把所有凑法走全；组合内部始终按候选顺序排列，[2,3] 和 [3,2] 不会各算一份——所以这题不需要 used 数组去重。剪枝则保证超限的路早早被砍，一个解都不会漏。',
+      do: draw({nst:nst(), mk:[], vi:'—', vleft:'—', pHtml:pathHtml(false),
+                stk:[], chips:chips.slice(), res:ans.slice()})});
+
+    return F;
+  }
+});
+</script>
+</body>
+</html>

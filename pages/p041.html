@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P041 · 将有序数组转换为二叉搜索树 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 41, num: 108, title: '将有序数组转换为二叉搜索树', diff: '简单', cat: '二叉树',
+  method: 'sortedArrayToBST',
+
+  lede: '题目：把<b>升序数组</b>变成一棵<b>高度平衡</b>的 BST（每个节点左右子树高度差 ≤ 1）。' +
+        '最直接的招：每次取数组<span class="var i">中点</span>当根——左半段全比它小、右半段全比它大，' +
+        '正好满足 BST，而且两边长度最接近、最平衡。动画里 <span class="var r">build(lo, hi)</span> ' +
+        '一次接手一段：数组上高亮当前段、标出中点，<b>右边的树逐个节点长出来</b>。',
+
+  roles: [
+    {c:'orange', code:'mid',   text:'中点：刚建出的根'},
+    {c:'blue',   code:'seg',   text:'当前递归处理的数组段'},
+    {c:'blue',   code:'in',    text:'建好但还没交回的节点（递归途中）'},
+    {c:'green',  code:'done',  text:'已定型、交回给上层的子树'}
+  ],
+
+  codeTitle: '跟着高亮读代码——数组上 <span style="color:var(--violet)">紫格</span> = 本段中点（即将建根）。建一个节点，树上就<b>长出一个节点</b>；左半段、右半段各自递归，最后 <code>return node</code> 交回给上层挂接。',
+
+  idea: '中点当根、左右两段递归：有序数组的中点天生是平衡 BST 的根，切下去、递归下去，树就长出来了。',
+
+  qa: [
+    {q:'为什么取中点就能"高度平衡"？',
+     a:'中点把数组切成左右两段，长度最多差 1；两段递归出的子树高度也因此最多差 1。每层都如此，整棵树自然平衡。（若取头或尾当根，会退化成一条链。）'},
+    {q:'答案唯一吗？',
+     a:'不唯一！偶数长度取 mid=(lo+hi)//2 会偏左，取偏右、或奇偶不同策略都会长出不同的平衡 BST。LeetCode 只要求返回<b>任意</b>一棵合法平衡 BST，本页用最标准的"偏左中点"写法。'},
+    {q:'递归的"合同"是什么？',
+     a:'build(lo, hi) 承诺：把 nums[lo..hi] 变成一棵 BST，返回它的根；lo > hi（空段）返回 None。有了合同，当前节点只管建自己、再把左右孩子接上。'},
+    {q:'复杂度？',
+     a:'每个元素恰好建一个节点，时间 O(n)；递归栈深 O(log n)（平衡树高），输出树本身占 O(n)。'}
+  ],
+
+  complexity: '时间 O(n)（每个元素建一个节点）　·　空间 O(log n)（递归栈，平衡树高）',
+
+  form: [
+    {key:'nums', label:'nums', type:'arr', def:[-10,-3,0,5,9]}
+  ],
+  presets: [
+    {label:'[-10,-3,0,5,9]', values:{nums:[-10,-3,0,5,9]}},
+    {label:'偶数个 [1,2,3,4]', values:{nums:[1,2,3,4]}},
+    {label:'两个元素 [1,3]', values:{nums:[1,3]}},
+    {label:'空数组 []', values:{nums:[]}}
+  ],
+
+  code: `class Solution:
+    def sortedArrayToBST(self, nums):
+        def build(lo, hi):               # 负责 nums[lo..hi] 这一段
+            if lo > hi:                  # 空段 -> 空树
+                return None
+            mid = (lo + hi) // 2         # 取中点, 左右段最平衡
+            node = TreeNode(nums[mid])   # 中点建根
+            node.left = build(lo, mid - 1)    # 左半段全部比它小
+            node.right = build(mid + 1, hi)   # 右半段全部比它大
+            return node                  # 把根交回给上层挂接
+        root = build(0, len(nums) - 1)
+        out, q = [], [root]              # 树层序化成数组, 便于和输出格式对拍
+        while q:
+            n = q.pop(0)
+            if n is None:
+                out.append(None); continue
+            out.append(n.val); q.append(n.left); q.append(n.right)
+        while out and out[-1] is None: out.pop()
+        return out
+`,
+
+  sol(input){
+    const nums = input.nums || [];
+    if(!nums.length) return [];
+    const byKey = {}; let nk = 0;
+    function bld(lo, hi){
+      if(lo > hi) return null;
+      const mid = Math.floor((lo + hi) / 2);
+      const me = {key: nk++, val: nums[mid], left: null, right: null};
+      byKey[me.key] = me;
+      me.left = bld(lo, mid - 1);
+      me.right = bld(mid + 1, hi);
+      return me.key;
+    }
+    const root = bld(0, nums.length - 1);
+    const out = [], q = [root];
+    while(q.length){
+      const k = q.shift();
+      if(k == null){ out.push(null); continue; }
+      out.push(byKey[k].val);
+      q.push(byKey[k].left); q.push(byKey[k].right);
+    }
+    while(out.length && out[out.length - 1] == null) out.pop();
+    return out;
+  },
+  expected: [0,-10,5,null,-3,null,9],
+
+  quiz: [
+    {q:'为什么每次取「中点」当根,而不是取第一个(最小)或最后一个(最大)元素?',
+     options:['取头或尾结果一样,只是中点代码看起来对称','中点左边的元素全比它小、右边全比它大,天然满足 BST,且两段长度最接近、长出的树最平衡;取头或尾会退化成一条链','中点是数组里最大的元素,当根更稳定'],
+     answer:1,
+     explain:'BST 要求"左 < 根 < 右":升序数组里,中点左边天然全部更小、右边天然全部更大,一刀切下去大小关系自动合规,一次比较都不用做。同时中点把元素对半分,两段递归出的子树高度最多差 1——这正是"高度平衡"的来源。取头(最小)当根,右半段全部挂在右边,整棵树退化成高度 O(n) 的链,就不平衡了。',
+     jumpTo:5},
+    {q:'把输入换成偶数个元素 [1,2,3,4](取偏左中点 mid=(lo+hi)//2),建出的 BST 层序输出是?',
+     options:['[1,2,3,4]','[2,1,3,null,null,null,4]','[2,1,4,3]'],
+     answer:1,
+     explain:'build(0,3):mid=(0+3)//2=1 → 根 2;左半段 [0..0] → 左孩子 1;右半段 build(2,3):mid=2 → 右孩子 3,再切出 [3..3] → 4 挂在 3 的右边。层序化得 [2,1,3,null,null,null,4]。注意本题答案不唯一:偶数个元素取偏右中点会长出另一棵同样合法的平衡 BST,判题只要求"合法 + 平衡",返回任意一棵都对。',
+     jumpTo:53},
+    {q:'整个建树过程要对数组元素做多少次「大小比较」?',
+     options:['O(n log n) 次,和排序差不多','每建一个节点比较 2 次,共约 2n 次','0 次——数组已升序,"左半段全小于中点、右半段全大于中点"由有序性自动保证'],
+     answer:2,
+     explain:'排序的活儿输入早就干完了:升序数组的中点切割只是划分区间,大小关系不用验证。算法的时间全花在建节点上——每个元素恰好建一个节点 → O(n);递归栈深是平衡树高 → 额外空间 O(log n)。这也是"有序输入"自带的红利:结构信息已经藏在下标里。',
+     jumpTo:6},
+  ],
+
+  steps(input){
+    const F = [];
+    const nums = input.nums || [];
+
+    /* 先按同样规则无声地建一遍，得到最终结构与坐标 —— 树的位置全程稳定，只做"出现/连接"动画 */
+    const nodesFinal = [];
+    (function bld(lo, hi){
+      if(lo > hi) return null;
+      const mid = Math.floor((lo + hi) / 2);
+      const me = {key: nodesFinal.length, val: nums[mid], left: null, right: null};
+      nodesFinal.push(me);
+      me.left = bld(lo, mid - 1);
+      me.right = bld(mid + 1, hi);
+      return me.key;
+    })(0, nums.length - 1);
+    const byKeyF = {}; nodesFinal.forEach(n => byKeyF[n.key] = n);
+    const rootF = nodesFinal.length ? 0 : null;
+
+    const CELLW = 46, GAPX = 24, ROWH = 74, pad = 6;
+    const posF = {}; let cntX = 0, maxD = 0;
+    if(rootF != null){
+      (function rec(k, d){
+        const nd = byKeyF[k];
+        if(nd.left != null) rec(nd.left, d + 1);
+        posF[k] = {x: pad + cntX * (CELLW + GAPX), y: pad + d * ROWH};
+        cntX++; maxD = Math.max(maxD, d);
+        if(nd.right != null) rec(nd.right, d + 1);
+      })(rootF, 0);
+      nodesFinal.forEach(n => { posF[n.key].leaf = n.left == null && n.right == null; });
+    }
+    const W = Math.max(120, pad * 2 + nodesFinal.length * (CELLW + GAPX) - GAPX);
+    const H = Math.max(60, pad * 2 + (maxD + 1) * ROWH);
+
+    const created = [];        // 已建出的节点 key（按创建顺序）
+    const attached = [];       // 已接好的边 [父, 子]
+    const returned = new Set();// 已 return 交回的节点
+    let buildIdx = 0;          // 与无声建树同序, 逐个取节点
+    let seq = 0;
+
+    const nm = k => '节点' + LCesc(String(byKeyF[k].val));
+    const lay = () => ({
+      nodes: created.map(k => ({key: k, val: byKeyF[k].val, x: posF[k].x, y: posF[k].y, leaf: posF[k].leaf})),
+      edges: attached.slice(),
+      w: W, h: H
+    });
+    const seg = (lo, hi, mid) => {
+      const s = {};
+      if(lo <= hi) for(let i = lo; i <= hi; i++) s[i] = 'in';
+      if(mid != null) s[mid] = 'pivot';
+      return s;
+    };
+    const mk = (lo, mid, hi) => {
+      const m = [{name:'lo', idx:lo, cls:'mr', text:'▲ lo'}];
+      if(mid != null) m.push({name:'mid', idx:mid, cls:'mi', text:'▲ mid'});
+      m.push({name:'hi', idx:hi, cls:'mg', text:'▲ hi'});
+      return m;
+    };
+    const serLevel = rootK => {
+      if(rootK == null) return [];
+      const out = [], q = [rootK];
+      while(q.length){
+        const k = q.shift();
+        if(k == null){ out.push(null); continue; }
+        out.push(byKeyF[k].val);
+        q.push(byKeyF[k].left); q.push(byKeyF[k].right);
+      }
+      while(out.length && out[out.length - 1] == null) out.pop();
+      return out;
+    };
+    const serTxt = o => '[' + o.map(x => x == null ? 'null' : LCesc(String(x))).join(', ') + ']';
+
+    /* ★ 快照原则：created/attached/returned/段游标 全部在 push 时切片定死, do() 只读快照 o */
+    const draw = o => (v) => {
+      v.arr('nums', nums, {
+        label:'有序数组 <code>nums</code>　·　蓝段 = 当前递归范围，紫格 = 中点',
+        states: o.seg || {},
+        markers: o.markers || []
+      });
+      const states = {};
+      (o.exists || []).forEach(k => { states[k] = 'in'; });
+      (o.ret || []).forEach(k => { states[k] = 'done'; });
+      if(o.cur != null) states[o.cur] = 'active';
+      v.tree('T', o.layout, {label:'正在长出的 BST　·　橙=刚建 蓝=递归途中 绿=已定型', states, tags: o.tags || {}});
+      const stack = o.stack || [];
+      v.stack('S', stack, {
+        label:'递归调用栈　·　每层是 build(lo, hi)',
+        states: stack.length ? {[stack[stack.length - 1].key]:'active'} : {},
+        topTag:'栈顶'
+      });
+      if(o.vars) v.vars('vars', o.vars, {label:'当前段的游标', hl:o.hlVars || []});
+      if(o.result != null) v.result(o.result, {label:'BST（层序输出）'});
+    };
+
+    function visit(lo, hi, frames){
+      const id = 'c' + (++seq);
+      const stack = frames.concat([{key:id, val:'build(' + lo + ', ' + hi + ')'}]);
+      F.push({hl:[3], tag:'接到一段', cls:'t-blue',
+        msg:'调用 <b>build(' + lo + ', ' + hi + ')</b>：它负责把 nums[' + lo + '..' + hi + '] 这一段变成一棵子树，栈顶压入新帧。数组上蓝段标出它的辖区（▲lo 到 ▲hi），树上这一段该长的节点现在还是空白。第一步：先检查这段是不是空的。',
+        do: draw({seg: seg(lo, hi, null), markers: mk(lo, null, hi), layout: lay(),
+                  exists: created.slice(), ret: Array.from(returned), stack,
+                  vars:{lo: lo, hi: hi, mid: '…'}})});
+      if(lo > hi){
+        F.push({hl:[4,5], ok:4, tag:'空段', cls:'t-grey',
+          msg:'lo = ' + lo + ' &gt; hi = ' + hi + ' → 这段一个元素都没有，命中出口，<b>return None</b>。这个 None 不是废值：上一层会把它接进 node.left 或 node.right，表示"这一侧没有孩子"。递归的边界全靠它——没有它，mid ± 1 迟早越界。',
+          do: draw({seg: {}, markers: mk(lo, null, hi), layout: lay(),
+                    exists: created.slice(), ret: Array.from(returned), stack})});
+        return null;
+      }
+      const mid = Math.floor((lo + hi) / 2);
+      const node = nodesFinal[buildIdx++];
+      created.push(node.key);
+      F.push({hl:[6,7], tag:'取中点建根', cls:'t-orange',
+        msg:'<code>mid = (' + lo + ' + ' + hi + ') // 2 = ' + mid + '</code> → 拿 nums[' + mid + '] = ' +
+            LCesc(String(nums[mid])) + ' 建节点，树上<b>长出一个橙色新节点</b>。为什么非中点不可：有序数组里中点左边的元素全比它小、右边全比它大，正好各站一边；要是取头或尾当根，一边全空，整棵树退化成一条链，高度 O(n)，就不平衡了。',
+        do: draw({seg: seg(lo, hi, mid), markers: mk(lo, mid, hi), layout: lay(),
+                  exists: created.slice(), ret: Array.from(returned), cur: node.key, stack,
+                  vars:{lo: lo, hi: hi, mid: mid}, hlVars:['mid']})});
+
+      F.push({hl:[8], tag:'递归左半段', cls:'t-blue',
+        msg:'左孩子交给递归：<code>build(' + lo + ', ' + (mid - 1) + ')</code>。nums[' + lo + '..' + (mid - 1) + '] 是中点左边的元素，<b>全部比 ' +
+            LCesc(String(nums[mid])) + ' 小</b>——按 BST 规则只能挂在左边，整段正好成为它的左子树，内部怎么排交给合同（这一段也可能是空的，递归自己会判断）。数组上的蓝段和游标已切到左半边。',
+        do: draw({seg: seg(lo, mid - 1, null), markers: mk(lo, null, mid - 1), layout: lay(),
+                  exists: created.slice(), ret: Array.from(returned), cur: node.key, stack,
+                  vars:{lo: lo, hi: hi, mid: mid}})});
+      const leftKey = visit(lo, mid - 1, stack);
+      if(leftKey != null) attached.push([node.key, leftKey]);
+      F.push({hl:[8], tag:'左子树接好', cls: leftKey != null ? 't-green' : 't-grey',
+        msg: leftKey != null
+          ? '左半段递归返回，根是' + nm(leftKey) + ' → <code>node.left</code> 接上，树上的左箭头出现。注意"接上"只是赋一个指针——上层完全不用关心左子树内部长什么样，这正是递归合同的好处。接着建右半段。'
+          : '左半段返回 None → <code>node.left = None</code>，树上不会出现左箭头，这个节点天生没有左孩子。接着建右半段。',
+        do: draw({seg: seg(lo, hi, mid), markers: mk(lo, mid, hi), layout: lay(),
+                  exists: created.slice(), ret: Array.from(returned), cur: node.key, stack,
+                  vars:{lo: lo, hi: hi, mid: mid}})});
+
+      F.push({hl:[9], tag:'递归右半段', cls:'t-blue',
+        msg:'右孩子交给递归：<code>build(' + (mid + 1) + ', ' + hi + ')</code>。nums[' + (mid + 1) + '..' + hi + '] 全部比 ' +
+            LCesc(String(nums[mid])) + ' 大，整段成为它的右子树（为空的话递归会直接返回 None）。左右两边的大小关系，靠"有序数组 + 中点切割"自动保证，一个比较都不用做。',
+        do: draw({seg: seg(mid + 1, hi, null), markers: mk(mid + 1, null, hi), layout: lay(),
+                  exists: created.slice(), ret: Array.from(returned), cur: node.key, stack,
+                  vars:{lo: lo, hi: hi, mid: mid}})});
+      const rightKey = visit(mid + 1, hi, stack);
+      if(rightKey != null) attached.push([node.key, rightKey]);
+      F.push({hl:[9], tag:'右子树接好', cls: rightKey != null ? 't-green' : 't-grey',
+        msg: rightKey != null
+          ? '右半段建好，根是' + nm(rightKey) + ' → <code>node.right</code> 接上，右箭头出现。至此 nums[' + lo + '..' + hi + '] 这段的骨架齐了：根 + 左右子树，大小关系天然合规。'
+          : '右半段返回 None → <code>node.right = None</code>。nums[' + lo + '..' + hi + '] 这段的骨架齐了——空段也是一种合法子树，有没有孩子都算完整。',
+        do: draw({seg: seg(lo, hi, mid), markers: mk(lo, mid, hi), layout: lay(),
+                  exists: created.slice(), ret: Array.from(returned), cur: node.key, stack,
+                  vars:{lo: lo, hi: hi, mid: mid}})});
+
+      returned.add(node.key);
+      F.push({hl:[10], tag:'本段完成', cls:'t-dark',
+        msg:'nums[' + lo + '..' + hi + '] 的 BST 建好，<b>return ' + nm(node.key) + '</b>：节点标绿、栈顶帧弹出，把这个根交回给上一层挂接。一层层往上交，最后交到最外层的就是整棵树的根。',
+        do: draw({seg: seg(lo, hi, mid), markers: mk(lo, mid, hi), layout: lay(),
+                  exists: created.slice(), ret: Array.from(returned), stack: frames,
+                  vars:{lo: lo, hi: hi, mid: mid}})});
+      return node.key;
+    }
+
+    F.push({hl:[1,2,11], tag:'读题', cls:'t-grey',
+      msg:'题目：把升序数组变成<b>高度平衡</b>的 BST——每个节点左右子树的高度差不能超过 1。最直接的招：每次取数组的<b>中点</b>当根。中点左边的数全比它小、右边全比它大，天然满足 BST 的大小规则；两段长度又最接近，长出的树自然平衡。从整段 <code>build(0, ' + (nums.length - 1) + ')</code> 出发，数组上的蓝段就是当前要处理的范围。',
+      do: draw({seg: {}, markers: [], layout: lay(), exists: [], ret: [], stack: []})});
+    F.push({hl:[3,4,5], tag:'出口', cls:'t-grey',
+      msg:'先把递归的"合同"念清楚：<code>build(lo, hi)</code> 承诺把 nums[lo..hi] 建成一棵 BST 并<b>返回根</b>；<code>lo &gt; hi</code> 说明这段一个元素都没有 → return None（空树）。有了合同，上层才敢直接写 <code>node.left = build(...)</code>，不用管接过来的是真节点还是 None。',
+      do: draw({seg: {}, markers: [], layout: lay(), exists: [], ret: [], stack: []})});
+    F.push({hl:[6,7], tag:'核心动作', cls:'t-grey',
+      msg:'核心动作就一套：<code>mid = (lo + hi) // 2</code> 算出中点，<code>TreeNode(nums[mid])</code> 拿它建根，左半段递归成左子树、右半段递归成右子树。为什么取整偏左也平衡：偶数个元素时左段少一个、右段多一个，每层最多差 1，累积起来高度差仍 ≤ 1。接下来看递归真跑起来。',
+      do: draw({seg: {}, markers: [], layout: lay(), exists: [], ret: [], stack: []})});
+
+    const rootKey = visit(0, nums.length - 1, []);
+    const serOut = serLevel(rootKey);
+
+    F.push({hl:[11,12], tag:'拿到根', cls:'t-blue',
+      msg: rootKey != null
+        ? '<code>root = build(0, ' + (nums.length - 1) + ')</code> 返回——整棵树的根是' + nm(rootKey) + '，头顶打上「根」名牌。树已经长成，但 LeetCode 要的是数组格式，所以最后做一步<b>层序化</b>：按层扫一遍树、摊平成数组，方便和输出格式对答案。'
+        : '空数组一个元素都没有，<code>build(0, -1)</code> 命中出口返回 None → 空树，直接进入输出环节。',
+      do: draw({seg: {}, markers: [], layout: lay(), exists: created.slice(), ret: Array.from(returned),
+                tags: rootKey != null ? {[rootKey]: {text:'根', cls:'mv'}} : {}})});
+    F.push({hl:[13,14,15,16,17,18], tag:'层序化', cls:'t-ink',
+      msg:'这一步只是<b>格式转换</b>，不改变算法本身：队列出队一个记一个；遇到空孩子记 <code>null</code> 占位、但不再展开它的孩子——这正是 LeetCode 序列化二叉树的标准格式，null 只是"这个位置没节点"的占位说明。',
+      do: draw({seg: {}, markers: [], layout: lay(), exists: created.slice(), ret: Array.from(returned),
+                tags: rootKey != null ? {[rootKey]: {text:'根', cls:'mv'}} : {}})});
+    F.push({hl:[19], tag:'建树完成', cls:'t-dark',
+      msg: rootKey != null
+        ? '🎉 去掉尾部的 null 占位 → 输出 <b>' + serTxt(serOut) + '</b>。复盘：每个元素恰好建一个节点，时间 O(n)；平衡树高 O(log n) 决定递归栈深。提醒：本题答案<b>不唯一</b>——偶数个元素取偏左还是偏右中点会长出不同的平衡 BST，判题只要求"合法 + 平衡"，返回任意一棵都对。'
+        : '🎉 空树层序化什么都记不到 → 输出 <b>[]</b>：空数组的合法答案就是空树。',
+      do: draw({seg: {}, markers: [], layout: lay(), exists: created.slice(), ret: Array.from(returned),
+                tags: rootKey != null ? {[rootKey]: {text:'根', cls:'mv'}} : {},
+                result: serOut})});
+
+    return F;
+  }
+});
+</script>
+</body>
+</html>

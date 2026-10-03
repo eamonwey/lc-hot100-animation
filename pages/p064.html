@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P064 · 在排序数组中查找元素的第一个和最后一个位置 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 64, num: 34, title: '在排序数组中查找元素的第一个和最后一个位置', diff: '中等', cat: '二分查找',
+  method: 'searchRange',
+
+  lede: '题目：升序数组里 target 可能出现<b>好几次</b>，找出它<b>第一次</b>和<b>最后一次</b>出现的下标；一次都没有就返回 [-1, -1]（要求 O(log n)）。' +
+        '动画演<b>两轮二分</b>：<span class="var r">l</span> / <span class="var r">r</span> 把左闭右开区间 [l, r) 一点点压扁，' +
+        '<span class="var i">mid</span> 每轮拿 <code>nums[mid]</code> 和门槛比大小——第一轮门槛是 target（找左边界），第二轮门槛是 target+1（再退一格就是右边界）。',
+
+  roles: [
+    {c:'blue',   code:'l / r', text:'搜索区间两个端点（左闭右开 [l, r)）'},
+    {c:'orange', code:'mid',   text:'每轮试探的中点'},
+    {c:'violet', code:'候选',  text:'目前最靠左的合格位置（最后变成边界）'},
+    {c:'blue',   code:'灰格',  text:'已出局的格子'}
+  ],
+
+  codeTitle: '跟着高亮读代码——<code>if</code> 行变<span style="color:var(--green)">绿</span>＝nums[mid] 够大（mid 可能就是边界，往左压），变<span style="color:var(--red)">红</span>＝太小（mid 整格出局，往右跳）。',
+
+  legend: [
+    {c:'blue', text:'区间 [l, r) 内的格子'},
+    {c:'orange', text:'mid 当前中点'},
+    {swatch:'var(--violet-soft)', text:'当前最左候选 → 最终的左 / 右边界'},
+    {swatch:'var(--grey-soft)', text:'灰格 = 已出局'}
+  ],
+
+  idea: '把两个边界翻译成同一个问题「第一个 ≥ x 的下标」：第一轮 x = target，第二轮 x = target + 1 再退一格——一套二分用两次。',
+
+  qa: [
+    {q:'右边界为什么要找 target + 1？',
+     a:'「第一个 ≥ target+1 的位置」的左边一格，恰好是 target 最后一次出现的地方。这样右边界不用另写一套逻辑，同一个 firstGE 复用两次。如果 target 根本不存在，第一轮结束后 nums[left] ≠ target 就提前拦截了。'},
+    {q:'>= 和 > 到底差在哪？',
+     a:'本页写 <b>nums[mid] >= tgt → r = mid</b>：mid 够大时它<b>自己还可能是答案</b>，所以只把右界压到 mid（保留它）。若写成 >，找的就是「第一个 > tgt」的位置，mid 会被整个扔掉，两个边界都得再 ±1 修正。判定符号必须和区间开闭配套，这是二分最容易翻车的地方。'},
+    {q:'为什么不会死循环？',
+     a:'区间是左闭右开 [l, r)：mid = (l+r)//2 一定落在 [l, r−1] 内。走 r = mid 时区间严格变小；走 l = mid + 1 更是至少缩一格。每轮区间长度必定减少，最终 l == r 收敛。'},
+    {q:'复杂度为什么是 O(log n)？',
+     a:'两轮二分，每轮区间砍半，各 O(log n)，加起来还是 O(log n)。只用了几个变量，空间 O(1)。'}
+  ],
+
+  complexity: '时间 O(log n)（两轮二分）　·　空间 O(1)',
+
+  form: [
+    {key:'nums', label:'nums', type:'arr', def:[5,7,7,8,8,10]},
+    {key:'target', label:'target', type:'num', def:8}
+  ],
+  presets: [
+    {label:'[5,7,7,8,8,10] 找 8', values:{nums:[5,7,7,8,8,10], target:8}},
+    {label:'[5,7,7,8,8,10] 找 6（不存在）', values:{nums:[5,7,7,8,8,10], target:6}},
+    {label:'[2,2,2,2] 全是 2', values:{nums:[2,2,2,2], target:2}},
+    {label:'[1] 单元素找 1', values:{nums:[1], target:1}},
+    {label:'[] 空数组', values:{nums:[], target:5}}
+  ],
+
+  code: `class Solution:
+    def searchRange(self, nums, target):
+        def firstGE(tgt):                # 第一个 >= tgt 的下标(没有则 n)
+            l, r = 0, len(nums)          # 左闭右开区间 [l, r)
+            while l < r:
+                mid = (l + r) // 2
+                if nums[mid] >= tgt:     # 够大: mid 可能就是边界
+                    r = mid              # 保留 mid, 继续向左压
+                else:                    # 太小: 边界必在 mid 右侧
+                    l = mid + 1
+            return l
+        n = len(nums)
+        left = firstGE(target)           # ① 第一轮: 找左边界
+        if left == n or nums[left] != target:
+            return [-1, -1]              # 数组里没有 target
+        right = firstGE(target + 1) - 1  # ② 第二轮: 找 >= target+1 再退一格
+        return [left, right]
+`,
+
+  sol(input){
+    const nums = input.nums, target = input.target;
+    const firstGE = tgt => {
+      let l = 0, r = nums.length;
+      while(l < r){
+        const mid = (l + r) >> 1;
+        if(nums[mid] >= tgt) r = mid; else l = mid + 1;
+      }
+      return l;
+    };
+    const n = nums.length;
+    const left = firstGE(target);
+    if(left === n || nums[left] !== target) return [-1, -1];
+    return [left, firstGE(target + 1) - 1];
+  },
+  expected: [3, 4],
+
+  quiz: [
+    {q:'nums[mid] ≥ 门槛时写 <code>r = mid</code> 而不是 <code>r = mid − 1</code>,为什么?',
+     options:['减 1 会数组越界','mid 够大时它自己可能就是「第一个 ≥」——r = mid−1 会把边界本人扔掉;写 ≥ 就要配 r = mid,这是判定符号和区间开闭的配套约定','两种写法结果一样,只是更快'],
+     answer:1,
+     explain:'本页的二分语义是「第一个 ≥ tgt」:mid 满足 ≥,意味着它<b>有资格就是答案</b>,只能把右界压到 mid(保留它)继续向左夹。若按普通二分的习惯写 mid−1,像 [2,2,2,2] 找 2 这种"全员合格"的情形,最后会两手空空。反过来,把 ≥ 改成 > 时答案区间也跟着变,要再 ±1 修正——判定符号、区间开闭、更新方式三者必须配套,单改一个就翻车。',
+     jumpTo:5},
+    {q:'代入算一算:nums = [5,7,7,8,8,10]、target = 7,返回什么?',
+     options:['[1, 2]','[1, 3]','[2, 2]','[-1, -1]'],
+     answer:0,
+     explain:'第一轮 firstGE(7):第一个 ≥7 的位置是下标 1(数组里 5 < 7,7 在第 1 格),nums[1] = 7 = target,验货通过 → 左边界 1。第二轮 firstGE(8):第一个 ≥8 的位置是下标 3(8 的首格),退一格 → 右边界 2。返回 <b>[1, 2]</b>。选 [1,3] 的人把右边界停在了"第一个 8"上——那是 firstGE(8) 的原值,忘了 −1。',
+     jumpTo:27},
+    {q:'target 根本不在数组里时,靠什么拦住"把别处的下标误当边界报出去"?',
+     options:['循环里会自动跳出','第一轮结束后亲自验货:left == n 或 nums[left] ≠ target 就 return [-1,-1]——firstGE 只保证「≥」,不保证「恰好等于」','比较 target 和 nums[0] 就够了'],
+     answer:1,
+     explain:'firstGE(6) 对 [5,7,7,8,8,10] 返回 1——但站在这格的是 7 不是 6。「第一个 ≥ x」的语义比「x 存在」宽:返回值可能落在"比 x 大的数"头上。所以必须验货:返回 n(全是 < target)或 nums[left] ≠ target,都说明 target 压根不存在。漏了这步,输出会把 7 的位置冒充成 6 的区间——这是本题最经典的错误答案来源。',
+     jumpTo:14},
+  ],
+
+  steps(input){
+    const F = [];
+    const nums = input.nums, target = input.target;
+    const n = nums.length;
+
+    const draw = (o) => (v) => {
+      v.arr('nums', nums, {
+        label:'数组 <code>nums</code>　·　' + o.phase,
+        states:o.states, markers:o.markers, labels:o.labels || {}
+      });
+      v.vars('vars', o.vars, {label:'变量'});
+      if(o.res !== undefined) v.result(o.res, {label:'返回结果'});
+    };
+    const mk = (l, r, mid) => {
+      const a = [{name:'l', idx:l, cls:'mr', text:'▲ l'},
+                 {name:'r', idx:r, cls:'mr', text:'▲ r'}];
+      if(mid != null) a.push({name:'mid', idx:mid, cls:'mi', text:'▲ mid'});
+      return a;
+    };
+    const stOf = (l, r, cand, mid) => {
+      const s = {};
+      for(let t = 0; t < n; t++) s[t] = (t >= l && t < r) ? 'in' : 'muted';
+      if(cand != null) s[cand] = 'target';
+      if(mid != null) s[mid] = 'active';
+      return s;
+    };
+
+    // 一轮 firstGE(tgt) 的完整动画，返回求得的下标（帧内所有状态在 push 时快照）
+    function runGE(tgt, round){
+      let l = 0, r = n, cand = null;
+      const tag2 = round === 1 ? '① 左边界' : '② 右边界';
+      const phase = tag2 + '：firstGE(' + tgt + ')，区间 [l, r)';
+      const vars = () => ({l:l, r:r, mid:'—', tgt:tgt, 候选: cand == null ? '—' : '第' + cand + '格'});
+
+      F.push({hl:[3,4], tag:'开局', cls:'t-blue',
+        msg: round === 1
+          ? '<code>firstGE(' + tgt + ')</code>：找<b>第一个 ≥ ' + tgt + '</b> 的下标——target 存在时它就是左边界。区间用<b>左闭右开 [l, r)</b>：l 左边（不含）全部确定 &lt; 门槛，r 右边（含）全部确定 ≥ 门槛；r 允许指到 n（末尾外一格，名牌看不见也不奇怪），表示"边界可能根本不存在"。蓝色 = 还在区间里的候选。'
+          : '<code>firstGE(' + tgt + ')</code>：这轮门槛换成 <b>target + 1 = ' + tgt + '</b>。「第一个 ≥ target+1」的位置退一格，就是<b>最后一个 target</b>——右边界不用换方向重写一套二分，同一把尺子调个头（退一格）就量出来了。蓝色 = 还在区间 [l, r) 里的候选。',
+        do: draw({phase, states: stOf(l, r, null, null), markers: mk(l, r, null), vars: vars()})});
+
+      while(l < r){
+        const mid = (l + r) >> 1;
+        F.push({hl:[5,6], ok:5, tag:'取中点', cls:'t-ink',
+          msg:'<code>l = ' + l + '，r = ' + r + '</code>，区间还有格子 → <code>mid = (' + l + '+' + r + ')//2 = ' + mid + '</code>，试探第 ' + (mid + 1) + ' 格：<code>nums[' + mid + '] = ' + nums[mid] + '</code>。向下取整让 mid 永远 &lt; r（偏左）——保命细节：待会走 <code>r = mid</code> 时区间必定缩小，绝不会原地打转死循环。',
+          do: draw({phase, states: stOf(l, r, cand, mid), markers: mk(l, r, mid),
+                    vars: Object.assign(vars(), {mid:mid})})});
+
+        const ge = nums[mid] >= tgt;
+        F.push({hl:[7], ok: ge ? 7 : undefined, no: ge ? undefined : 7,
+          tag:'和门槛比', cls: ge ? 't-green' : 't-red',
+          msg: ge
+            ? '<code>nums[' + mid + '] = ' + nums[mid] + ' ≥ 门槛 ' + tgt + '</code> 成立：mid 够格，而它<b>自己可能就是那个"第一个 ≥"</b>——想想 [2,2,2,2] 找 2，若把相等的也当"太小"扔掉，最后会两手空空。但左边可能还有更早合格的，所以只把右界压到 mid、保留它继续往左夹——<b>这就是"等于也往左压"</b>：≥ 判定保证候选永远不会被冤枉出局。'
+            : '<code>nums[' + mid + '] = ' + nums[mid] + '，小于门槛 ' + tgt + '</code>：它连门槛都够不着；数组升序，它<b>左边的只会更小</b>，第一个 ≥ ' + tgt + ' 只可能在 mid 右边 → 左界马上跳过它。<b>为什么不会误伤答案？</b>被扔的格子全部严格小于门槛，答案（第一个 ≥ 门槛）绝不可能藏在里面。',
+          do: draw({phase, states: stOf(l, r, cand, mid), markers: mk(l, r, mid),
+                    vars: Object.assign(vars(), {mid:mid})})});
+
+        if(ge){
+          r = mid; cand = mid;
+          F.push({hl:[8], tag:'压右界', cls:'t-orange',
+            msg:'<code>r = mid = ' + r + '</code>：第 ' + (cand + 1) + ' 格成为目前最靠左的合格候选（紫色）。注意是 <code>r = mid</code> 而<b>不是 mid−1</b>——mid 没被排除，掐成 mid−1 就可能把边界本人扔掉；好在 mid &lt; r 恒成立，区间每轮至少缩一格，不会死循环。',
+            do: draw({phase, states: stOf(l, r, cand, null), markers: mk(l, r, null), vars: vars()})});
+        } else {
+          l = mid + 1;
+          F.push({hl:[9,10], tag:'推左界', cls:'t-orange',
+            msg:'<code>l = mid + 1 = ' + l + '</code>：第 ' + (mid + 1) + ' 格出局（灰），区间缩成 [' + l + ', ' + r + ')' + (cand == null ? '，还没摸到任何合格候选。' : '，候选仍是第 ' + (cand + 1) + ' 格。') + '此刻的不变式：l 左边（不含）全部 &lt; ' + tgt + '、r 右边（含）全部 ≥ ' + tgt + '——答案永远夹在中间，两头怎么扔都碰不到它。',
+            do: draw({phase, states: stOf(l, r, cand, null), markers: mk(l, r, null), vars: vars()})});
+        }
+      }
+
+      F.push({hl:[5], no:5, tag:'区间空了', cls:'t-grey',
+        msg:'<code>l = ' + l + '，r = ' + r + '</code>，两头碰面 → 循环结束。为什么停在 l 就是答案？把不变式收个尾：l 左边（不含）全 &lt; ' + tgt + '、r 右边（含）全 ≥ ' + tgt + '，l == r 时它正好站在两军交界线上——就是<b>第一个 ≥ ' + tgt + '</b> 的下标 <b>' + l + '</b>' + (cand != null ? '（紫色候选）' : '——一个合格的都没有，l 一路顶到 n') + '。',
+        do: draw({phase, states: stOf(l, r, cand, null), markers: mk(l, r, null), vars: vars()})});
+      F.push({hl:[11], tag:'本轮返回', cls:'t-green',
+        msg:'<code>return l</code> → firstGE(' + tgt + ') = <b>' + l + '</b>' + (l === n ? '（等于 n：数组里没有 ≥ ' + tgt + ' 的数）' : '，即第 ' + (l + 1) + ' 格') + '。这套 firstGE 是通用的"左边界工具"，两轮各用一次——这正是本题省代码的关键。',
+        do: draw({phase, states: stOf(l, r, cand, null), markers: mk(l, r, null), vars: vars()})});
+      return l;
+    }
+
+    F.push({hl:[1,2,12], tag:'准备', cls:'t-grey',
+      msg:'数组升序、共 ' + n + ' 格，target = <b>' + target + '</b>。计划：把两个边界翻译成<b>同一个问题</b>「第一个 ≥ x 的下标」——第一轮 x = target 得左边界；第二轮 x = target + 1，它左边一格正好是右边界。同一把"≥"的尺子用两次，就不用为右边界另写一套"从右往左"的二分——少一半代码、少一半出错机会。',
+      do: draw({phase:'准备', states: stOf(0, n, null, null), markers: mk(0, n, null),
+                vars:{l:'—', r:'—', mid:'—', tgt:target, 候选:'—'}})});
+
+    const left = runGE(target, 1);
+
+    const miss = left === n || nums[left] !== target;
+    const stCheck = {};
+    for(let t = 0; t < n; t++) stCheck[t] = 'muted';
+    if(left < n) stCheck[left] = miss ? 'block' : 'target';
+    F.push({hl:[13,14,15], ok: miss ? 14 : undefined, no: miss ? undefined : 14,
+      tag:'验货', cls: miss ? 't-red' : 't-green',
+      msg: miss
+        ? (left === n
+            ? 'left = ' + n + ' 越界：数组里所有数都 &lt; ' + target + '，14 行第一个条件成立。'
+            : 'left = ' + left + '，但 <code>nums[' + left + '] = ' + nums[left] + ' ≠ ' + target + '</code>：站在「第一个 ≥ ' + target + '」位置上的不是 target 本尊，而是个比它大的数。')
+          + 'firstGE 只保证"≥"，不保证"恰好等于"，所以必须亲自验货 → 数组里根本没有 target，15 行返回 [-1, -1]。这步验货不能省，漏了就会把别的数的区间误报出去。'
+        : '<code>left = ' + left + '</code>，<code>nums[' + left + '] = ' + nums[left] + '</code> 正好等于 target ✓ → 左边界坐实为 ' + left + '。验货这步不能省：firstGE 返回的也可能是"比 target 大的数"站岗，不验就会把不存在的 target 报出去。现在 14 行两个条件都不成立 → 15 行轮空，进入第二轮找右边界。',
+      do: draw({phase:'① 左边界：firstGE(' + target + ') 返回 ' + left, states: stCheck,
+                markers:[{name:'l', idx:Math.min(left, n), cls:'mr', text:'▲ left'}],
+                vars:{left:left, 'nums[left]': left < n ? nums[left] : '越界', tgt:target}})});
+
+    if(miss){
+      F.push({hl:[15], tag:'返回', cls:'t-dark',
+        msg:'<code>return [-1, -1]</code>：target 不存在。复盘：只走了 log 级的几步就把"有没有、在哪"问得干干净净——这正是 O(log n) 的二分对比从头扫的 O(n) 的价值。',
+        do: draw({phase:'返回 [-1, -1]', states: stCheck,
+                  markers:[{name:'l', idx:Math.min(left, n), cls:'mr', text:'▲ left'}],
+                  vars:{left:left, 'nums[left]': left < n ? nums[left] : '越界', tgt:target},
+                  res:[-1,-1]})});
+      return F;
+    }
+
+    const right = runGE(target + 1, 2) - 1;
+    const stFin = {};
+    for(let t = 0; t < n; t++) stFin[t] = (t >= left && t <= right) ? 'target' : 'muted';
+    const finLabels = {};
+    finLabels[left] = '左边界';
+    finLabels[right] = '右边界';
+    F.push({hl:[16,17], tag:'收工', cls:'t-dark',
+      msg:'第二轮 firstGE(' + (target + 1) + ') = ' + (right + 1) + '，退一格 → <code>right = ' + right + '</code>：「第一个 ≥ ' + (target + 1) + '」的左边一格，正是<b>最后一个 ' + target + '</b>。target 的地盘是第 ' + (left + 1) + ' ~ 第 ' + (right + 1) + ' 格（共 ' + (right - left + 1) + ' 个）→ 返回 <b>[' + left + ', ' + right + ']</b>。带走的套路：一套"≥"二分，x 取 target 和 target+1 各跑一次，两个边界全齐。',
+      do: draw({phase:'完成：[' + left + ', ' + right + ']', states: stFin, labels: finLabels,
+                markers:[{name:'l', idx:left, cls:'mr', text:'▲ left'},
+                         {name:'r', idx:right, cls:'mr', text:'▲ right'}],
+                vars:{left:left, right:right, '个数':right - left + 1},
+                res:[left, right]})});
+    return F;
+  }
+});
+</script>
+</body>
+</html>

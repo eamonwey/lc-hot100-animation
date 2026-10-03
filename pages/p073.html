@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P073 · 数组中的第K个最大元素 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 73, num: 215, title: '数组中的第K个最大元素', diff: '中等', cat: '堆',
+  method: 'findKthLargest',
+
+  lede: '题目：找数组里<b>第 k 大</b>的元素（[3,2,1,5,6,4] 里第 2 大是 <b>5</b>）。' +
+        '全排序 O(n log n) 太客气——<span class="var o">快速选择</span>只排"有用的那一半"：' +
+        '先记住<span class="var v">第 k 大 = 升序排好后的下标 n − k</span>，每趟 <span class="var r">partition</span> 拿末位当基准、把比它小的换到左边，' +
+        '归位后看基准落在哪：正好是目标下标就收工，否则只进左段或右段<b>一段</b>继续。动画里紫圈 = 基准，蓝 = 已归到"小于区"，绿 = 归属已定。',
+
+  roles: [
+    {c:'violet', code:'pivot', text:'基准：取搜索区间的末位'},
+    {c:'blue',   code:'i',     text:'坑位：下一个"小于 pivot"该去的地方'},
+    {c:'orange', code:'j',     text:'扫描指针'},
+    {c:'green',  code:'区间外', text:'归属已定，不再参与'},
+    {c:'red',    code:'p',     text:'partition 后 pivot 的归位点'}
+  ],
+
+  codeTitle: '跟着高亮读代码——<code>if a[j] &lt; pivot</code> 变<span style="color:var(--green)">绿</span>＝比基准小、换到左边；变<span style="color:var(--red)">红</span>＝不动。<code>if p == k</code> 变<span style="color:var(--green)">绿</span>＝命中目标下标，收工返回。',
+
+  legend: [
+    {c:'violet', text:'pivot 基准（末位）'},
+    {c:'blue',   text:'[lo, i) 已确认 < pivot'},
+    {c:'orange', text:'j 正在扫描'},
+    {c:'green',  text:'搜索区间外（归属已定）'},
+    {c:'red',    text:'p = pivot 归位点'}
+  ],
+
+  idea: '第 k 大 = 升序下标 n − k。每趟 partition 让 pivot 归位：p == k 直接收工；p < k 只进右段，p > k 只进左段——每趟平均砍一半，平均 O(n)。',
+
+  qa: [
+    {q:'为什么"第 k 大"要变成下标 n − k？',
+     a:'把数组<b>升序</b>排好后，最大的数在下标 n−1，第 2 大在 n−2……第 k 大正好在 <b>n − k</b>。例：[3,2,1,5,6,4] 升序是 [1,2,3,4,5,6]，第 2 大 = 5 = nums[6−2] = nums[4]。变成下标后，问题就成了"找排好序后站在 n−k 位置上的数"。'},
+    {q:'partition 做了什么？',
+     a:'拿区间末位当 <b>pivot</b>。j 从左往右扫：比 pivot 小就和坑位 i 交换、i 右移——扫完后 [lo, i) 全是小的，[i, hi) 全是 ≥ 的。最后把 pivot 和 a[i] 一换，pivot 站到它的<b>最终位置</b> p = i 上：左边全比它小，右边全比它大。'},
+    {q:'为什么每趟只用进一段？partition 后两边不用都看吗？',
+     a:'pivot 归位后，<b>p 这个位置已经是最终答案位</b>：左段所有数 < nums[p] ≤ 右段所有数。目标下标 k 要是小于 p，答案只可能在左段；大于 p 只可能在右段。另一段整个扔掉——这就是比快排快的原因（快排两段都要）。'},
+    {q:'平均 O(n) 怎么来的？最坏呢？',
+     a:'理想情况每趟砍一半：n + n/2 + n/4 + … = 2n，平均 O(n)。最坏（每次 pivot 恰好是极值，如已排序数组取末位）退化成 O(n²)；工程上会先随机抽一个数换到末位再 partition 来避开。本页按题意"取末位"演示。'}
+  ],
+
+  complexity: '平均时间 O(n)（每趟期望砍半）　·　最坏 O(n²)　·　空间 O(1)（原地 partition，只递归/循环一段）',
+
+  form: [
+    {key:'nums', label:'nums', type:'arr', def:[3,2,1,5,6,4]},
+    {key:'k',    label:'k',    type:'num', def:2}
+  ],
+  presets: [
+    {label:'官方用例 k=2 → 5', values:{nums:[3,2,1,5,6,4], k:2}},
+    {label:'k=1 最大值 → 6', values:{nums:[3,2,1,5,6,4], k:1}},
+    {label:'k=n 最小值 → 1', values:{nums:[3,2,1,5,6,4], k:6}},
+    {label:'有重复 [3,2,3,1,2,4,5,5,6] k=4', values:{nums:[3,2,3,1,2,4,5,5,6], k:4}}
+  ],
+
+  code: `class Solution:
+    def findKthLargest(self, nums, k):
+        k = len(nums) - k             # 第 k 大 = 升序下标 n-k
+        lo, hi = 0, len(nums) - 1
+        while True:
+            p = self.partition(nums, lo, hi)   # 分一趟, pivot 归位到 p
+            if p == k:
+                return nums[p]        # 正好落在目标下标
+            elif p < k:
+                lo = p + 1            # 答案在右段
+            else:
+                hi = p - 1            # 答案在左段
+    def partition(self, a, lo, hi):
+        pivot = a[hi]                 # 拿末位当基准
+        i = lo                        # i: 下一个"小于 pivot"的坑位
+        for j in range(lo, hi):
+            if a[j] < pivot:          # 比 pivot 小 -> 换到左边
+                a[i], a[j] = a[j], a[i]
+                i += 1
+        a[i], a[hi] = a[hi], a[i]     # pivot 归位
+        return i
+`,
+
+  sol(input){
+    const a = (input.nums || []).slice();
+    let k = a.length - (input.k || 0);
+    let lo = 0, hi = a.length - 1;
+    const part = (lo, hi) => {
+      const pivot = a[hi];
+      let i = lo;
+      for(let j = lo; j < hi; j++){
+        if(a[j] < pivot){ const t = a[i]; a[i] = a[j]; a[j] = t; i++; }
+      }
+      const t = a[i]; a[i] = a[hi]; a[hi] = t;
+      return i;
+    };
+    if(k < 0 || k >= a.length || a.length === 0) return null;
+    while(true){
+      const p = part(lo, hi);
+      if(p === k) return a[p];
+      else if(p < k) lo = p + 1;
+      else hi = p - 1;
+    }
+  },
+  expected: 5,
+
+  quiz: [
+    {q:'「p 偏小」后直接 lo = p + 1,把左段整个扔掉——凭什么敢扔?',
+     options:['左段已经排好序了,反正用不上','partition 的不变式:p 左边所有数 &lt; nums[p] ≤ 右边所有数,所以升序后的 k 号位绝不可能落在左段','因为左段的数都特别小,找第 k 大没意义'],
+     answer:1,
+     explain:'pivot 归位到 p 的那一刻,这条不变式就被敲定了:p 恰好站在它升序后的最终位置,左边全是比它小的、右边全是 ≥ 它的。目标下标 k &gt; p 说明答案比 nums[p] 大,只可能在右段——左段整个扔掉零风险。快排两段都要递归,这里只走一段,这正是快速选择平均 O(n) 的来源。选项 0 错在数组根本没排序,只是"归属已定"。',
+     jumpTo:15},
+    {q:'nums = [7,6,9,3,1],k = 2,第 2 大的元素是?',
+     options:['9','7','6'],
+     answer:1,
+     explain:'先换算目标下标:第 k 大 = 升序下标 n − k = 5 − 2 = 3,也就是"升序排好后站在 3 号位的数"。升序 [1,3,6,7,9],3 号位是 7——比 7 大的恰好只有 9 一个,7 稳坐第 2 大。选 9 是把"第 k 大"当成了最大值,选 6 的是按"第 k 小"(下标 k)在数——方向别搞反:第 k 大从大到小数,换算成下标要拿 n 去减。',
+     jumpTo:1},
+    {q:'每趟平均砍一半,n + n/2 + n/4 + … ≈ 2n → 平均 O(n)。那什么输入会让它退化到最坏 O(n²)?',
+     options:['元素里有大量重复值时','数组已经(升序)排好序时——本页取末位当基准,每趟只能把区间砍掉 1 个,退化成 n + (n−1) + … ≈ n²/2','k 特别靠近 n 时必然退化'],
+     answer:1,
+     explain:'拿末位当基准,在升序数组上每一趟 partition 都只能归位区间里最小的那个数,区间每次只缩 1——n 趟每趟 O(区间长),总计 O(n²)。和重复值、k 的位置都没有必然关系(重复值只会让某趟分得偏,不改变期望)。工程上的补救:先随机抽一个数换到末位再分区,让"恰好取到极值"的概率趋近于零。',
+     jumpTo:3},
+  ],
+
+  steps(input){
+    const F = [];
+    const a = (input.nums || []).slice();
+    const n = a.length;
+    const kOrig = input.k;
+    const k = n - kOrig;             // 目标下标（快照定死）
+    let lo = 0, hi = n - 1;
+    let pLast = null;
+
+    const part = (lo, hi) => {       // 与 Python 同逻辑
+      const pivot = a[hi];
+      let i = lo;
+      for(let j = lo; j < hi; j++){
+        if(a[j] < pivot){ const t = a[i]; a[i] = a[j]; a[j] = t; i++; }
+      }
+      const t = a[i]; a[i] = a[hi]; a[hi] = t;
+      return i;
+    };
+
+    /* ---- 快照绘制（铁律 5） ---- */
+    const draw = (o) => (v) => {
+      v.arr('nums', o.arr, {
+        label:'数组 <code>nums</code>　·　搜索区间 [' + o.lo + ', ' + o.hi + ']（原地 partition）',
+        states:o.nst || {}, markers:o.mk || [], labels:o.labels || {}
+      });
+      v.vars('vars', {目标下标k:o.k, lo:o.lo, hi:o.hi, pivot:o.pivot, i:o.iv, j:o.jv, p:o.pv},
+        {label:'当前状态', hl:o.hlv || []});
+      v.text('goal', '第 ' + o.kOrig + ' 大 → 升序下标 <code>n − k = ' + o.k + '</code>：找到排好序后站在 ' + o.k + ' 号位的数', {small:true});
+      if(o.res !== undefined) v.result(o.res, {label:'第 ' + o.kOrig + ' 大元素'});
+    };
+    const snap = (extra) => Object.assign({
+      arr: a.slice(), nst:{}, mk:[], labels:{},
+      k:k, kOrig:kOrig, lo:lo, hi:hi,
+      pivot:'—', iv:'—', jv:'—', pv:'—', hlv:[]
+    }, extra);
+    const zoneStates = (opt) => {
+      // opt: {pivotIdx, iIdx, jIdx, pIdx}
+      const s = {};
+      for(let t = 0; t < n; t++){
+        if(t < lo || t > hi) s[t] = 'done';
+      }
+      for(let t = lo; t < hi; t++){
+        if(opt.iIdx != null && t < opt.iIdx) s[t] = 'in';
+      }
+      if(opt.pivotIdx != null) s[opt.pivotIdx] = 'pivot';
+      if(opt.jIdx != null && opt.jIdx < hi) s[opt.jIdx] = s[opt.jIdx] === 'in' ? 'in' : 'active';
+      if(opt.pIdx != null) s[opt.pIdx] = 'target';
+      return s;
+    };
+    const mk = (o) => {
+      const m = [];
+      if(o.iIdx != null && o.iIdx <= o.jMax) m.push({name:'i', idx:o.iIdx, cls:'mr', text:'▲ i'});
+      if(o.jIdx != null && o.jIdx < n) m.push({name:'j', idx:o.jIdx, cls:'mi', text:'▲ j'});
+      return m;
+    };
+
+    F.push({hl:[1,2,3,4], tag:'换算目标', cls:'t-grey',
+      msg:'先把"第 ' + kOrig + ' 大"翻译成下标语言：数组<b>升序</b>排好后，最大值站在 n−1 号位、第 2 大在 n−2 号位……所以第 ' + kOrig + ' 大就是下标 <b>n − k = ' + n + ' − ' + kOrig + ' = ' + k + '</b>（下方灰字也标着这个目标）。接下来的任务不是排序，而是每趟 partition 把一个数<b>送回它的最终位置</b>：送到位的下标正好是 ' + k + ' 就收工，不是就只去它左边或右边<b>一半</b>继续找。',
+      do: draw(snap())});
+
+    if(!(kOrig >= 1 && kOrig <= n)){
+      F.push({hl:[3], no:3, tag:'k 越界', cls:'t-red',
+        msg:'k = ' + kOrig + ' 不在 1..' + n + ' 范围内，题目保证不会这样输入——请检查 k。',
+        do: draw(snap())});
+      return F;
+    }
+
+    while(true){
+      F.push({hl:[5,6,13], tag:'partition [' + lo + '..' + hi + ']', cls:'t-blue',
+        msg:'对当前搜索区间 <b>[' + lo + ', ' + hi + ']</b> 来一趟 partition。目标一句话：<b>选个基准，把比它小的全换到左边，比它大的留在右边</b>，基准自己则站到一个"以后永不再动"的最终位置。绿色格子（区间外）都是前几趟已归位的数，这趟碰都不碰——每做一趟，就有一个位置被永久敲定。',
+        do: draw(snap())});
+
+      const pivot = a[hi];
+      F.push({hl:[14], tag:'选基准', cls:'t-violet',
+        msg:'<code>pivot = a[' + hi + '] = ' + pivot + '</code>：拿区间<b>末位</b>当基准（紫圈）。为什么挑末位？只为好写——一句 <code>a[hi]</code> 就拿到（代价：已排序数组会退化成 O(n²)，工程上会先随机抽个数换到末位再分区）。接下来 j 从左往右扫，把比 ' + pivot + ' 小的统统赶到它左边去。',
+        do: draw(snap({nst:zoneStates({pivotIdx:hi}), labels:{[hi]:'pivot'}, pivot:pivot}))});
+
+      let i = lo;
+      F.push({hl:[15,16], tag:'坑位就位', cls:'t-ink',
+        msg:'<code>i = ' + lo + '</code>：给"小于区"安一个<b>坑位指针</b>——它永远指着"下一个比 pivot 小的数该埋进去的位置"，此刻小于区还是空的。记住整个 partition 的不变式：<b>i 左边（[' + lo + ', i)）永远全是 &lt; pivot 的数</b>，i 到 hi 之间是还没看过的待定区。j 马上从 ' + lo + ' 开始扫。',
+        do: draw(snap({nst:zoneStates({pivotIdx:hi, iIdx:i}), mk:mk({iIdx:i, jMax:hi}), labels:{[hi]:'pivot'},
+                       pivot:pivot, iv:i}))});
+
+      for(let j = lo; j < hi; j++){
+        const small = a[j] < pivot;
+        F.push({hl:[17], ok: small ? 17 : undefined, no: small ? undefined : 17,
+          tag:'j=' + j + ' 比一比', cls: small ? 't-green' : 't-red',
+          msg: small
+            ? '<code>a[' + j + '] = ' + a[j] + '</code> &lt; pivot(' + pivot + ') → 它属于小于区，得搬进左边。看画面：蓝框（小于区）此刻已有 ' + (i - lo) + ' 格、全是 &lt; ' + pivot + ' 的数——等会把它也收编进去，"i 左边全小"的不变式依旧成立。'
+            : '<code>a[' + j + '] = ' + a[j] + '</code> ≥ pivot(' + pivot + ') → 挤不进小于区，<b>原地不动</b>。为什么不能动它？小于区只收 &lt; pivot 的数，把它换进去会毁掉不变式；它就留在原地，将来自然落在 pivot 右边那半。j 继续 +1。',
+          do: draw(snap({nst:zoneStates({pivotIdx:hi, iIdx:i, jIdx:j}),
+                         mk:mk({iIdx:i, jIdx:j, jMax:hi}), labels:{[hi]:'pivot'},
+                         pivot:pivot, iv:i, jv:j}))});
+        if(small){
+          const ai = a[i], aj = a[j];
+          const t = a[i]; a[i] = a[j]; a[j] = t;
+          F.push({hl:[18,19], tag:'交换', cls:'t-orange',
+            msg: i === j
+              ? 'a[' + i + '] 和 a[' + j + '] 是<b>同一格</b>：小于区正好顶到 j 脚下，' + aj + ' 自己跟自己换等于没换，但 <code>i += 1</code> 照样执行——小于区扩到 ' + (i + 1 - lo) + ' 格（[' + lo + '..' + i + ']，全是 &lt; ' + pivot + ' 的数），坑位右移到 <b>' + (i + 1) + '</b>。'
+              : '<code>a[' + i + '] ↔ a[' + j + ']</code>：' + aj + ' 埋进坑位 i（小于区末尾），原坑主 ' + ai + ' 被甩到 j 的位置——它 ≥ pivot，正好留在右半边。小于区扩到 ' + (i + 1 - lo) + ' 格（[' + lo + '..' + i + ']），<b>"i 左边全 &lt; pivot"的不变式又守住了</b>。',
+            do: draw(snap({nst:zoneStates({pivotIdx:hi, iIdx:i + 1}),
+                           mk:mk({iIdx:i + 1, jIdx:j, jMax:hi}), labels:{[hi]:'pivot'},
+                           pivot:pivot, iv:i + 1, jv:j, hlv:['i']}))});
+          i++;
+        }
+      }
+
+      const pi = a[i], ph = a[hi];
+      const t2 = a[i]; a[i] = a[hi]; a[hi] = t2;
+      pLast = i;
+      F.push({hl:[20], tag:'pivot 归位', cls:'t-orange',
+        msg:'j 扫完整个区间：[' + lo + '..' + (i - 1) + ']（蓝）全 &lt; ' + pivot + '，[' + i + '..' + (hi - 1) + '] 全 ≥ ' + pivot + (i === hi ? '（这趟没有比 pivot 大的，右段为空）' : '') + '，坑位 i 正好是两段的分界线。<code>a[' + i + '] ↔ a[' + hi + ']</code>：pivot(' + pivot + ') 与 ' + pi + ' 换座，<b>归位到 p = ' + i + '</b>。从此这里定死一条不变式：<b>p 左边的数全部 &lt; nums[p]，p 右边的全部 ≥ nums[p]</b>——' + pivot + ' 已经站在它升序排好后的最终位置上，这一格再也不用动。',
+        do: draw(snap({nst:zoneStates({iIdx:i, pIdx:i}), mk:[{name:'p', idx:i, cls:'mv', text:'▲ p 归位'}],
+                       pivot:pivot, iv:i, pv:i, hlv:['p']}))});
+
+      F.push({hl:[21], tag:'返回 p', cls:'t-ink',
+        msg:'<code>return i = ' + i + '</code>。这一趟只保送了一个数到位，但附赠了重磅情报：<b>' + i + ' 左边全 &lt; 它、右边全 ≥ 它</b>——所以无论目标下标在这条分界线的哪一侧，另一侧整段都可以安全扔掉，搜索区间立刻砍掉一大块。partition 的全部意义就在这一格。',
+        do: draw(snap({nst:zoneStates({iIdx:i, pIdx:i}), mk:[{name:'p', idx:i, cls:'mv', text:'▲ p'}],
+                       pivot:pivot, pv:i, hlv:['p']}))});
+
+      if(pLast === k){
+        F.push({hl:[7], ok:7, tag:'命中目标', cls:'t-green',
+          msg:'<code>p == k</code>（' + pLast + ' == ' + k + ' ✓）：刚归位的数<b>正好落在目标下标</b>上——p 左边恰好有 k = ' + k + ' 个比它小的数，它就是第 ' + kOrig + ' 大！不用再验证两边：p 的"左小右大"不变式就是证明，这是 partition 白送的证据。',
+          do: draw(snap({nst:zoneStates({iIdx:i, pIdx:i}), mk:[{name:'p', idx:i, cls:'mv', text:'▲ p'}],
+                         pivot:pivot, pv:i, hlv:['p']}))});
+        F.push({hl:[8], tag:'返回答案', cls:'t-dark',
+          msg:'<code>return nums[' + k + '] = <b>' + a[k] + '</b></code> 🎉 验收：比 ' + a[k] + ' 大的正好 ' + (kOrig - 1) +
+              ' 个，它稳坐第 ' + kOrig + ' 大。复杂度复盘：每趟 partition 花 O(区间长度)，期望每次砍半，n + n/2 + n/4 + … ≈ 2n → 平均 O(n)，比全排序的 O(n log n) 划算。',
+          do: draw(snap({nst:zoneStates({iIdx:i, pIdx:i}), mk:[{name:'p', idx:i, cls:'mv', text:'▲ p'}],
+                         pivot:pivot, pv:i, res:a[k]}))});
+        return F;
+      } else if(pLast < k){
+        lo = pLast + 1;
+        F.push({hl:[7,9,10], no:7, tag:'p 偏小', cls:'t-red',
+          msg:'<code>p = ' + pLast + ' &lt; k = ' + k + '</code>：目标下标在归位点<b>右边</b>。为什么敢把左段整个扔掉？p 的不变式保证「p 左边所有数 &lt; nums[p] ≤ p 右边所有数」，所以升序后的 k 号位绝不可能落在左段。<code>lo = p + 1 = ' + lo + '</code>，新搜索区间 [' + lo + ', ' + hi + ']——快排两段都要递归，这里只走一段，这就是快速选择省时间的地方。',
+          do: draw(snap({nst:zoneStates({iIdx:i, pIdx:i}), mk:[{name:'p', idx:i, cls:'mv', text:'▲ p'}],
+                         pivot:pivot, pv:i, hlv:['lo']}))});
+      } else {
+        hi = pLast - 1;
+        F.push({hl:[7,11,12], no:7, tag:'p 偏大', cls:'t-red',
+          msg:'<code>p = ' + pLast + ' &gt; k = ' + k + '</code>：目标下标在归位点<b>左边</b>。同一套不变式反着用：p 右边所有数 ≥ nums[p]，全都比左段的数大，k 号位只可能藏在左段 [' + lo + ', ' + (pLast - 1) + '] 里。<code>hi = p − 1 = ' + hi + '</code>，右段整个扔掉，区间又砍掉一大半。',
+          do: draw(snap({nst:zoneStates({iIdx:i, pIdx:i}), mk:[{name:'p', idx:i, cls:'mv', text:'▲ p'}],
+                         pivot:pivot, pv:i, hlv:['hi']}))});
+      }
+    }
+  }
+});
+</script>
+</body>
+</html>
