@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P060 · 分割回文串 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/progress.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 60, num: 131, title: '分割回文串', diff: '中等', cat: '回溯',
+  method: 'partition',
+
+  lede: '题目：把字符串 <span class="var r">s</span> 切成若干段，让<b>每一段都是回文</b>，返回所有切法。' +
+        '动画里 <span class="var i">start</span> 是"还没切部分的起点"，<span class="var i">end</span> 是"这一刀切到哪"：' +
+        '每层枚举 end，双指针 <code>lo/hi</code> 从两端往中间夹、验明这段是回文才切；' +
+        '切下一段递归去切剩下的，回来撤销这刀换更长/更短的切法。start 走到字符串末尾 = 一种完整切法出炉。',
+
+  roles: [
+    {c:'orange', code:'start', text:'还没切部分的起点（下一刀的最左端）'},
+    {c:'blue',   code:'end',   text:'本层枚举的段终点'},
+    {c:'violet', code:'撤销',  text:'这段的各种切法试完 → 弹出 path'},
+    {c:'green',  code:'ans',   text:'收集到的完整切法'}
+  ],
+
+  codeTitle: '跟着高亮读代码——第 16 行变<span style="color:var(--green)">绿</span>＝这段是回文、切下它！' +
+             '变<span style="color:var(--red)">红</span>＝不是回文、换更长的段试；第 19 行紫色＝撤销回溯。',
+
+  idea: '每层只决定"下一刀切到哪"：枚举 end → isPal 双指针验货 → 切下、递归、撤销。start 走到 len(s) 就收一份答案。',
+
+  qa: [
+    {q:'isPal 的双指针为什么不会漏判？',
+     a:'lo、hi 从段的两端同步内夹，每一对对称位置都比较过；直到 lo ≥ hi 说明所有对称对都相等——单字母天然成立（lo == hi 直接不用比），双字母比一次就够。'},
+    {q:'ans.append(path[:]) 的 [:] 能不能省？',
+     a:'不能。path 全程只有一份，回溯时会被不停 pop 改动。直接 append 存的是"引用"，最后 ans 里会挤满同一个（已被清空的）列表。[:] 是给当前切法拍照存档。'},
+    {q:'最坏有多慢？什么时候发生？',
+     a:'s 全是同一种字符（如 "aaaa"）时，任何一段都是回文，每个可切点都能切/不切两种选择，切法接近 2^(n-1) 种，收集每种要 O(n)——总 O(n·2ⁿ)。这就是为什么回溯题输入都很短。'},
+    {q:'和全排列的回溯有什么不一样？',
+     a:'骨架一模一样：选择 → 递归 → 撤销。差别在"候选"：排列每层试所有没用过的数；这里每层试的是"下一段的所有可能终点"，而且候选要先过 isPal 这道验货门槛，过不了直接剪枝。'}
+  ],
+
+  complexity: '时间 O(n·2ⁿ)（最坏：每个前缀都是回文）　·　空间 O(n)（递归栈 + path，不计返回值）',
+
+  form: [
+    {key:'s', label:'s', type:'str', maxLength:4, def:'aab'}
+  ],
+  presets: [
+    {label:'aab（默认 → 2 种切法）', values:{s:'aab'}},
+    {label:'a（单字符边界）', values:{s:'a'}},
+    {label:'ab（没有多字母回文）', values:{s:'ab'}},
+    {label:'aaa（全同字符 → 4 种）', values:{s:'aaa'}}
+  ],
+
+  code: `class Solution:
+    def partition(self, s):
+        ans, path = [], []
+        def isPal(lo, hi):              # 双指针: s[lo..hi] 是回文吗
+            while lo < hi:
+                if s[lo] != s[hi]:
+                    return False
+                lo += 1
+                hi -= 1
+            return True
+        def dfs(start):                 # 还没切的部分从 start 开始
+            if start == len(s):         # 切到头, 收集一份
+                ans.append(path[:])
+                return
+            for end in range(start, len(s)):   # 枚举这一段切到哪
+                if isPal(start, end):          # 是回文才要
+                    path.append(s[start:end + 1])
+                    dfs(end + 1)               # 接着切后面
+                    path.pop()                 # 撤销
+        dfs(0)
+        return ans
+`,
+
+  sol(input){
+    const s = String(input.s == null ? '' : input.s);
+    const ans = [], path = [];
+    const isPal = (lo, hi) => { while(lo < hi){ if(s[lo] !== s[hi]) return false; lo++; hi--; } return true; };
+    (function dfs(start){
+      if(start === s.length){ ans.push(path.slice()); return; }
+      for(let end = start; end < s.length; end++){
+        if(isPal(start, end)){
+          path.push(s.slice(start, end + 1));
+          dfs(end + 1);
+          path.pop();
+        }
+      }
+    })(0);
+    return ans;
+  },
+  expected: [['a','a','b'],['aa','b']],
+
+  quiz: [
+    {q:'为什么每层要把 end 从 start 一路枚举到末尾,而不是「切出最长的回文前缀」就完事?',
+     options:['最长前缀就是最优解,枚举是浪费时间','题目要「所有」切法,而且长的第一刀可能让剩余部分无解、短刀反而四通八达——少试一种刀长就可能漏一种答案','因为 isPal 只对短段有效'],
+     answer:1,
+     explain:'拿 s="aba" 看:最长回文前缀是整串 "aba",贪心只交出 ["aba"] 一种;但 ["a","b","a"] 同样合法——第一刀只切 "a" 才给后面留出了机会。反过来,先切长段也可能把剩下切死。第一刀的长度决定了后续整棵子树的局面,所以每种刀长都必须试一遍:枚举 end 就是把「下一刀切到哪」的所有可能铺开。',
+     jumpTo:2},
+    {q:'代入算一算:s = "aba" 时,ans 收到几种切法、按什么顺序?',
+     options:['1 种:["aba"]','2 种:先 ["a","b","a"],后 ["aba"]','2 种:先 ["aba"],后 ["a","b","a"]','3 种'],
+     answer:1,
+     explain:'dfs(0) 先试 end=0:切 "a"(单字母天然回文)→ 递归切 "b" → 再切 "a",start 走到头,收出第一份 <b>["a","b","a"]</b>;回到本层再试 end=2:整串 "aba" 外层 a=a、中间 b 自己对称,也是回文 → 收出第二份 <b>["aba"]</b>。深度优先让"短刀打头"的切法先出炉;而 "ab"、"ba" 都不是回文,连递归的门都进不了。共 2 种。',
+     jumpTo:40},
+    {q:'什么输入会让这题最坏达到 O(n·2ⁿ)?',
+     options:['字符串严格递增,如 "abcd"','全是同一个字符,如 "aaaa"——每个可切点都验货通过,切/不切自由组合,切法接近 2^(n−1) 种','字母种类特别多的时候'],
+     answer:1,
+     explain:'全同字符时任何一段都是回文:每个位置后面"切一刀"的判断永远绿灯,搜索树不剪任何枝,切法数 = 每个间隙切/不切的组合 ≈ 2^(n−1)——"aaaa" 恰好 4 种、"aaaaa" 8 种,指数上涨。字母种类多反而容易失败得早、剪枝更狠。这也解释了为什么本题数据规模 n ≤ 16:回溯题的输入天生短小。',
+     jumpTo:2},
+  ],
+
+  steps(input){
+    const F = [];
+    let s = String(input.s == null ? '' : input.s);
+    const clipped = s.length > 4;
+    if(clipped) s = s.slice(0, 4);
+    const chars = s.split('');
+    const ans = [], path = [], ranges = [], chips = [];
+    let seq = 0;
+    const stack = [];
+
+    const stOf = (start, rgs, cand, candCls) => {
+      const st = {};
+      rgs.forEach(rg => { for(let x = rg[0]; x <= rg[1]; x++) st[x] = 'in'; });
+      for(let x = 0; x < chars.length; x++){
+        if(st[x] != null) continue;
+        if(cand && x >= cand[0] && x <= cand[1]){ st[x] = candCls || 'active'; continue; }
+        if(x < start) st[x] = 'done';
+      }
+      return st;
+    };
+    const mkSE = (start, end) => [
+      {name:'start', idx:start, cls:'mi', text:'▲ start'},
+      {name:'end', idx:end, cls:'mr', text:'▲ end'}
+    ];
+    const mkLH = (lo, hi) => [
+      {name:'lo', idx:lo, cls:'mr', text:'▲ lo'},
+      {name:'hi', idx:hi, cls:'mg', text:'▲ hi'}
+    ];
+    const pTxt = (start) => '<code>path</code> = [' +
+      (path.length ? path.map(x => '<span class="mk-g">"' + LCesc(x) + '"</span>').join(', ') + ', ' : '') +
+      '<span class="mk-b">' + (start < s.length ? '"' + LCesc(s.slice(start)) + '…' : '∅') + '</span>]';
+
+    const draw = (o) => (v) => {
+      v.arr('S', chars, {label:'字符串 <code>s</code>　·　绿 = 已切段，蓝 = 正在验的段', quotes:true, states:o.st, markers:o.mk || []});
+      v.text('P', o.pTxt, {label:'切割现场', html:true});
+      v.stack('T', o.stk, {label:'递归调用栈　·　一层 = 切一段', topTag:'栈顶', states:o.sst || {}});
+      v.set('A', o.chips, {label:'<code>ans</code> 已收集的切法（' + o.chips.length + ' 种）', color:'g'});
+      if(o.res !== undefined) v.result(o.res, {label:'返回结果'});
+    };
+
+    function tryPal(lo0, hi0){
+      const seg = s.slice(lo0, hi0 + 1);
+      let lo = lo0, hi = hi0;
+      F.push({hl:[4,5], tag:'双指针验货', cls:'t-blue',
+        msg:'<code>isPal(' + lo0 + ',' + hi0 + ')</code>：这一刀想切出「' + LCesc(seg) + '」（第 ' + (lo0 + 1) + ' ~ 第 ' + (hi0 + 1) + ' 格）——先验货：是回文吗？回文的定义是<b>正着读反着读一样</b>，等价于「首尾对称位置的字符逐对相等」，所以 <code>lo</code> 从段左端、<code>hi</code> 从段右端<b>同时往中间夹</b>，一次比一对。画面上蓝色格就是正在验的这段，▲lo ▲hi 是两只相向而行的指针。',
+        do: draw({st:stOf(lo0, ranges, [lo0, hi0]), mk:mkLH(lo0, hi0), pTxt:pTxt(lo0), stk:stack.slice(), chips:chips.slice()})});
+      while(lo < hi){
+        if(chars[lo] !== chars[hi]){
+          F.push({hl:[6,7,15,16], ok:7, no:16, tag:'不是回文', cls:'t-red',
+            msg:'夹到 <code>s[' + lo + ']=' + LCesc(chars[lo]) + '</code> 和 <code>s[' + hi + ']=' + LCesc(chars[hi]) + '</code>：这一对<b>不相等</b> → <b>return False</b>。回文要求<b>每一对</b>对称位置都相等，破了一对整段就正读≠反读，中间不用再看——「' + LCesc(seg) + '」验货失败，这刀不切。红色 block 就是判死刑的那一对。',
+            do: draw({st:stOf(lo0, ranges, [lo0, hi0], 'block'), mk:mkLH(lo, hi), pTxt:pTxt(lo0), stk:stack.slice(), chips:chips.slice()})});
+          return false;
+        }
+        F.push({hl:[8,9], tag:'这对相等', cls:'t-blue',
+          msg:'<code>s[' + lo + ']=' + LCesc(chars[lo]) + '</code> 与 <code>s[' + hi + ']=' + LCesc(chars[hi]) + '</code> 相等 ✓ 这一对对称位置合格。但<b>外层相等不代表整段是回文</b>——里面的对称对还得继续验（比如「abda」外层 a=a、里层 b≠d 就不是回文）——所以 lo、hi 同时向中间各走一步，去验里面那一对。',
+          do: draw({st:stOf(lo0, ranges, [lo0, hi0]), mk:mkLH(lo, hi), pTxt:pTxt(lo0), stk:stack.slice(), chips:chips.slice()})});
+        lo++; hi--;
+      }
+      F.push({hl:[10], ok:10, tag:'回文确认', cls:'t-green',
+        msg:(lo0 === hi0 ? 'lo、hi 在正中间相遇：区间只有 1 个字母，自己和自己对称——<b>天生的回文</b>，一次都不用比' : '指针相遇/交错：从外到内每一对对称位置都相等') + ' → <b>return True</b>，「' + LCesc(seg) + '」是回文！这也说明任何单字母段（长度 1）都能秒过验货——所以每个位置都值得切一刀试试。',
+        do: draw({st:stOf(lo0, ranges, [lo0, hi0]), mk:mkLH(Math.min(lo, s.length - 1), Math.max(hi, 0)), pTxt:pTxt(lo0), stk:stack.slice(), chips:chips.slice()})});
+      return true;
+    }
+
+    function dfs(start){
+      const id = 'f' + (++seq);
+      stack.push({key:id, val:'dfs(start=' + start + ')'});
+      if(start === s.length){
+        const snap = path.slice();
+        ans.push(snap);
+        chips.push(snap.join('/'));
+        F.push({hl:[11,12,13,14], ok:13, tag:'切分完成！', cls:'t-green',
+          msg:'start = ' + start + ' = len(s)：一个字符都不剩了 → <b>一整条切法出炉</b>：<b>[' + snap.map(x => '"' + LCesc(x) + '"').join(', ') + ']</b>。为什么是 <code>ans.append(path[:])</code> 而不是直接 append path？path 之后还要被 pop 复用，存引用的话 ans 里最后只剩一份空列表——<code>[:]</code> 把此刻的快照拍照存档，第 ' + ans.length + ' 种就此定格。然后 return 回上层，换别的刀法接着试。',
+          do: draw({st:stOf(start, ranges), mk:[], pTxt:pTxt(start), stk:stack.slice(), sst:{[id]:'just'}, chips:chips.slice()})});
+        stack.pop();
+        return;
+      }
+      F.push({hl:[11,12], no:12, tag:'进入 dfs', cls:'t-blue',
+        msg:'进入 <code>dfs(start=' + start + ')</code>：已切好的是 [' + (path.length ? path.map(x => '"' + LCesc(x) + '"').join(', ') : '空') + ']，剩「' + LCesc(s.slice(start)) + '」没动。本层只决定一件事：<b>下一刀切到哪</b>——end 从 ' + start + ' 逐个试到 ' + (s.length - 1) + '，对应"下一段"取 1 个、2 个……字符。为什么每种切法都要枚举？这层换个刀法，后面整棵子树的切法就全跟着变，少试一种就可能漏一种答案。',
+        do: draw({st:stOf(start, ranges), mk:mkSE(start, start), pTxt:pTxt(start), stk:stack.slice(), sst:{[id]:'active'}, chips:chips.slice()})});
+
+      for(let end = start; end < s.length; end++){
+        const pal = tryPal(start, end);
+        F.push({hl:[15,16], ok: pal ? 16 : undefined, no: pal ? undefined : 16,
+          tag: pal ? '是回文·切！' : '放弃这刀', cls: pal ? 't-green' : 't-red',
+          msg: pal
+            ? '「' + LCesc(s.slice(start, end + 1)) + '」验货通过（16 行变绿）→ <b>切下它！</b>为什么必须先过 isPal 这道门槛？一段不是回文，就永远进不了任何合法切法，直接跳过能省掉后面整棵子树的白跑——这就是回溯的<b>剪枝</b>。接下来 path 追加这段，再递归 <code>dfs(' + (end + 1) + ')</code> 去切剩下的。'
+            : '「' + LCesc(s.slice(start, end + 1)) + '」验货失败（16 行红）→ 这刀不切。但<b>不能死心</b>：end 右移一格，把这段放长一点再验——「ab」不是回文，可「aba」就是；同一个起点、每种长度都试过一遍，才算"枚举完"。',
+          do: draw({st:stOf(start, ranges, [start, end], pal ? 'active' : 'block'), mk:mkSE(start, end), pTxt:pTxt(start), stk:stack.slice(), chips:chips.slice()})});
+        if(!pal) continue;
+        path.push(s.slice(start, end + 1));
+        ranges.push([start, end]);
+        F.push({hl:[17,18], tag:'追加·递归', cls:'t-orange',
+          msg:'<code>path</code> 追加 <b>"' + LCesc(s.slice(start, end + 1)) + '"</b>（画面变绿 = 已定的一刀），随即调用 <code>dfs(' + (end + 1) + ')</code>：[start..end] 已成定局，剩下来的是个<b>一模一样的小问题</b>——把后缀也切成回文段。递归的含义就是"用同样的办法解决缩小一圈的子问题"，调用栈里一层对应一刀。',
+          do: draw({st:stOf(end + 1, ranges), mk:mkSE(start, end), pTxt:pTxt(end + 1), stk:stack.slice(), chips:chips.slice()})});
+        dfs(end + 1);
+        path.pop(); ranges.pop();
+        F.push({hl:[19], tag:'撤销', cls:'t-violet',
+          msg:'<code>dfs(' + (end + 1) + ')</code> 把「' + LCesc(s.slice(start, end + 1)) + '」打头的所有切法都试完回来了 → <b>撤销</b>：<code>path.pop()</code> 把这段弹出。<b>为什么必须 pop？</b>path 是全局共用的一支笔：回到本层还要试别的刀法，不弹的话，后面收进 ans 的每种切法里都残留着这段，答案全被污染。就像走完一条岔路要把面包屑捡干净，下一条岔路重新撒。',
+          do: draw({st:stOf(start, ranges), mk:mkSE(start, end), pTxt:pTxt(start), stk:stack.slice(), chips:chips.slice()})});
+      }
+      stack.pop();
+    }
+
+    F.push({hl:[1,2,3,20], tag:'初始化', cls:'t-grey',
+      msg:'任务：把 <code>' + LCesc(s) + '</code> 切成几段、<b>每段都得是回文</b>，收集<b>所有</b>切法。为什么必须一个起点一个起点地枚举切割？因为第一段切多长，后面能怎么切就全变了——先切「a」和先切「aa」，剩下的局面完全不同，任何一种开头都不能漏，否则就漏答案。打法是回溯三步曲：<b>枚举这一刀切到哪（end）→ isPal 双指针验货 → 切下并递归 → 撤销换下一刀</b>。' + (clipped ? '（输入超过 4 个字符，动画只演示前 4 个）' : ''),
+      do: draw({st:{}, mk:[], pTxt:pTxt(0), stk:[], chips:[]})});
+
+    dfs(0);
+
+    F.push({hl:[21], tag:'总结', cls:'t-dark',
+      msg:'所有切法收集完毕：<code>ans</code> 里共 <b>' + ans.length + '</b> 种 —— ' +
+          chips.map(c => '[' + c.split('/').map(x => '"' + LCesc(x) + '"').join(', ') + ']').join('　、　') +
+          '。复盘：每个起点都枚举了所有刀长、每段都过了 isPal 验货——<b>不合法的早早剪掉，合法的一个不漏</b>。注意 ans 里存的是每一刻的快照，path 本体早已撤销回空。',
+      do: draw({st:{}, mk:[], pTxt:'<code>path</code> = []　·　全部撤销完毕，答案都在 <code>ans</code> 里', stk:[], chips:chips.slice(), res:ans.slice()})});
+
+    return F;
+  },
+
+  /* ========= 解法二：官方进阶 · 回文预处理表 + 回溯 ========= */
+  alt: {
+    label: '官方 · 回文预处理表',
+    method: 'partition',
+
+    lede: '题目不变：把字符串 <span class="var r">s</span> 切成若干段、每段都是回文，返回所有切法。' +
+          '这一版是官方进阶解法——先花 O(n²) 把<b>回文预处理表</b> <span class="var i">isPal[i][j]</span> 整张算好' +
+          '（区间 DP：两头相等，且内层也是回文），回溯时<b>一步查表</b>判断"这段是不是回文"，不再现场跑双指针。' +
+          '动画先填表、再回溯；回溯的每一步都会同步高亮它查到的表格。',
+
+    roles: [
+      {c:'orange', code:'填表',   text:'正在计算的 isPal[i][j]'},
+      {c:'blue',   code:'依赖',   text:'它依赖的子区间 isPal[i+1][j-1]'},
+      {c:'green',  code:'✓',     text:'表中绿色 ✓ = 这一段是回文'},
+      {c:'violet', code:'撤销',   text:'回溯弹出 path（与主解法一致）'}
+    ],
+    legend: [
+      {c:'orange', text:'正在填 / 正在查的格子'},
+      {c:'blue',   text:'依赖的子区间（填表时）'},
+      {c:'green',  text:'✓ 回文段（或已切段）'},
+      {c:'red',    text:'✗ 不是回文'}
+    ],
+
+    codeTitle: '上半场填表：第 7 行是区间 DP 递推式（两头相等 + 内层也是回文）；下半场回溯和主解法同款骨架——' +
+               '唯一变化是第 14 行"验货"变成 O(1) 查表，表格里被查的那格会同步高亮。',
+
+    idea: '先交 O(n²) 的"表钱"把所有子串是否回文一次算清，回溯验货从双指针 O(n) 变成查表 O(1)——空间换时间，适合同一串反复查询。',
+
+    complexity: '时间 O(n² + n·2ⁿ)（建表 O(n²) + 回溯 O(n·2ⁿ)）　·　空间 O(n²)（isPal 整张表；回溯栈另计 O(n)）',
+
+    qa: [
+      {q:'为什么要先花 O(n²) 建表？什么时候划算？',
+       a:'主解法每次切割前都要 lo/hi 双指针现场验货，<b>同一段会被反复验</b>（比如 "aa" 在不同切法里被验好几遍）。预处理表把"任何一段是不是回文"一次性算清，之后每次验货 O(1)。凡<b>同一串要反复查询</b>的场景都划算——比如 132 题求最小切割次数，官方解法就是先建这张表再 DP。本题回溯本身 O(n·2ⁿ)，表钱 O(n²) 在指数面前可以忽略。'},
+      {q:'填表为什么 i 要从 n−1 倒着算？',
+       a:'递推式 isPal[i][j] = s[i]==s[j] and (j−i<2 or isPal[i+1][j−1])——长区间要查<b>更短的内层区间</b> isPal[i+1][j−1]。i 从大到小，保证查内层时那一格已经填好；i 正着算就会查到还没算的 False，整张表全错。等价写法是"按区间长度从小到大"算。'},
+      {q:'有了 O(1) 查表，这题还能更快吗？',
+       a:'验货已经是 O(1)，但<b>枚举所有切法</b>的活一点没少——答案本身就有 2ⁿ 量级个，这部分省不掉。表只消灭"重复验货"的劳动；全同字符（如 "aaaa"）时每个可切点都查表通过，总复杂度仍是 O(n·2ⁿ)。'},
+      {q:'和主解法（现场双指针）怎么取舍？',
+       a:'主解法零额外空间、代码更短，一次性分割完全够用；预处理表多花 O(n²) 空间，换来每次验货 O(1) 和"任何子串随时可查"的能力。串越短、查询越多，表越划算——这也是面试里"能不能预处理？"这个追问的标准答案。'}
+    ],
+
+    code: `class Solution:
+    def partition(self, s):
+        n = len(s)
+        isPal = [[False] * n for _ in range(n)]   # isPal[i][j]: s[i..j] 是回文吗
+        for i in range(n - 1, -1, -1):            # i 倒着算: 内层区间先就绪
+            for j in range(i, n):
+                isPal[i][j] = s[i] == s[j] and (j - i < 2 or isPal[i + 1][j - 1])
+        ans, path = [], []
+        def dfs(start):                   # 回溯骨架与主解法一致
+            if start == n:
+                ans.append(path[:])
+                return
+            for end in range(start, n):   # 枚举这一段切到哪
+                if isPal[start][end]:     # O(1) 查表, 不再双指针
+                    path.append(s[start:end + 1])
+                    dfs(end + 1)
+                    path.pop()
+        dfs(0)
+        return ans
+`,
+
+    sol(input){
+      const s = String(input.s == null ? '' : input.s);
+      const n = s.length;
+      const isPal = Array.from({length: n}, () => new Array(n).fill(false));
+      for(let i = n - 1; i >= 0; i--){
+        for(let j = i; j < n; j++){
+          isPal[i][j] = s[i] === s[j] && (j - i < 2 || isPal[i + 1][j - 1]);
+        }
+      }
+      const ans = [], path = [];
+      (function dfs(start){
+        if(start === n){ ans.push(path.slice()); return; }
+        for(let end = start; end < n; end++){
+          if(isPal[start][end]){
+            path.push(s.slice(start, end + 1));
+            dfs(end + 1);
+            path.pop();
+          }
+        }
+      })(0);
+      return ans;
+    },
+    expected: [['a','a','b'],['aa','b']],
+
+    steps(input){
+      const F = [];
+      let s = String(input.s == null ? '' : input.s);
+      const clipped = s.length > 4;
+      if(clipped) s = s.slice(0, 4);
+      const chars = s.split('');
+      const n = chars.length;
+      const tbl = Array.from({length: n}, () => new Array(n).fill(null));  // null = 还没填
+      const zm = Array.from({length: n}, () => new Array(n).fill(0));
+      const ans = [], path = [], ranges = [], chips = [];
+      let seq = 0;
+      const stack = [];
+
+      const stOf = (start, rgs, cand, candCls) => {
+        const st = {};
+        rgs.forEach(rg => { for(let x = rg[0]; x <= rg[1]; x++) st[x] = 'in'; });
+        for(let x = 0; x < chars.length; x++){
+          if(st[x] != null) continue;
+          if(cand && x >= cand[0] && x <= cand[1]){ st[x] = candCls || 'active'; continue; }
+          if(x < start) st[x] = 'done';
+        }
+        return st;
+      };
+      const mkSE = (start, end) => [
+        {name:'start', idx:start, cls:'mi', text:'▲ start'},
+        {name:'end', idx:end, cls:'mr', text:'▲ end'}
+      ];
+      const pTxt = (start) => '<code>path</code> = [' +
+        (path.length ? path.map(x => '<span class="mk-g">"' + LCesc(x) + '"</span>').join(', ') + ', ' : '') +
+        '<span class="mk-b">' + (start < s.length ? '"' + LCesc(s.slice(start)) + '…' : '∅') + '</span>]';
+      const snapTbl = () => tbl.map(r => r.slice());
+
+      /* ★ 快照原则：tbl/stack/path/chips 全部 push 时切片定死，draw 只读快照 o */
+      const draw = (o) => (v) => {
+        v.arr('S', chars, {label: '字符串 <code>s</code>　·　绿 = 已切段，橙/红 = 正在验的段', quotes: true, states: o.st || {}, markers: o.mk || []});
+        const gtx = {}, gst = {};
+        for(let i = 0; i < n; i++)for(let j = 0; j < n; j++){
+          const key = i + ',' + j, val = o.tbl[i][j];
+          if(j < i){ gtx[key] = ''; gst[key] = 'muted'; continue; }
+          gtx[key] = val == null ? '·' : (val ? '✓' : '✗');
+          if(val === true) gst[key] = 'done';
+        }
+        if(o.dep) gst[o.dep] = 'peek';
+        if(o.cur) gst[o.cur] = 'active';
+        if(o.look) gst[o.look] = o.lookOk ? 'target' : 'block';
+        v.grid('G', zm, {label: '回文表 <code>isPal[i][j]</code>　·　行 = 段起点 i，列 = 段终点 j', texts: gtx, states: gst, cw: 38});
+        if(o.vars) v.vars('vars', o.vars, {label: '填表进度'});
+        if(o.pTxt) v.text('P', o.pTxt, {label: '切割现场', html: true});
+        if(o.stk) v.stack('K', o.stk, {label: '递归调用栈　·　一层 = 切一段', topTag: '栈顶', states: o.sst || {}});
+        if(o.chips) v.set('A', o.chips, {label: '<code>ans</code> 已收集的切法（' + o.chips.length + ' 种）', color: 'g'});
+        if(o.res !== undefined) v.result(o.res, {label: '返回结果'});
+      };
+
+      /* ---------- 上半场：区间 DP 填表 ---------- */
+      F.push({hl: [1,2,3,4], tag: '先交表钱', cls: 't-grey',
+        msg: '任务：把 <code>' + LCesc(s) + '</code> 切成全是回文的段、收集所有切法。主解法每次切割前都要 lo/hi 双指针现场验货——<b>同一段会被反复验</b>。' +
+             '这一版（官方进阶）先把验货结果整表算好：<code>isPal[i][j]</code> 记录"s[i..j] 是不是回文"。先建 n×n 的表（只用到右上三角 j≥i，左下角灰掉），等会从 i = ' + (n - 1) + ' 倒着往回填。' + (clipped ? '（输入超过 4 个字符，动画只演示前 4 个）' : ''),
+        do: draw({tbl: snapTbl(), vars: {i: '—', j: '—', 'isPal[i][j]': '—'}})});
+
+      for(let i = n - 1; i >= 0; i--){
+        for(let j = i; j < n; j++){
+          const eq = chars[i] === chars[j];
+          const short = j - i < 2;
+          const depVal = (!short && eq) ? tbl[i + 1][j - 1] : null;
+          const val = eq && (short || depVal);
+          tbl[i][j] = val;
+          const depKey = depVal != null ? (i + 1) + ',' + (j - 1) : null;
+          let why;
+          if(j === i){
+            why = '单字符 "' + LCesc(chars[i]) + '" 自己和自己对称——<code>j−i&lt;2</code> 成立，连字符都不用比 → <b>✓ 天生回文</b>。这就是"任何位置都值得切一刀"的底气。';
+          } else if(j - i === 1){
+            why = '长度 2 只需两头相等：<code>s[' + i + ']=' + LCesc(chars[i]) + '</code> 与 <code>s[' + j + ']=' + LCesc(chars[j]) + '</code>' + (eq ? '相等 → <b>✓</b>' : '不等 → <b>✗</b>') + '（<code>j−i&lt;2</code>，不用查内层）。';
+          } else if(!eq){
+            why = '两头 <code>s[' + i + ']=' + LCesc(chars[i]) + '</code> ≠ <code>s[' + j + ']=' + LCesc(chars[j]) + '</code> → <b>✗</b>。<code>and</code> 短路，连内层都不用查——两头都不等，正读反读必然不同。';
+          } else {
+            why = '两头 <code>s[' + i + ']=' + LCesc(chars[i]) + '</code> 与 <code>s[' + j + ']=' + LCesc(chars[j]) + '</code> 相等 → 整段取决于<b>里面那截</b>：查刚算好的 <code>isPal[' + (i + 1) + '][' + (j - 1) + ']</code> = ' + (depVal ? '✓' : '✗') + '（画面蓝色格）→ 整段 <b>' + (val ? '✓' : '✗') + '</b>。这就是区间 DP：长区间的答案由短区间推出来。';
+          }
+          F.push({hl: [5,6,7], ok: val ? 7 : undefined, no: val ? undefined : 7,
+            tag: '填 isPal[' + i + '][' + j + ']', cls: val ? 't-green' : 't-red',
+            msg: '<code>isPal[' + i + '][' + j + ']</code> 问：s[' + i + '..' + j + '] = "' + LCesc(s.slice(i, j + 1)) + '" 是回文吗？' + why +
+                 ' i 倒着算就是为了这一步——查内层时那格<b>已经填好</b>。',
+            do: draw({tbl: snapTbl(), cur: i + ',' + j, dep: depKey,
+                      vars: {i: i, j: j, 'isPal[i][j]': val ? '✓' : '✗'}})});
+        }
+      }
+
+      F.push({hl: [8], tag: '验货表完工', cls: 't-green',
+        msg: 'n×n 表填完（右上三角）：绿色 ✓ = 回文、✗ = 不是。<b>任何一段是不是回文，从此一步查表</b>——主解法里 lo/hi 夹来夹去的那几步全部提前算完了。' +
+             '成本账：两层循环填表 O(n²) 时间、整张表 O(n²) 空间——这就是"表钱"。接下来回溯上场，<code>ans、path</code> 就位。',
+        do: draw({tbl: snapTbl(), vars: {i: '填完', j: '填完', 'isPal[i][j]': n + '×' + n + ' 表'}})});
+
+      /* ---------- 下半场：回溯（查表版） ---------- */
+      F.push({hl: [18], tag: '开跑回溯', cls: 't-blue',
+        msg: '<code>dfs(0)</code> 开跑。回溯骨架和主解法<b>一模一样</b>：枚举这一刀切到哪（end）→ 验货 → 切下、递归 → 撤销。' +
+             '唯一的变化：验货不再现场夹双指针，而是<b>看一眼表格</b>——接下来回溯的每一步，画面都会同步高亮它查的那格。',
+        do: draw({tbl: snapTbl(), st: stOf(0, ranges), mk: mkSE(0, 0), pTxt: pTxt(0), stk: stack.slice()})});
+
+      function dfs(start){
+        const id = 'f' + (++seq);
+        stack.push({key: id, val: 'dfs(start=' + start + ')'});
+        if(start === n){
+          const snap = path.slice();
+          ans.push(snap);
+          chips.push(snap.join('/'));
+          F.push({hl: [10,11,12], ok: 11, tag: '切分完成！', cls: 't-green',
+            msg: 'start = ' + start + ' = len(s)：一个字符都不剩 → <b>收一份完整切法</b> <b>[' + snap.map(x => '"' + LCesc(x) + '"').join(', ') + ']</b>（第 ' + ans.length + ' 种）。' +
+                 '回溯部分与主解法逐字相同：<code>ans.append(path[:])</code> 拍照存档——path 之后还要 pop 复用，不存快照会全军覆没。然后 return 回上层换刀法。',
+            do: draw({tbl: snapTbl(), st: stOf(start, ranges), mk: [], pTxt: pTxt(start), stk: stack.slice(), sst: {[id]: 'just'}, chips: chips.slice()})});
+          stack.pop();
+          return;
+        }
+        F.push({hl: [9,10,13], no: 10, tag: '进入 dfs', cls: 't-blue',
+          msg: '进入 <code>dfs(start=' + start + ')</code>：已切好 [' + (path.length ? path.map(x => '"' + LCesc(x) + '"').join(', ') : '空') + ']，剩「' + LCesc(s.slice(start)) + '」没动。' +
+               '本层枚举 end = ' + start + ' ~ ' + (n - 1) + '——每试一种刀长，<b>先查表</b> <code>isPal[' + start + '][end]</code>，✓ 才切。为什么要枚举到底：换一种刀法，后面整棵子树的切法全跟着变，少试一种就漏一种答案。',
+          do: draw({tbl: snapTbl(), st: stOf(start, ranges), mk: mkSE(start, start), pTxt: pTxt(start), stk: stack.slice(), sst: {[id]: 'active'}, chips: chips.slice()})});
+
+        for(let end = start; end < n; end++){
+          const pal = tbl[start][end];
+          const seg = s.slice(start, end + 1);
+          F.push({hl: [14], ok: pal ? 14 : undefined, no: pal ? undefined : 14,
+            tag: pal ? '查表 ✓·切！' : '查表 ✗·跳过', cls: pal ? 't-green' : 't-red',
+            msg: pal
+              ? '<code>isPal[' + start + '][' + end + ']</code> 一步查表 → <b>✓</b>：「' + LCesc(seg) + '」是回文（表格高亮的绿格）。' +
+                '主解法这里要 lo/hi 从两端夹 ' + Math.ceil(seg.length / 2) + ' 对字符，现在 O(1)——表钱买来的提速。切下它，递归去切后面。'
+              : '<code>isPal[' + start + '][' + end + ']</code> 一步查表 → <b>✗</b>：「' + LCesc(seg) + '」不是回文（表格高亮的红格），这刀不切。' +
+                '注意：查表虽快，<b>枚举每种刀长</b>的活一点没少——表只省"重复验货"，省不掉搜索本身。end 右移，把段放长一点再查。',
+            do: draw({tbl: snapTbl(), look: start + ',' + end, lookOk: pal,
+                      st: stOf(start, ranges, [start, end], pal ? 'active' : 'block'), mk: mkSE(start, end),
+                      pTxt: pTxt(start), stk: stack.slice(), chips: chips.slice()})});
+          if(!pal) continue;
+          path.push(seg); ranges.push([start, end]);
+          F.push({hl: [15,16], tag: '追加·递归', cls: 't-orange',
+            msg: '<code>path</code> 追加 <b>"' + LCesc(seg) + '"</b>（画面变绿 = 已定的一刀），递归 <code>dfs(' + (end + 1) + ')</code>——' +
+                 '剩下一截又是一个"切成回文段"的小问题。表格全程不动，回溯每层查表都同步高亮对应格。',
+            do: draw({tbl: snapTbl(), st: stOf(end + 1, ranges), mk: mkSE(start, end), pTxt: pTxt(end + 1), stk: stack.slice(), chips: chips.slice()})});
+          dfs(end + 1);
+          path.pop(); ranges.pop();
+          F.push({hl: [17], tag: '撤销', cls: 't-violet',
+            msg: '「' + LCesc(seg) + '」打头的所有切法都试完了 → <code>path.pop()</code> 撤销这刀，换下一种刀长。' +
+                 '和主解法同款规矩：path 是全局共用的一支笔，不弹干净会污染后面收进 ans 的每一种切法。',
+            do: draw({tbl: snapTbl(), st: stOf(start, ranges), mk: mkSE(start, end), pTxt: pTxt(start), stk: stack.slice(), chips: chips.slice()})});
+        }
+        stack.pop();
+      }
+
+      dfs(0);
+
+      F.push({hl: [19], tag: '总结', cls: 't-dark',
+        msg: '所有切法收集完毕：<code>ans</code> 共 <b>' + ans.length + '</b> 种 —— ' +
+             chips.map(c => '[' + c.split('/').map(x => '"' + LCesc(x) + '"').join(', ') + ']').join('　、　') +
+             '。复盘：先花 O(n²) 建表，把"是不是回文"一次算清；回溯骨架与主解法一致，验货 O(1)。<b>空间换时间</b>——同一串反复查询（或配合其他 DP）时这张表物超所值；一次性分割用主解法的双指针更省。',
+        do: draw({tbl: snapTbl(), st: {}, mk: [], chips: chips.slice(), res: ans.slice()})});
+
+      return F;
+    }
+  }
+});
+</script>
+</body>
+</html>

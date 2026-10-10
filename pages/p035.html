@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P035 · 二叉树的中序遍历 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/progress.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+/* 本地工具：标准 LeetCode 层序(+null)解析与树布局。
+   注：assets/viz.js 的 Viz.parseTree 在"左孩子为 null、右孩子非 null"时会把右孩子错挂到左边，
+   这里按与校验器 _build_tree 相同的标准规则在页内实现（不改 assets）。 */
+function parseLC(arr){
+  arr = arr || [];
+  const nodes = [];
+  if(!arr.length || arr[0] == null) return {root:null, nodes};
+  nodes.push({key:0, val:arr[0], left:null, right:null});
+  let nk = 1, k = 1;
+  const q = [0];
+  while(k < arr.length && q.length){
+    const pk = q.shift();
+    [0,1].forEach(slot => {
+      if(k >= arr.length) return;
+      const v = arr[k++];
+      if(v != null){
+        const c = {key:nk++, val:v, left:null, right:null};
+        nodes.push(c);
+        if(slot === 0) nodes[pk].left = c.key; else nodes[pk].right = c.key;
+        q.push(c.key);
+      }
+    });
+  }
+  return {root:0, nodes};
+}
+function layoutLC(T){
+  const CELLW = 46, GAPX = 24, ROWH = 74, pad = 6;
+  const byKey = {}; T.nodes.forEach(n => byKey[n.key] = n);
+  const nodes = [], edges = [];
+  if(T.root == null) return {nodes, edges, w:120, h:60};
+  let maxD = 0, counter = 0;
+  (function rec(k, d){
+    const nd = byKey[k];
+    if(nd.left != null) rec(nd.left, d + 1);
+    nodes.push({key:k, val:nd.val, x: pad + counter * (CELLW + GAPX), y: pad + d * ROWH,
+                leaf: nd.left == null && nd.right == null});
+    counter++; maxD = Math.max(maxD, d);
+    if(nd.right != null) rec(nd.right, d + 1);
+  })(T.root, 0);
+  T.nodes.forEach(n => {
+    if(n.left != null) edges.push([n.key, n.left]);
+    if(n.right != null) edges.push([n.key, n.right]);
+  });
+  return {
+    nodes, edges,
+    w: Math.max(120, pad * 2 + T.nodes.length * (CELLW + GAPX) - GAPX),
+    h: Math.max(60, pad * 2 + (maxD + 1) * ROWH)
+  };
+}
+
+LC.register({
+  order: 35, num: 94, title: '二叉树的中序遍历', diff: '简单', cat: '二叉树',
+  method: 'inorderTraversal',
+
+  lede: '题目：按<b>中序</b>把树上所有节点的值走一遍：<b>左子树 → 根 → 右子树</b>，返回访问序列。' +
+        '比如 [1,null,2,3]（1 的右孩子是 2，2 的左孩子是 3）答案是 <b>[1,3,2]</b>。' +
+        '动画里函数一次次<span class="var i">调用自己</span>（右侧调用栈长高），走到空位就原路返回，' +
+        '每次"回到根"就把它的值追加进 <span class="var g">res</span> 访问序列。',
+
+  roles: [
+    {c:'orange', code:'active', text:'当前正在处理的节点'},
+    {c:'blue',   code:'in',     text:'递归路径上的祖先'},
+    {c:'green',  code:'done',   text:'已记入 res 的节点'},
+    {c:'ink',    code:'stack',  text:'右侧竖条 = 递归调用栈'}
+  ],
+
+  codeTitle: '跟着高亮读代码——<code>if</code> 行变<span style="color:var(--green)">绿</span>＝碰到空位（递归出口），变<span style="color:var(--red)">红</span>＝节点存在，继续往下走。',
+
+  idea: '中序 = 根在中间：先把左子树整个走完，回来记下自己，再去右子树。空位是递归的刹车。',
+
+  qa: [
+    {q:'前序/中序/后序名字怎么记？',
+     a:'名字说的是"根"被访问的位置：前序＝根最先（根左右）、<b>中序＝根在中间（左根右）</b>、后序＝根最后（左右根）。附赠一个经典结论：二叉搜索树的中序遍历恰好是升序序列。'},
+    {q:'res.append 为什么卡在"左边回来"和"去右边"之间？',
+     a:'这正是"根"在左根右中的位置：左子树的所有节点都比根先被访问，右子树的所有节点都比根后被访问。把 append 挪到递归左之前就变成前序，挪到最后就变成后序。'},
+    {q:'递归版和迭代版什么关系？',
+     a:'递归版的调用栈替你记住"待会回到哪个节点"；迭代版自己维护一个显式栈：一路向左压栈，弹出一个记一个，再转向它的右子树。时间都是 O(n)，空间都是 O(h)。'},
+    {q:'为什么必须有 if not node: return？',
+     a:'node.left / node.right 随时可能是 None，不刹车就会在 None 上继续取 .left 直接崩溃。空位 return 是所有树递归的出口。'}
+  ],
+
+  complexity: '时间 O(n)（每个节点恰好访问一次）　·　空间 O(h)（递归栈，h 为树高，最坏 O(n)）',
+
+  form: [
+    {key:'root', label:'root', type:'tree', def:[1,null,2,3]}
+  ],
+  presets: [
+    {label:'[1,null,2,3]', values:{root:[1,null,2,3]}},
+    {label:'完美二叉树 1~7', values:{root:[1,2,3,4,5,6,7]}},
+    {label:'单节点 [7]', values:{root:[7]}},
+    {label:'空树 []', values:{root:[]}}
+  ],
+
+  code: `class Solution:
+    def inorderTraversal(self, root):
+        res = []                       # 访问序列
+        def dfs(node):                 # 中序: 左 → 根 → 右
+            if not node:               # 空位: 什么都不记
+                return
+            dfs(node.left)             # 1. 先走完左子树
+            res.append(node.val)       # 2. 回到根, 记下它
+            dfs(node.right)            # 3. 再去右子树
+        dfs(root)                      # 从根开始
+        return res
+`,
+
+  sol(input){
+    const T = parseLC(input.root || []);
+    const byKey = {}; T.nodes.forEach(n => byKey[n.key] = n);
+    const out = [];
+    (function dfs(k){
+      if(k == null) return;
+      dfs(byKey[k].left);
+      out.push(byKey[k].val);
+      dfs(byKey[k].right);
+    })(T.root);
+    return out;
+  },
+  expected: [1,3,2],
+
+  quiz: [
+    {q:'「中序」的"中"字到底指什么?',
+     options:['从树的中间层开始遍历','每个节点访问到一半就停下等孩子','根的访问位置排在中间:先把左子树整个走完,回到根记下它,再去右子树(左→根→右)'],
+     answer:2,
+     explain:'前序/中序/后序的名字说的是"根"被访问的时机:前序根最先、中序根在中间、后序根最后。代码里的体现就是 res.append 卡在"递归左"和"递归右"之间——左边全记完才轮到根,右边还得排队等它。附赠经典结论:BST 的中序遍历恰好是升序序列。',
+     jumpTo:5},
+    {q:'把输入换成完美二叉树 [1,2,3,4,5,6,7](1 的孩子是 2、3,2 的孩子是 4、5,3 的孩子是 6、7),中序序列是?',
+     options:['[1,2,3,4,5,6,7]','[4,5,2,6,7,3,1]','[4,2,5,1,6,3,7]'],
+     answer:2,
+     explain:'按"左→根→右"逐棵子树走:先钻进最左的 4(记 4),回到 2(记 2),再去 2 的右边记 5;左子树清完,回到根记 1;右子树照葫芦画瓢:6、3、7。所以是 [4,2,5,1,6,3,7]。选 1 是层序、选 2 是后序——三个序列的差别全在"根"记录的位置。',
+     jumpTo:18},
+    {q:'若把 res.append 从「递归左、递归右之间」挪到「一进函数就记」,会变成哪种遍历?',
+     options:['后序遍历(左右根)','前序遍历(根左右)','还是中序,只是记录顺序不同'],
+     answer:1,
+     explain:'一进函数就记 = 根最先被记,然后才轮到左、右子树——正是前序"根左右"。挪到最后(左右都回来再记)就是后序"左右根"。三个遍历用的是同一副递归骨架,唯一的差别就是"记根"那一行站在哪。',
+     jumpTo:2},
+  ],
+
+  steps(input){
+    const F = [];
+    const T = parseLC(input.root || []);
+    const t = layoutLC(T);
+    const byKey = {}; T.nodes.forEach(n => byKey[n.key] = n);
+    const valOf = k => k == null ? '空' : LCesc(String(byKey[k].val));
+    const res = [];                  // 已访问序列（值）
+    const ord = new Map();           // key -> 第几个被访问
+    let seq = 0;
+
+    const doneKeys = () => Array.from(ord.keys());
+    const tagSnap = () => { const o = {}; ord.forEach((n, k) => o[k] = n); return o; };
+
+    /* ★ 快照原则：path/done/tags/stack/res 全部在 push 时定死快照，do() 只读快照 */
+    const draw = o => (v) => {
+      const states = {};
+      (o.path || []).forEach(k => { states[k] = 'in'; });
+      if(o.cur != null) states[o.cur] = 'active';
+      (o.done || []).forEach(k => { if(states[k] == null) states[k] = 'done'; });
+      const tags = {};
+      Object.entries(o.tags || {}).forEach(([k, n]) => { tags[k] = {text:'第' + n + '个', cls:'mg'}; });
+      v.tree('T', t, {label:'二叉树　·　数字 = 节点值', states, tags});
+      const stack = o.stack || [];
+      v.stack('S', stack, {
+        label:'递归调用栈　·　越往下越新',
+        states: stack.length ? {[stack[stack.length - 1].key]:'active'} : {},
+        topTag:'栈顶'
+      });
+      v.arr('res', o.res || [], {label:'已访问序列 <code>res</code>',
+        states: (o.res || []).length ? {[o.res.length - 1]:'just'} : {}});
+      if(o.result != null) v.result(o.result, {label:'返回结果'});
+    };
+
+    function visit(k, frames, path){
+      const id = 'c' + (++seq);
+      const stack = frames.concat([{key:id, val:'dfs(' + (k == null ? '空' : valOf(k)) + ')'}]);
+      if(k == null){
+        F.push({hl:[5,6], ok:5, tag:'递归出口', cls:'t-grey',
+          msg:'调用 <code>dfs(空)</code>：这一侧没有孩子，走到空位，<code>not node</code> 成立 → <b>什么都不记，直接 return</b>。' +
+              '空位是递归的刹车片：没有它，代码会在 None 上继续取 .left 直接崩溃；同时它保证每个真实节点的左右两侧都被完整"路过"，访问序列不重不漏。',
+          do: draw({stack, path, done: doneKeys(), tags: tagSnap(), res: res.slice()})});
+        return;
+      }
+      F.push({hl:[5], no:5, tag:'进入函数', cls:'t-blue',
+        msg:'调用 <b>dfs(节点 ' + valOf(k) + ')</b>：节点存在，<code>not node</code> 不成立。' +
+            '中序口诀"<b>左 → 根 → 右</b>"——根要记在中间，所以现在<b>先不记它</b>，立刻递归走进左子树；它的值什么时候记？等左边全部回来之后（此刻高亮正落在 <code>dfs(node.left)</code> 上）。',
+        do: draw({stack, cur:k, path: path.concat(k), done: doneKeys(), tags: tagSnap(), res: res.slice()})});
+
+      visit(byKey[k].left, stack, path.concat(k));
+      F.push({hl:[7], tag:'左边回来', cls:'t-green',
+        msg:'节点 ' + valOf(k) + ' 的左子树整个走完（左边该记的都已记入 res）→ 按口诀"<b>左、根、右</b>"，轮到中间的根了。' +
+            '此刻节点 ' + valOf(k) + ' 的值还不在 res 里——它特意等左边清完才出手，这正是"根"在中序里的位置。',
+        do: draw({stack, cur:k, path: path.concat(k), done: doneKeys(), tags: tagSnap(), res: res.slice()})});
+
+      res.push(byKey[k].val);
+      ord.set(k, res.length);
+      F.push({hl:[8], tag:'记录', cls:'t-orange',
+        msg:'<code>res.append(' + valOf(k) + ')</code>：左子树已完、右子树未去，节点 ' + valOf(k) + ' 正好卡在中间——这就是中序的"根"位。' +
+            '它是第 <b>' + res.length + '</b> 个被访问的 → res = <b>[' + res.map(x => LCesc(String(x))).join(',') + ']</b>，res 行新格子标亮，树上同时挂出访问名次牌。',
+        do: draw({stack, cur:k, path: path.concat(k), done: doneKeys(), tags: tagSnap(), res: res.slice()})});
+
+      visit(byKey[k].right, stack, path.concat(k));
+      F.push({hl:[9], tag:'右边回来', cls:'t-green',
+        msg:'节点 ' + valOf(k) + ' 的右子树也走完 → 左、根、右三件事全部做完，<code>dfs(节点 ' + valOf(k) + ')</code> 返回，栈顶弹出。' +
+            '对上一层来说，这整棵子树只是它"左半边"或"右半边"的一部分——上一层一直等着的就是这个 return。',
+        do: draw({stack: frames, path, done: doneKeys(), tags: tagSnap(), res: res.slice()})});
+    }
+
+    F.push({hl:[1,2,3,4,10], tag:'初始化', cls:'t-grey',
+      msg:'中序口诀：<b>左子树 → 根 → 右子树</b>——"根"记在中间，这就是"中"字的由来（前序、后序只是根的位置提前或延后）。' +
+          '实现就是三行递归加一个空位刹车，res 从空 [] 开始攒。盯右侧调用栈：往下长 = 走进孩子，往上缩 = 返回汇报。',
+      do: draw({stack:[], done:[], tags:{}, res:[]})});
+
+    visit(T.root, [], []);
+    const vals = res.slice();
+
+    F.push({hl:[11], tag:'遍历完成', cls:'t-dark',
+      msg:'🎉 所有节点按 <b>左→根→右</b> 访问完毕，返回 <b>[' + vals.map(x => LCesc(String(x))).join(',') + ']</b>，树上绿名牌就是各节点的访问名次。' +
+          '复盘：每个节点恰好 append 一次，时间 O(n)；递归栈最深等于树高，空间 O(h)。附赠经典结论：二叉搜索树的中序遍历正好是升序序列。',
+      do: draw({stack:[], done: doneKeys(), tags: tagSnap(), res: vals, result: vals})});
+
+    return F;
+  },
+
+  /* ========= 解法二：力扣官方方法二 · 迭代（显式栈） ========= */
+  alt: {
+    label: '官方 · 迭代(显式栈)',
+    method: 'inorderTraversal',
+
+    lede: '题目不变：按<b>左 → 根 → 右</b>走完全树，返回访问序列。解法一的递归把"待会回到哪个节点"托付给看不见的函数调用栈；' +
+          '这一版是力扣官方方法二——<b>迭代</b>：自己雇一个<span class="var b">显式栈</span>，' +
+          '指针 <span class="var o">cur</span> 一路向左把途经节点<b>压栈</b>，压到头就<b>弹栈访问</b>、再转向右子树。' +
+          '<b>显式栈就是手动模拟的调用栈</b>——这也是所有递归转迭代的通用套路。',
+
+    roles: [
+      {c:'orange', code:'cur',   text:'当前指针：向左压栈 / 弹栈后转向右'},
+      {c:'blue',   code:'stack', text:'显式栈：路过但还没资格访问的祖先'},
+      {c:'green',  code:'done',  text:'已弹栈访问、记入 res 的节点'}
+    ],
+    legend: [
+      {c:'orange', text:'cur 当前指针'},
+      {c:'blue',   text:'在栈里排队等访问'},
+      {c:'green',  text:'已访问并记入 res'}
+    ],
+
+    codeTitle: '跟着高亮读代码——盯右侧显式栈：压栈＝递归里"调用自己"，弹栈＝"返回上一层"。第 7 行 while 变<span style="color:var(--red)">红</span>＝cur 走到空位（左边到底，该弹栈了）。',
+
+    idea: '显式栈就是手动模拟的调用栈：cur 一路向左把祖先压栈，压到头弹栈访问、再转向右子树——递归转迭代的通用套路。',
+
+    complexity: '时间 O(n)（每个节点压栈、弹栈、记录各一次）　·　空间 O(h)（显式栈深 = 树高，最坏 O(n)）',
+
+    qa: [
+      {q:'显式栈里存的到底是什么？和递归的调用栈什么关系？',
+       a:'存"已经路过、但还没资格访问"的节点——都是"左边还没清完"的祖先。递归版这些信息躺在看不见的函数调用栈里；迭代版自己用一个数组记，一模一样：压栈＝函数调用自己，弹栈＝函数返回。'},
+      {q:'为什么弹栈出来的节点此刻访问恰好是"中序"？',
+       a:'弹栈时机＝它的左子树恰好全部处理完（访问过或为空）。中序要求"左全清完才轮到根"——栈顶天然满足这个条件，所以弹出即访问，访问完再转向右子树。'},
+      {q:'while cur or stack 的两个条件各管什么？',
+       a:'cur 非空＝左边还有新路可下；栈非空＝还有节点欠一次访问。两者同时断掉遍历才结束——只看 cur 会漏掉"回溯"阶段的弹出，只看栈会漏掉右子树的新路。'},
+      {q:'和递归版（解法一）怎么取舍？',
+       a:'时间都是 O(n)，空间都是 O(h)。迭代版不受函数调用栈深度限制（超深递归会崩溃），且栈的压弹全程可见；递归版代码更短。这套"自己维护栈 + 指针"的写法对前序、后序乃至图的遍历都通用。'}
+    ],
+
+    code: `class Solution:
+    def inorderTraversal(self, root):
+        res = []
+        stack = []                  # 显式栈: 手动模拟调用栈
+        cur = root                  # 当前指针
+        while cur or stack:         # 指针还有路走 或 栈里还有活
+            while cur:              # 一路向左
+                stack.append(cur)   # 途经节点全部压栈
+                cur = cur.left
+            cur = stack.pop()       # 左边到底: 弹栈访问
+            res.append(cur.val)     # 记入访问序列
+            cur = cur.right         # 转向右子树
+        return res
+`,
+
+    sol(input){
+      const T = parseLC(input.root || []);
+      const byKey = {}; T.nodes.forEach(n => byKey[n.key] = n);
+      const res = [], stack = [];
+      let cur = T.root;
+      while(cur != null || stack.length){
+        while(cur != null){ stack.push(cur); cur = byKey[cur].left; }
+        cur = stack.pop();
+        res.push(byKey[cur].val);
+        cur = byKey[cur].right;
+      }
+      return res;
+    },
+    expected: [1,3,2],
+
+    steps(input){
+      const F = [];
+      const T = parseLC(input.root || []);
+      const t = layoutLC(T);
+      const byKey = {}; T.nodes.forEach(n => byKey[n.key] = n);
+      const vOf = k => k == null ? '空' : String(byKey[k].val);
+      const ev = x => LCesc(String(x));
+      const res = [];                 // 已访问序列(值)
+      const ord = new Map();          // key -> 第几个被访问
+      const stack = [];               // 显式栈: 存节点 key
+      let cur = T.root;
+
+      const doneKeys = () => Array.from(ord.keys());
+      const tagSnap = () => { const o = {}; ord.forEach((n, k) => { o[k] = n; }); return o; };
+      const stackSnap = () => stack.map(k => ({key: 'n' + k, val: '节点' + vOf(k)}));
+      const stackText = () => stack.length ? stack.map(k => vOf(k)).join(' → ') : '(空)';
+
+      /* ★ 快照原则：stack/cur/done/tags/res 全部在 push 那一刻定死，do() 只读快照 */
+      const draw = o => (v) => {
+        const states = {};
+        (o.done || []).forEach(k => { states[k] = 'done'; });
+        if(o.cur != null) states[o.cur] = 'active';
+        const tags = {};
+        Object.entries(o.tags || {}).forEach(([k, n]) => { tags[k] = {text:'第' + n + '个', cls:'mg'}; });
+        v.tree('T', t, {label:'二叉树　·　橙 = 指针 cur　·　绿 = 已访问', states, tags});
+        const st = o.stack || [];
+        v.stack('S', st, {
+          label:'显式栈 <code>stack</code>　·　手动模拟的调用栈',
+          states: st.length ? {[st[st.length - 1].key]:'active'} : {},
+          topTag:'栈顶'
+        });
+        v.arr('res', o.res || [], {label:'已访问序列 <code>res</code>',
+          states: (o.res || []).length ? {[o.res.length - 1]:'just'} : {}});
+        if(o.vars) v.vars('vars', o.vars, {label:'变量', hl:o.hlVars || []});
+        if(o.result != null) v.result(o.result, {label:'返回结果'});
+      };
+
+      F.push({hl:[1,2,3,4,5], tag:'初始化', cls:'t-grey',
+        msg:'递归版把"待会回到哪个节点"托付给看不见的<b>函数调用栈</b>；这一版自己雇一个显式栈 <code>stack</code> 来记，' +
+            '再派指针 <code>cur</code> 在树上走。口诀不变——<b>左 → 根 → 右</b>：' +
+            'cur 一路向左把途经节点压栈，压到头就弹栈访问、再转向右子树。<b>压栈＝递归里"调用自己"，弹栈＝"返回上一层"</b>。',
+        do: draw({stack: [], done: [], tags: {}, res: [],
+                  vars: {cur: T.root != null ? ev(byKey[T.root].val) : 'None', 栈深: 0}})});
+
+      while(true){
+        const cond = (cur != null) || stack.length > 0;
+        F.push({hl:[6], ok: cond ? 6 : undefined, no: cond ? undefined : 6,
+          tag: cond ? '外层检查' : '外层检查 · 结束', cls: cond ? 't-blue' : 't-red',
+          msg: cond
+            ? '<code>while cur or stack</code>：cur = ' + (cur != null ? ev(byKey[cur].val) : 'None') +
+              '，栈里有 ' + stack.length + ' 个节点（从底到顶：' + stackText() + '）→ 条件成立，继续。' +
+              '两个条件的分工：<b>cur 非空＝左边还有新路可下；栈非空＝还有节点欠一次访问</b>——只看其中一个都会提前收工。'
+            : 'cur = None 且栈也空了——左边的路走完了、欠访问的节点也弹干净了，<code>while</code> 首次不成立，遍历结束。',
+          do: draw({stack: stackSnap(), cur, done: doneKeys(), tags: tagSnap(), res: res.slice(),
+                    vars: {cur: cur != null ? ev(byKey[cur].val) : 'None', 栈深: stack.length}})});
+        if(!cond) break;
+
+        while(cur != null){
+          stack.push(cur);
+          F.push({hl:[7,8], ok:7, tag:'压栈', cls:'t-blue',
+            msg:'<code>while cur</code>：cur = 节点' + ev(byKey[cur].val) + ' 非空 → 把它<b>压栈</b>。' +
+                '为什么先不访问它？中序要求"根"排在左子树后面——它现在只是路上的祖先，先存进栈里排队，' +
+                '等左边全部处理完再弹出来记。这个压栈动作，正是递归版里"函数调用自己"时调用栈偷偷做的事。',
+            do: draw({stack: stackSnap(), cur, done: doneKeys(), tags: tagSnap(), res: res.slice(),
+                      vars: {cur: ev(byKey[cur].val), 栈深: stack.length}})});
+          const par = cur;
+          cur = byKey[cur].left;
+          F.push({hl:[9], tag:'向左走', cls:'t-ink',
+            msg:'<code>cur = cur.left</code>：从 节点' + ev(byKey[par].val) + ' 挪到' +
+                (cur != null ? ' <b>节点' + ev(byKey[cur].val) + '</b>，继续向左探。' : ' <b>空位</b>——这一路压栈告一段落。') +
+                (cur != null ? '' : ' 栈里每个节点都在等同一件事：左子树清完，轮到自己被弹出访问。'),
+            do: draw({stack: stackSnap(), cur, done: doneKeys(), tags: tagSnap(), res: res.slice(),
+                      vars: {cur: cur != null ? ev(byKey[cur].val) : 'None', 栈深: stack.length}})});
+        }
+        F.push({hl:[7], no:7, tag:'左边到底', cls:'t-grey',
+          msg:'<code>while cur</code>：cur = None → 内层循环停。此刻栈从底到顶是 <b>' + stackText() + '</b>——' +
+              '栈顶就是"最靠左、该第一个被访问的节点"。递归版此刻正对应"一路 dfs(node.left) 触底、即将返回"的瞬间。',
+          do: draw({stack: stackSnap(), cur: null, done: doneKeys(), tags: tagSnap(), res: res.slice(),
+                    vars: {cur: 'None', 栈深: stack.length}})});
+
+        cur = stack.pop();
+        F.push({hl:[10], tag:'弹栈访问', cls:'t-orange',
+          msg:'<code>cur = stack.pop()</code>：弹出栈顶 <b>节点' + ev(byKey[cur].val) + '</b>——它的左子树恰好全部处理完（访问过或是空位），' +
+              '按"左 → 根 → 右"正好轮到它自己。<b>弹栈＝递归版里"函数返回、回到上一层"的手动版</b>：栈就是那口调用锅。',
+          do: draw({stack: stackSnap(), cur, done: doneKeys(), tags: tagSnap(), res: res.slice(),
+                    vars: {cur: ev(byKey[cur].val), 栈深: stack.length}})});
+
+        res.push(byKey[cur].val);
+        ord.set(cur, res.length);
+        F.push({hl:[11], tag:'记录', cls:'t-green',
+          msg:'<code>res.append(' + ev(byKey[cur].val) + ')</code>：它是第 <b>' + res.length + '</b> 个被访问的 → ' +
+              'res = <b>[' + res.map(x => ev(x)).join(',') + ']</b>，res 行新格子标亮，树上同时挂出绿色名次牌。' +
+              '到此"左"和"根"都齐了，还差"右"。',
+          do: draw({stack: stackSnap(), cur, done: doneKeys(), tags: tagSnap(), res: res.slice(),
+                    vars: {cur: ev(byKey[cur].val), 栈深: stack.length}, hlVars:['cur']})});
+
+        const par2 = cur;
+        cur = byKey[cur].right;
+        F.push({hl:[12], tag:'转向右子树', cls:'t-ink',
+          msg:'<code>cur = cur.right</code>：节点' + ev(byKey[par2].val) + ' 的"根"位记完，指针挪向' +
+              (cur != null ? '右孩子 <b>节点' + ev(byKey[cur].val) + '</b>——对这棵右子树再走一遍同一套流程（压栈 → 弹栈 → 记录）。'
+                           : ' <b>空位</b>——节点' + ev(byKey[par2].val) + ' 的整棵子树完工，控制权交回栈里更上层的节点。'),
+          do: draw({stack: stackSnap(), cur, done: doneKeys(), tags: tagSnap(), res: res.slice(),
+                    vars: {cur: cur != null ? ev(byKey[cur].val) : 'None', 栈深: stack.length}})});
+      }
+
+      F.push({hl:[13], tag:'遍历完成', cls:'t-dark',
+        msg:'🎉 <code>return res</code>：中序序列 <b>[' + res.map(x => ev(x)).join(',') + ']</b>。' +
+            '复盘：每个节点恰好压栈、弹栈、记录各一次，时间 O(n)；显式栈最深等于树高，空间 O(h)。' +
+            '对比递归版：那个看不见的调用栈在这里变成了看得见的 <code>stack</code>——' +
+            '<b>显式栈就是手动模拟的调用栈</b>，这套"自己维护栈 + 指针"的写法是所有递归转迭代的通用套路。',
+        do: draw({stack: [], cur: null, done: doneKeys(), tags: tagSnap(), res: res.slice(), result: res.slice()})});
+
+      return F;
+    }
+  }
+});
+</script>
+</body>
+</html>

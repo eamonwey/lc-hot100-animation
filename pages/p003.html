@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P003 · 最长连续序列 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/progress.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 3, num: 128, title: '最长连续序列', diff: '中等', cat: '哈希',
+  method: 'longestConsecutive',
+
+  lede: '题目：数字可以乱序，找出最长的“连续整数链”有多长（1-2-3-4 就是长 4，不要求在数组里挨着）。' +
+        '要求 O(n)，就<b>不能排序</b>。动画里 <span class="var r">numSet</span> 是哈希集合（查一个数只要 O(1)），' +
+        '<span class="var i">x</span> 逐个试着当起点：只要 <code>x−1</code> 也在集合里，x 就不是头，<b>立刻让位</b>；' +
+        '真正的头才一路向右数到底。',
+
+  roles: [
+    {c:'orange', code:'x',      text:'正在试着当起点的数'},
+    {c:'green',  code:'peek',   text:'正在查的邻居（x−1 或 x+length）'},
+    {c:'violet', code:'target', text:'正在数的连续链条'},
+    {c:'blue',   code:'best',   text:'目前最长的连续长度'}
+  ],
+
+  codeTitle: '跟着高亮读代码——<code>if x−1 in numSet</code> 变<span style="color:var(--red)">红</span>＝前面还有人，x 没资格当头；变<span style="color:var(--green)">绿</span>＝x 就是头，开始向右数。',
+
+  legend: [
+    {c:'orange', text:'x 当前数'},
+    {c:'violet', text:'正在数的链条'},
+    {c:'green', text:'查到的邻居'},
+    {c:'blue', text:'best 目前纪录'}
+  ],
+
+  idea: '连续段必有“没人差它一”的头：只让头向右数到底，其余数原地待命——每个数最多被摸两次，O(n) 拿下。',
+
+  qa: [
+    {q:'为什么只从“没有 x−1”的数开始数？',
+     a:'如果 x−1 还在集合里，那从 x 开始数出的链一定比从 x−1 开始的<b>短一截</b>，白数。只有 x−1 不在，x 才可能是某段的最小头。这样每段只被它的头完整数一遍，其余数只被查一两次——总操作数还是 O(n)。'},
+    {q:'不判断起点、每个数都往右数一遍，会怎样？',
+     a:'也能出对答案，但最坏会退化：比如 1~n 全在集合里，从每个数出发都要数到 n，共 O(n²) 次查询。“只让头数”这一步判断正是把复杂度摁回 O(n) 的关键。'},
+    {q:'为什么用哈希集合而不用数组？',
+     a:'核心动作是“x 在不在”这件事被问了几万次。数组查一次要 O(n)，集合（哈希表）O(1)。把最频繁的操作做到 O(1)，整个算法才是 O(n)——典型的空间换时间。'},
+    {q:'数组里有重复的数怎么办？',
+     a:'进集合时自动去重：连续长度只跟“有哪些值”有关，跟出现几次无关。动画里 numSet 展示的就是去重后的值。'}
+  ],
+
+  complexity: '时间 O(n)（每个数最多被查常数次）　·　空间 O(n)（哈希集合）',
+
+  form: [
+    {key:'nums', label:'nums', type:'arr', def:[100,4,200,1,3,2]}
+  ],
+  presets: [
+    {label:'[100,4,200,1,3,2]', values:{nums:[100,4,200,1,3,2]}},
+    {label:'[1,2,0,1]（重复 + 跨 0）', values:{nums:[1,2,0,1]}},
+    {label:'[0]（单元素）', values:{nums:[0]}},
+    {label:'[]（空数组）', values:{nums:[]}}
+  ],
+
+  code: `class Solution:
+    def longestConsecutive(self, nums):
+        numSet = set(nums)              # 全部丢进哈希集合, 查询 O(1)
+        best = 0                        # 目前最长的连续长度
+        for x in numSet:                # 每个数都试着当一次起点
+            if x - 1 in numSet:         # x-1 也在集合里?
+                continue                # 是 -> x 不是头, 让位
+            length = 1                  # x 就是头, 链条至少长 1
+            while x + length in numSet: # 右邻 x+length 也在?
+                length += 1             # 在! 链条再加一节
+            best = max(best, length)    # 这段数完, 刷新纪录
+        return best
+`,
+
+  sol(input){
+    const S = new Set(input.nums || []);
+    let best = 0;
+    for(const x of S){
+      if(S.has(x - 1)) continue;
+      let length = 1;
+      while(S.has(x + length)) length++;
+      best = Math.max(best, length);
+    }
+    return best;
+  },
+  expected: 4,
+
+  quiz: [
+    {q:'为什么 x−1 还在集合里时,x 连「当起点数一趟」的资格都没有?',
+     options:['因为 x 一定不在任何连续段里','从 x 起头数出的链一定比从 x−1 起头的短一截——x 能连到的 x−1 全都能连到,数了是白数,还拖慢速度','因为 x−1 会把 x 从集合里挤掉'],
+     answer:1,
+     explain:'连续段只有一个最小的头。x−1 在集合里说明 x 只是某段的中间一节,让头去数才能数出完整长度,让 x 数只能得到后半截。更要命的是效率:若每个数都往右数一遍,1~n 连成一片时要从每个数数到 n,总查询 O(n²) 直接超时——「非头让位」正是把复杂度摁回 O(n) 的关键。',
+     jumpTo:3},
+    {q:'nums = [10,5,12,3,55,30,4,31,2],最长连续序列有多长?',
+     options:['2','3','4','5'],
+     answer:2,
+     explain:'先去重丢进集合,再逐段找头:2−3−4−5 连成一条(长 4);30−31 连成一条(长 2);10、12、55 各自孤零零(长 1)。答案是 4。注意题目只要求数值连续,不要求在数组里挨着——[2,3,4,5] 在数组里是散着放的,照样算一条链。',
+     jumpTo:32},
+    {q:'把「if x−1 in numSet: continue」这个判断删掉,每个数都从自己往右数一遍,结果和复杂度会怎样?',
+     options:['答案仍对,但像 1~n 连成一片的用例会退化成 O(n²),可能超时','答案立刻算错','答案对,复杂度也不变,还是 O(n)'],
+     answer:0,
+     explain:'每个数无脑往右数,各段全长都会被数出来,max 之后答案仍对。但「每段只让头数一遍」变成「每个数都数一遍」:1~n 全在集合里时,从 1 数到 n、从 2 数到 n……总查询约 n²/2 次。正是这个看似多余的判断,保证非头只查一次前驱就退场,总工作量 O(n)。',
+     jumpTo:9},
+  ],
+
+  steps(input){
+    const F = [];
+    const nums = input.nums || [];
+    const uniq = [];
+    const seen = new Set();
+    nums.forEach(x => { if(!seen.has(x)){ seen.add(x); uniq.push(x); } });
+    const setArr = uniq.slice();
+    let best = 0;
+    const doneVals = [];   // 已经处理完（数完或跳过）的值
+
+    /* ★ 快照函数：所有状态在 F.push 那一刻求值定死 */
+    const idxOfVal = (val) => { for(let i = 0; i < nums.length; i++) if(nums[i] === val) return i; return -1; };
+    const marks = (x) => { const i = idxOfVal(x); return i >= 0 ? [{name:'x', idx:i, cls:'mi', text:'▲ x'}] : []; };
+    const snapDone = () => doneVals.slice();
+    const streakSnap = (x, len) => { const a = []; for(let k = 0; k < len; k++) a.push(x + k); return a; };
+
+    const draw = (o) => (v) => {
+      const states = {};
+      nums.forEach((val, idx) => {
+        if(o.active != null && val === o.active) states[idx] = 'active';
+        else if(o.streak && o.streak.indexOf(val) >= 0) states[idx] = 'target';
+        else if(o.peek != null && val === o.peek) states[idx] = 'peek';
+        else if(o.done && o.done.indexOf(val) >= 0) states[idx] = 'done';
+      });
+      v.arr('nums', nums, {label:'数组 <code>nums</code>', states, markers:o.marks || []});
+      v.set('S', setArr, {label:'哈希集合 <code>numSet</code>（去重后）　·　查询 O(1)', color:'b'});
+      v.text('line', o.line || '…', {html:true});
+      if(o.vars) v.vars('vars', o.vars, {label:'变量', hl:o.hlV});
+      if(o.result != null) v.result(o.result, {label:'最长连续长度'});
+    };
+
+    F.push({hl:[1,2,3,4], tag:'初始化', cls:'t-grey',
+      msg:'先把所有数丢进哈希集合 <code>numSet</code>（下方一栏，重复的自动去重' + (setArr.length > 0 && setArr.length <= 8 ? '，现在是 ' + setArr.join('、') : '') + '），以后问"某数在不在"都是 O(1)。为什么不用排序？排序本身就要 O(n log n)，题目要求 O(n)，这条路一开始就被堵死。新思路：每个连续段都有个<b>头</b>——身前没有 x−1 的那个数；只让头向右一格格数到底，非头直接让位，每个数最多被摸两次，总工作量仍是 O(n)。',
+      do: draw({line:'还没开始数', vars:{x:'—', length:'—', best:0}})});
+
+    for(const x of uniq){
+      F.push({hl:[5], tag:'遍历', cls:'t-ink',
+        msg:'轮到 <code>x = ' + x + '</code>（▲ x 名牌钉在它第一次出现的位置；已数完或让过位的数标灰）。每个数都要过同一道审查：你身前有没有 x−1？有，你就只是某段中间的一节；没有，你才是某段的头。此刻纪录 best = ' + best + '。',
+        do: draw({active:x, done:snapDone(), marks:marks(x),
+                  line:'x = ' + x + '：先查它前面有没有人',
+                  vars:{x:x, length:'—', best:best}, hlV:['x']})});
+
+      const hasPrev = seen.has(x - 1);
+      F.push({hl:[6], ok: hasPrev ? 6 : undefined, no: hasPrev ? undefined : 6, tag:'查前驱',
+        cls: hasPrev ? 't-red' : 't-green',
+        msg: hasPrev
+          ? '查集合：<code>x − 1 = ' + (x - 1) + '</code> <b>在！</b>（画面里它被淡橙高亮）——x 只是某段的中间一节。反证：若让 x 当头，数出的链必然比从 x−1 起头数的短一截（x 能连到的 x−1 都能连到），白忙一场。所以 x 让位，这段留给真正的头去数。'
+          : '查集合：<code>x − 1 = ' + (x - 1) + '</code> 不在 → x 身前没人，<b>它就是某段连续序列的头</b>（画面里 x−1 查无此数）。只有头才有资格向右数到底——如果每个数都往右数一遍，1~n 连成一片时要从每个数数到 n，O(n²) 必超时；非头只查一次就退场，这正是 O(n) 的全部秘密。',
+        do: draw({active:x, peek: hasPrev ? x - 1 : null, done:snapDone(), marks:marks(x),
+                  line:'x − 1 = ' + (x - 1) + (hasPrev ? '：在集合里 ✗ 不是头' : '：不在集合 ✓ 是头'),
+                  vars:{x:x, 'x-1':x - 1, length:'—', best:best}})});
+
+      if(hasPrev){
+        F.push({hl:[7], tag:'跳过', cls:'t-grey',
+          msg:'<code>continue</code>：x = ' + x + ' 不配当头，数数的活儿让给身前的段头去干，自己标灰退场——本轮到此为止，直接看下一个数。踩坑提醒：这个判断千万不能省——若每个数都向右数一遍，1~n 全在集合里时要从每个数数到 n，O(n²) 次查询直接超时；只让头数，每个数最多被摸两次，才摁回 O(n)。',
+          do: draw({active:x, done:snapDone().concat([x]), marks:marks(x),
+                    line:'x = ' + x + ' 不是头，跳过',
+                    vars:{x:x, 'x-1':x - 1, length:'—', best:best}})});
+        doneVals.push(x);
+        continue;
+      }
+
+      let length = 1;
+      F.push({hl:[8], tag:'起步', cls:'t-blue',
+        msg:'<code>length = 1</code>：确认是头，链条从 ' + x + ' 起步（紫色格）——头自己至少算一节，哪怕右邻一个都不在，这段也保底长 1，不会空手。接下来一路向右问集合："右邻 <code>' + (x + 1) + '</code> 在吗？"在就接上，不在这段就到头。',
+        do: draw({active:x, streak:streakSnap(x, length), done:snapDone(), marks:marks(x),
+                  line:'链条：' + streakSnap(x, length).join(' → ') + '（长 ' + length + '）',
+                  vars:{x:x, 'x-1':x - 1, length:length, best:best}, hlV:['length']})});
+
+      while(seen.has(x + length)){
+        const nxt = x + length;
+        F.push({hl:[9], ok:9, tag:'问右邻', cls:'t-blue',
+          msg:'问集合：<code>x + length = ' + x + ' + ' + length + ' = ' + nxt + '</code> <b>在！</b>（淡橙高亮的就是它）——链没断，还能再长一节。为什么只问右邻、从不用回头？x 是头，x−1 已确认不在，左边到此为止；连续段一环扣一环，只要 x+length 还在，链就还能继续往右铺。',
+          do: draw({active:x, peek:nxt, streak:streakSnap(x, length), done:snapDone(), marks:marks(x),
+                    line:'链条：' + streakSnap(x, length).join(' → ') + '（长 ' + length + '）',
+                    vars:{x:x, length:length, 'x+length':nxt, best:best}})});
+        length++;
+        F.push({hl:[10], tag:'加一节', cls:'t-green',
+          msg:'<code>length = ' + length + '</code>：' + (x + length - 1) + ' 成功接上，链条长成 <b>' + streakSnap(x, length).join(' → ') + '</b>（紫色格）。计数器挂在 x 头上继续走：每接一节就再问下一个右邻，直到问出"不在"为止——循环一停，这段的长度就定格了。',
+          do: draw({active:x, streak:streakSnap(x, length), done:snapDone(), marks:marks(x),
+                    line:'链条：' + streakSnap(x, length).join(' → ') + '（长 ' + length + '）',
+                    vars:{x:x, length:length, best:best}, hlV:['length']})});
+      }
+
+      F.push({hl:[9], no:9, tag:'到头了', cls:'t-red',
+        msg:'问集合：<code>x + length = ' + (x + length) + '</code> 不在 → 链条断在这儿，这段到头。头 ' + x + ' 一共数出 <b>' + length + '</b> 个连续数：' + streakSnap(x, length).join(' → ') + '。效率账本：这段只会被它的头完整数这一遍，其余成员从头到尾只被查了一两次——每段各结各的账，总工作量才压得住 O(n)。',
+        do: draw({active:x, streak:streakSnap(x, length), done:snapDone(), marks:marks(x),
+                  line:'链条到头：' + streakSnap(x, length).join(' → ') + '（长 ' + length + '）',
+                  vars:{x:x, length:length, 'x+length':x + length, best:best}})});
+
+      const oldBest = best;
+      best = Math.max(best, length);
+      const fresh = best !== oldBest;
+      F.push({hl:[11], tag: fresh ? '刷新纪录' : '记录', cls:'t-orange',
+        msg: fresh
+          ? '这段长 <b>' + length + '</b>，超过旧纪录 ' + oldBest + ' → <code>best = ' + best + '</code>，<b>纪录刷新！</b>（变量面板 best 闪蓝）为什么用 max 而不是直接赋值：每段数出的长度有长有短，max 只认更大的，best 才能一路只增不减，最后谁长归谁。'
+          : '这段长 ' + length + '，没超过纪录 <code>best = ' + best + '</code>，纪录保持不变。这段白数了吗？没有——正是如实数完，才确认了它不是最长；若这里直接赋值而不是取 max，遇到短段就会把长纪录冲掉、答案出错。',
+        do: draw({active:x, streak:streakSnap(x, length), done:snapDone(), marks:marks(x),
+                  line:(fresh ? '刷新纪录：' : '纪录保持：') + 'best = ' + best,
+                  vars:{x:x, length:length, best:best}, hlV:['best']})});
+      doneVals.push(x);
+    }
+
+    F.push({hl:[12], tag:'返回', cls:'t-dark',
+      msg: uniq.length
+        ? '所有数都验完身：最长的一段有 <b>' + best + '</b> 个连续数 🎉 复盘：' + uniq.length + ' 个数里，非头的只被查一次"x−1 在不在"就退场；头虽然要数完整段，但每段只数一次——两边加起来每个数最多被摸两次，总工作量 O(n)，这就是不排序也能 O(n) 的底气。'
+        : '集合是空的，一个数都没有，最长连续长度就是 <b>0</b>。best 初始化成 0 正好兜住了空数组这种边界。',
+      do: draw({done:snapDone(), line:'最长连续长度 = ' + best, result:best,
+                vars:{best:best}, hlV:['best']})});
+    return F;
+  }
+});
+</script>
+</body>
+</html>

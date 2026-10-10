@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P013 · 最大子数组和 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/progress.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 13, num: 53, title: '最大子数组和', diff: '中等', cat: '普通数组',
+  method: 'maxSubArray',
+
+  lede: '题目：在数组里挑一段<b>连续</b>的数，让它们的和最大，返回这个和（默认例子里 [4,-1,2,1] 的和 6 最大）。' +
+        '动画里 <span class="var o">cur</span> 是"以当前格结尾的连续和"：只要它变成负数，说明手上这段是负资产——<b>当场扔掉、重新开始</b>；' +
+        '<span class="var r">ans</span> 记录一路见过的最大 cur。就这一 个念头，一遍扫完。',
+
+  roles: [
+    {c:'orange', code:'cur', text:'以当前格结尾的连续和（负了就重开）'},
+    {c:'blue',   code:'ans', text:'全局最大子数组和'},
+    {c:'red',    code:'cur<0', text:'前缀是负资产 → 扔掉重开'},
+    {c:'violet', code:'target', text:'目前最优的那一段'}
+  ],
+
+  codeTitle: '跟着高亮读代码——<code>if cur &lt; 0</code> 变<span style="color:var(--green)">绿</span>＝决定"重新开始"（本题最关键的一瞬）；<code>if cur &gt; ans</code> 变绿＝刷新最大值。',
+
+  legend: [
+    {c:'blue', text:'当前段（以 i 结尾）'},
+    {c:'orange', text:'i 当前格'},
+    {swatch:'var(--grey-soft)', text:'灰色 = 已扔掉的旧段'},
+    {c:'violet', text:'目前最优段（ans）'}
+  ],
+
+  idea: '一路走一路攒和：cur 攒成负数就当场扔掉重开——"前面的累赘一个不带"；ans 只负责记下 cur 跑出的最高分。',
+
+  qa: [
+    {q:'为什么 cur < 0 就敢直接扔掉前面的段？',
+     a:'cur 是"以上一格结尾"的最大连续和。如果它是负数，接在任何新段前面都只会把新段变小——负贡献谁要？所以最优选择就是从当前格白手起家。每一步的 cur 都是"必须以我结尾"的最优解，这不是碰运气的贪心。'},
+    {q:'全负数组怎么办？比如 [-3,-1,-2]？',
+     a:'ans 初始化成 nums[0] 而不是 0，就是为了这：答案至少得选一个数。[-3,-1,-2] 里 cur 每到一格都被重开，ans 最终是 -1（单独选 -1 那段）。如果 ans 初始为 0 就错答成 0 了。'},
+    {q:'这算 DP 还是贪心？',
+     a:'本质是 DP：f(i) = max(nums[i], f(i-1) + nums[i])，f(i) 就是"以 i 结尾"的最大和。cur &lt; 0 时 f(i-1)+nums[i] 还不如 nums[i] 本身，等价于重开。只是我们只留一个滚动变量，空间压到 O(1)。'}
+  ],
+
+  complexity: '时间 O(n)（一遍扫描）　·　空间 O(1)（只留 cur、ans 两个变量）',
+
+  form: [
+    {key:'nums', label:'nums', type:'arr', def:[-2,1,-3,4,-1,2,1,-5,4]}
+  ],
+  presets: [
+    {label:'[-2,1,-3,4,-1,2,1,-5,4]', values:{nums:[-2,1,-3,4,-1,2,1,-5,4]}},
+    {label:'[-3,-1,-2]（全负）', values:{nums:[-3,-1,-2]}},
+    {label:'[1]（单元素）', values:{nums:[1]}},
+    {label:'[5,4,-1,7,8]（一路攒）', values:{nums:[5,4,-1,7,8]}}
+  ],
+
+  code: `class Solution:
+    def maxSubArray(self, nums):
+        ans = nums[0]               # 全局最大: 至少选一个数
+        cur = 0                     # 以当前格结尾的连续和
+        for x in nums:
+            if cur < 0:             # 手上这段是负资产
+                cur = 0             # 扔掉! 从 x 重新开始
+            cur += x                # 把 x 接到当前段末尾
+            if cur > ans:           # 出现更高的分
+                ans = cur           # 刷新答案
+        return ans
+`,
+
+  sol(input){
+    const nums = input.nums;
+    let ans = nums[0], cur = 0;
+    for(let i = 0; i < nums.length; i++){
+      if(cur < 0) cur = 0;
+      cur += nums[i];
+      if(cur > ans) ans = cur;
+    }
+    return ans;
+  },
+  expected: 6,
+
+  quiz: [
+    {q:'ans 为什么初始化成 nums[0],而不是 0?',
+     options:['防止整数溢出','子数组至少要选一个数;全负数组如 [-3,-1,-2] 的正确答案是 -1,初始化成 0 会错答成 0','因为 cur 初始也是 0,两个要凑成一对'],
+     answer:1,
+     explain:'题目允许「只选一个数」的子数组。全负数组里任何一段都是负的,正确答案是最大的那个负数([-3,-1,-2] 答案 -1)。若 ans 从 0 起步,而 0 永远大于任何负的 cur,最后就错答成 0——那是一个根本不存在的「空子数组」。ans = nums[0] 把「至少选一个」焊死在初始值里。',
+     jumpTo:1},
+    {q:'nums = [8,-19,5,-4,20],最大子数组和是多少?',
+     options:['12','16','21','24'],
+     answer:2,
+     explain:'跟着 cur 走:8(ans=8)→ 接 -19 变 -11(负资产,不刷新)→ 下一格 cur<0 整段扔掉重开,cur=5 → 接 -4 变 1 → 接 20 变 21,刷新 ans=21。最优段是 [5,-4,20]。整段 [8,-19,5,-4,20] 加起来才 10,背着 -19 反而更差——「负了就扔」在这里立了功。',
+     jumpTo:40},
+    {q:'cur < 0 时为什么敢把前面整段「扔掉重开」?不怕最优段恰好藏在被扔的那段里吗?',
+     options:['藏不住:cur 是「以 i 结尾的最大连续和」,它为负说明这段接在任何新段前面都只会拉低新段——最优子数组绝不从负前缀上长出来;而这段自己的和早已被 ans 记下过','确实怕,所以算法还得回头重扫一遍','因为负数不参与求和'],
+     answer:0,
+     explain:'cur 已经是「以 i 结尾」的最优,它还是负的,说明这段接在谁后面都是负担:负前缀 + x 一定 < x 单独。所以全局最优要么完全落在被扔段之内(它的和已被 ans 记录过),要么从后面某格白手起家——扔掉它一无所失。这一步就是 DP 式 f(i)=max(nums[i], f(i−1)+nums[i]) 的等价形态。',
+     jumpTo:9},
+  ],
+
+  steps(input){
+    const F = [];
+    const nums = input.nums.slice();
+    let ans = nums[0], cur = 0, segStart = 0, bestStart = 0, bestEnd = 0;
+
+    const stRow = (i) => {
+      const st = {};
+      for(let k = 0; k < i; k++) st[k] = (k < segStart) ? 'muted' : 'in';
+      st[i] = 'active';
+      return st;
+    };
+    const stReset = (i) => {
+      const st = {};
+      for(let k = 0; k < i; k++) st[k] = 'muted';
+      st[i] = 'pivot';
+      return st;
+    };
+    const mk = (i) => [{name:'i', idx:i, cls:'mi', text:'▲ i'}];
+    const segPrev = (i) => i === 0
+      ? '还没接任何数，cur = 0'
+      : 'nums[' + segStart + '..' + (i - 1) + '] = [' + nums.slice(segStart, i).join(', ') + ']，cur = ' + cur;
+    const segNow = (i) => 'nums[' + segStart + '..' + i + '] = [' + nums.slice(segStart, i + 1).join(', ') + ']，cur = ' + cur;
+    const stAll = () => {
+      const st = {};
+      for(let k = 0; k < nums.length; k++) st[k] = (k >= bestStart && k <= bestEnd) ? 'target' : 'muted';
+      return st;
+    };
+
+    const draw = (o) => (v) => {
+      v.arr('nums', nums, {
+        label:'数组 <code>nums</code>',
+        states: o.states || {},
+        markers: o.marks || []
+      });
+      if(o.seg) v.text('seg', o.seg, {label:'当前连续段（以 i 结尾）'});
+      v.vars('vars', o.vars, {label:'变量', hl:o.vhl || []});
+      if(o.result !== undefined) v.result(o.result, {label:'最大子数组和'});
+    };
+
+    F.push({hl:[1,2,3], tag:'初始化', cls:'t-grey',
+      msg:'<code>ans = nums[0] = ' + nums[0] + '</code>：答案至少要选一个数，所以绝不能初始化成 0——反例 [-3,-1,-2] 的正确答案是最大的那个负数 -1，初始化成 0 就会错答成 0。<code>cur</code> 是"以当前格结尾的连续和"，接下来一路滚动更新，两个变量撑起整个算法。',
+      do: draw({seg:'还没开始，cur = 0', vars:{i:'—', cur:0, ans:ans}, vhl:['ans']})});
+
+    F.push({hl:[4], tag:'cur 归零', cls:'t-grey',
+      msg:'<code>cur = 0</code>：一个数都还没接（段面板也是空的）。接下来从左往右扫，每格只面对一个二选一："接在我手上继续攒，还是把负资产扔掉重新开始？"判定标准只有一条——cur 是正是负：负就是累赘，扔；非负就是助力，留。',
+      do: draw({seg:'还没开始，cur = 0', vars:{i:'—', cur:0, ans:ans}})});
+
+    for(let i = 0; i < nums.length; i++){
+      const x = nums[i];
+
+      F.push({hl:[5], tag:'走到新格', cls:'t-ink',
+        msg:'<code>i = ' + i + '</code>，当前数 <code>x = ' + x + '</code>（▲ i 名牌指向的橙色格）。读数：手上段 ' + segPrev(i) + '；ans = ' + ans + '。画面导览：灰色格子是被扔掉的旧段（已出局），蓝色是手上这段，紫色是最优段——接下来先判断前缀留不留，再把 x 接上去。',
+        do: draw({states:stRow(i), marks:mk(i), seg:segPrev(i),
+                  vars:{i:i, cur:cur, ans:ans}})});
+
+      const drop = cur < 0;
+      F.push({hl:[6], ok:drop ? 6 : undefined, no:drop ? undefined : 6,
+        tag:'前缀要不要?', cls:drop ? 't-green' : 't-grey',
+        msg: drop
+          ? '<code>cur = ' + cur + ' &lt; 0</code>：手上这段是<b>负资产</b>。反例想清楚：负前缀接在谁后面都只会把新段拉低——比如 cur = −2 时接 x = 5 只得 3，不如扔掉负资产直接拿 5。所以最优子数组绝不从负前缀上长出来，整段扔掉，从 x 白手起家。'
+          : '<code>cur = ' + cur + ' ≥ 0</code>：手上这段不亏（或还没接数），留着继续攒——非负前缀接上 x 至少不会比 x 单独差，扔了反而吃亏。',
+        do: draw({states:stRow(i), marks:mk(i), seg:segPrev(i),
+                  vars:{i:i, cur:cur, ans:ans}})});
+
+      if(drop){
+        F.push({hl:[7], tag:'重新开始!', cls:'t-red',
+          msg:'<code>cur = 0</code>，段起点搬到 <code>i = ' + i + '</code>：旧段整片变灰（画面上被扔掉），<b>从 ' + x + ' 重新起一段</b>。类比：跑接力前一棒摔得太惨（和为负），干脆弃赛重跑，别背着包袱跑——这一步是本题的灵魂，也是 DP 式 <code>cur = max(x, cur + x)</code> 的等价写法：cur 为负时 max 一定选 x。',
+          do: draw({states:stReset(i), marks:mk(i),
+                    seg:'重新开始！段起点 = nums[' + i + ']，cur 清零',
+                    vars:{i:i, cur:0, ans:ans}, vhl:['cur']})});
+        cur = 0;
+        segStart = i;
+      }
+
+      cur += x;
+      F.push({hl:[8], tag:'接上当前数', cls:'t-blue',
+        msg:'<code>cur += ' + x + '</code> → <code>cur = ' + cur + '</code>（变量面板闪蓝），当前段是 nums[' + segStart + '..' + i + ']。此刻的 cur 有明确含义：<b>必须以第 ' + i + ' 格结尾</b>的最大连续和——不管全局，只管"以我结尾"。正是这个限定让每格的最优解能滚动传给下一格，不用回头重算。',
+        do: draw({states:stRow(i), marks:mk(i), seg:segNow(i),
+                  vars:{i:i, cur:cur, ans:ans}, vhl:['cur']})});
+
+      const prevAns = ans;
+      const upd = cur > ans;
+      if(upd){ ans = cur; bestStart = segStart; bestEnd = i; }
+      const stUpd = stRow(i);
+      if(upd) for(let k = bestStart; k <= bestEnd; k++) stUpd[k] = 'target';
+      F.push({hl:upd ? [9,10] : [9], ok:upd ? 9 : undefined, no:upd ? undefined : 9,
+        tag:'刷新答案', cls:upd ? 't-green' : 't-grey',
+        msg: upd
+          ? '<code>cur = ' + cur + ' &gt; ans = ' + prevAns + '</code> → 刷新纪录！目前最优的段是 nums[' + bestStart + '..' + bestEnd + ']，和为 <b>' + ans + '</b>（画面染紫）。ans 每轮都和 cur 比一次、一步不省：最优段可能停在任何位置，只看最后一格必漏。'
+          : '<code>cur = ' + cur + ' ≤ ans = ' + ans + '</code> → 没破纪录，ans 保持 ' + ans + '。max 兜底：cur 只是"以我结尾"的候选，ans 只认更大的那个——候选再差也不影响，候选更好立刻顶上。',
+        do: draw({states:stUpd, marks:mk(i), seg:segNow(i),
+                  vars:{i:i, cur:cur, ans:ans}, vhl:['ans']})});
+    }
+
+    F.push({hl:[11], tag:'返回', cls:'t-dark',
+      msg:'扫完了！最大子数组和是 <b>' + ans + '</b>，来自紫色那一段 nums[' + bestStart + '..' + bestEnd + '] 🎉 复盘：每个数只被 cur 接一次、和 ans 比一次，O(n) 时间 O(1) 空间。"负了就扔"表面是贪心，本质是滚动更新的 DP——f(i) = max(nums[i], f(i−1) + nums[i])，cur 就是只留一行的 f(i)。',
+      do: draw({states:stAll(), seg:segNow(nums.length - 1), result:ans,
+                vars:{i:'—', cur:cur, ans:ans}})});
+    return F;
+  },
+
+  /* ========= 解法二：力扣官方方法三 · 分治(四元组合并) ========= */
+  alt: {
+    label: '官方 · 分治',
+    method: 'maxSubArray',
+
+    lede: '题目不变：挑一段<b>连续</b>的数让和最大。主解法一遍贪心扫完；这里演<b>力扣官方方法三「分治」</b>——' +
+          '从中间把数组劈成两半，最优子段只有三种落位：完全在左半、完全在右半、<b>跨越中线</b>。' +
+          '为了让"跨线"也能一步拼出来，每个区间向上交四件套 <code>(total, pre, suf, best)</code>：' +
+          '区间总和、以左端开头的最大前缀、以右端结尾的最大后缀、区间内最优。盯住递归栈和四值面板，看"劈开 → 缝合"的全过程。',
+
+    roles: [
+      {c:'orange', code:'栈顶', text:'正在计算/缝合的区间'},
+      {c:'blue',   code:'左半', text:'刚返回的左半 [l..mid]'},
+      {c:'violet', code:'右半', text:'刚返回的右半 [mid+1..r]'},
+      {c:'green',  code:'best', text:'四元组里的区间最优子段和'}
+    ],
+
+    codeTitle: '跟着高亮读代码——递归负责"劈"，第 10~13 行负责"合"：四个量各自怎么由左右孩子拼出来，缝合帧会一条一条算给你看。',
+
+    legend: [
+      {c:'blue', text:'左半 [l..mid]'},
+      {c:'violet', text:'右半 [mid+1..r]'},
+      {c:'orange', text:'栈顶 = 当前区间'},
+      {c:'green', text:'叶子 / 最终 best'}
+    ],
+
+    idea: '一分为二：区间答案 = max(左内最优, 右内最优, 左尾接右头)——total/pre/suf/best 四个量恰好凑齐"拼接"所需的全部信息。',
+
+    qa: [
+      {q:'主解法贪心一遍 O(n) 就完事，官方为什么还要一个分治？',
+       a:'论速度分治不占优：T(n) = 2T(n/2) + O(1) 也是 O(n)，常数还更大。学它有两个理由：①它是"分治 + 合并信息"的教科书案例；②这套四元组缝合公式正是<b>线段树</b>维护「区间最大子段和」的核心——题目一旦升级成"单点修改、反复查询任意区间的最大子段和"，一遍扫描的贪心就无能为力了，而线段树靠的正是这个合并式。'},
+      {q:'best 的第三个候选 左.suf + 右.pre，为什么就够了？',
+       a:'最优子段只有三种落位：完全在左半（左.best）、完全在右半（右.best）、跨越中线。跨中线的连续段必然 = "以 mid 结尾的左半某段后缀" + "从 mid+1 开头的右半某段前缀"，各自取到最大（左.suf、右.pre）再相加就是跨线候选的天花板。三类取 max，一个不漏。'},
+      {q:'pre 和 suf 的缝合式为什么长那样？',
+       a:'新区间的最大前缀只有两种出身：根本没越出左半（= 左.pre）；或者横吞整个左半、再接上右半开头的一段（= 左.total + 右.pre）——再往后伸就是右半内部的事了。suf 完全镜像：要么缩在右半（右.suf），要么吞掉整个右半再接左半的尾巴（右.total + 左.suf）。total 最简单：总和不做取舍，直接相加。'},
+      {q:'叶子为什么返回 (x, x, x, x)？',
+       a:'只有一个数的区间：总和是 x；从左端开头的最大前缀、以右端结尾的最大后缀、区间内最优子段，全都别无选择只能是它自己。四个量在叶子上退化成同一个数，合并到上层才分化出不同含义。'}
+    ],
+
+    complexity: '时间 O(n)（T(n) = 2T(n/2) + O(1)）　·　空间 O(log n)（递归栈深度）',
+
+    code: `class Solution:
+    def maxSubArray(self, nums):
+        def get(l, r):                # 线段 [l,r] 的四元组
+            if l == r:                # 叶子: 只剩一个数
+                x = nums[l]
+                return (x, x, x, x)   # (total, pre, suf, best)
+            mid = (l + r) // 2
+            a = get(l, mid)           # 左半的四元组
+            b = get(mid + 1, r)       # 右半的四元组
+            total = a[0] + b[0]                 # ① 总和: 两半全要
+            pre = max(a[1], a[0] + b[1])        # ② 左端开头的最大前缀
+            suf = max(b[2], b[0] + a[2])        # ③ 右端结尾的最大后缀
+            best = max(a[3], b[3], a[2] + b[1]) # ④ 不跨 / 跨中线
+            return (total, pre, suf, best)
+        return get(0, len(nums) - 1)[3]
+`,
+
+    sol(input){
+      const nums = input.nums || [];
+      const get = (l, r) => {
+        if(l === r){ const x = nums[l]; return {total:x, pre:x, suf:x, best:x}; }
+        const mid = (l + r) >> 1;
+        const a = get(l, mid), b = get(mid + 1, r);
+        return {
+          total: a.total + b.total,
+          pre: Math.max(a.pre, a.total + b.pre),
+          suf: Math.max(b.suf, b.total + a.suf),
+          best: Math.max(a.best, b.best, a.suf + b.pre)
+        };
+      };
+      return get(0, nums.length - 1).best;
+    },
+    expected: 6,
+
+    steps(input){
+      const F = [];
+      const nums = (input.nums || []).slice();
+      const n = nums.length;
+      if(!n){
+        F.push({hl:[1,2], tag:'空数组', cls:'t-grey', msg:'数组为空，没有子数组可言，动画到此结束。', do: () => {}});
+        return F;
+      }
+      const allDone = () => { const st = {}; for(let i = 0; i < n; i++) st[i] = 'done'; return st; };
+      const segStates = (l, r, extra) => {
+        const st = {};
+        for(let i = 0; i < n; i++) if(i >= l && i <= r) st[i] = 'in';
+        if(extra) for(const k in extra) st[k] = extra[k];
+        return st;
+      };
+      const mkLR = (l, r) => [
+        {name:'l', idx:l, cls:'mi', text:'▲ l'},
+        {name:'r', idx:r, cls:'mv', text:'▲ r'}
+      ];
+
+      /* ★ 快照原则：递归栈/染色/四元组在 push 那一刻定死，do() 只读 o */
+      const draw = (o) => (v) => {
+        v.arr('nums', nums, {label:'数组 <code>nums</code>', states:o.states || {}, markers:o.marks || [], labels:o.labels});
+        v.stack('S', o.stack || [], {label:'递归栈　·　底 = 整段，顶 = 当前小段', states:o.sst || {}, topTag:'栈顶'});
+        if(o.quad) v.vars('Q', o.quad, {label:o.qlab || '当前区间四元组', hl:o.qhl || []});
+        if(o.Lq) v.vars('L', o.Lq, {label:o.Llab || '左孩子四元组'});
+        if(o.Rq) v.vars('R', o.Rq, {label:o.Rlab || '右孩子四元组'});
+        if(o.result !== undefined) v.result(o.result, {label:'最大子数组和'});
+      };
+
+      const stk = [];
+      function get(l, r){
+        const id = 'f' + l + '-' + r;
+        const leaf = l === r;
+        stk.push({key:id, val:'get[' + l + '..' + r + ']'});
+        const snap = () => stk.map(x => ({key:x.key, val:x.val}));
+        const sst = () => ({ [id]: 'active' });
+
+        F.push({hl:[3,4], ok:leaf ? 4 : undefined, no:leaf ? undefined : 4,
+          tag:leaf ? '递归到叶子' : '递归进入', cls:leaf ? 't-green' : 't-blue',
+          msg: leaf
+            ? '递归进入 <code>get(' + l + ', ' + r + ')</code>：区间只剩一个数 <code>nums[' + l + '] = ' + nums[l] + '</code>，<code>l == r</code> 成立 → 走叶子分支。递归栈顶就是它——最小的"待缝合单元"。'
+            : '递归进入 <code>get(' + l + ', ' + r + ')</code>：<code>l = ' + l + ' &lt; r = ' + r + '</code>，<code>l == r</code> 不成立 → 走分治分支。本区间有 ' + (r - l + 1) + ' 个数（蓝格），规矩是：先把两半各自递归算清，再回来缝合成更大的区间。',
+          do: draw({states:segStates(l, r), marks:mkLR(l, r), stack:snap(), sst:sst()})});
+
+        if(leaf){
+          const x = nums[l];
+          F.push({hl:[5,6], tag:'基例·四件套', cls:'t-green',
+            msg:'<code>x = nums[' + l + '] = ' + x + '</code>，返回 <code>(x, x, x, x)</code>。为什么四个量全等于它：区间总和只有它一个；从左端开头的最大前缀、以右端结尾的最大后缀、区间内最优子段——统统别无选择。叶子把四件套备齐，上层缝合才有的拼。',
+            do: draw({states:segStates(l, r, ({ [l]: 'target' })), marks:mkLR(l, r), stack:snap(), sst:sst(),
+                      quad:{total:x, pre:x, suf:x, best:x},
+                      qlab:'区间 [' + l + '..' + r + '] 四元组', qhl:['total','pre','suf','best']})});
+          stk.pop();
+          return {total:x, pre:x, suf:x, best:x};
+        }
+
+        const mid = (l + r) >> 1;
+        F.push({hl:[7], tag:'取中点', cls:'t-orange',
+          msg:'<code>mid = (' + l + ' + ' + r + ')//2 = ' + mid + '</code>：正中劈开——左半 <code>[' + l + '..' + mid + ']</code>、右半 <code>[' + (mid + 1) + '..' + r + ']</code>（交界两格标基准色）。为什么非从正中劈：两半规模接近，递归深度只有 log 层；更关键是"最优子段"的第三种落位（跨中线）只在缝合时出现一次，劈得规整，缝合的账才好算。',
+          do: draw({states:segStates(l, r, ({ [mid]: 'pivot', [mid + 1]: 'pivot' })), marks:mkLR(l, r), stack:snap(), sst:sst()})});
+
+        const a = get(l, mid);
+        F.push({hl:[8], tag:'左半返回', cls:'t-blue',
+          msg:'左半 <code>get(' + l + ', ' + mid + ')</code> 交上四件套：total ' + a.total + '、pre ' + a.pre + '、suf ' + a.suf + '、best ' + a.best + '。这四个数就是左半的<b>全部家底</b>——父区间缝合只认这四个数，不必再看左半内部长什么样。分治能成立，靠的就是每个区间向上交同样规格的"说明书"。',
+          do: draw({states:segStates(l, mid), marks:mkLR(l, r), stack:snap(), sst:sst(),
+                    Lq:{total:a.total, pre:a.pre, suf:a.suf, best:a.best},
+                    Llab:'左孩子 [' + l + '..' + mid + '] 四元组'})});
+
+        const b = get(mid + 1, r);
+        const La = {total:a.total, pre:a.pre, suf:a.suf, best:a.best};
+        const Rb = {total:b.total, pre:b.pre, suf:b.suf, best:b.best};
+        F.push({hl:[9], tag:'右半返回', cls:'t-violet',
+          msg:'右半 <code>get(' + (mid + 1) + ', ' + r + ')</code> 也交齐了：total ' + b.total + '、pre ' + b.pre + '、suf ' + b.suf + '、best ' + b.best + '。左右两份"说明书"都在手上（下方两个面板），接下来按第 10~13 行四步缝合：total → pre/suf → best，每一步都现场算。',
+          do: draw({states:segStates(l, r), marks:mkLR(l, r), stack:snap(), sst:sst(),
+                    Lq:La, Llab:'左孩子 [' + l + '..' + mid + '] 四元组',
+                    Rq:Rb, Rlab:'右孩子 [' + (mid + 1) + '..' + r + '] 四元组'})});
+
+        const total = a.total + b.total;
+        F.push({hl:[10], tag:'缝合① total', cls:'t-blue',
+          msg:'<code>total = 左.total + 右.total = ' + a.total + ' + ' + b.total + ' = ' + total + '</code>。最没有悬念的量：区间总和不做任何取舍，两半原样相加。它不直接当答案，但马上要当 pre/suf 的缝合原料——先备好。',
+          do: draw({states:segStates(l, r), marks:mkLR(l, r), stack:snap(), sst:sst(),
+                    Lq:La, Llab:'左孩子 [' + l + '..' + mid + '] 四元组',
+                    Rq:Rb, Rlab:'右孩子 [' + (mid + 1) + '..' + r + '] 四元组',
+                    quad:{total:total, pre:'?', suf:'?', best:'?'},
+                    qlab:'区间 [' + l + '..' + r + '] 四元组', qhl:['total']})});
+
+        const pre = Math.max(a.pre, a.total + b.pre);
+        const suf = Math.max(b.suf, b.total + a.suf);
+        F.push({hl:[11,12], tag:'缝合② pre/suf', cls:'t-violet',
+          msg:'② <code>pre = max(左.pre = ' + a.pre + ', 左.total + 右.pre = ' + a.total + '+' + b.pre + '=' + (a.total + b.pre) + ') = ' + pre + '</code>：最大前缀要么整段缩在左半里，要么横吞整个左半再接上右半开头一段（右头），两头取大。<br>③ <code>suf = max(右.suf = ' + b.suf + ', 右.total + 左.suf = ' + b.total + '+' + a.suf + '=' + (b.total + a.suf) + ') = ' + suf + '</code>，与 pre 镜像对称。',
+          do: draw({states:segStates(l, r), marks:mkLR(l, r), stack:snap(), sst:sst(),
+                    Lq:La, Llab:'左孩子 [' + l + '..' + mid + '] 四元组',
+                    Rq:Rb, Rlab:'右孩子 [' + (mid + 1) + '..' + r + '] 四元组',
+                    quad:{total:total, pre:pre, suf:suf, best:'?'},
+                    qlab:'区间 [' + l + '..' + r + '] 四元组', qhl:['pre','suf'],
+                    labels:({ [mid]: '左尾', [mid + 1]: '右头' })})});
+
+        const best = Math.max(a.best, b.best, a.suf + b.pre);
+        F.push({hl:[13,14], tag:'缝合③ best', cls:'t-green',
+          msg:'④ 灵魂一步：<code>best = max(左.best = ' + a.best + ', 右.best = ' + b.best + ', 左.suf + 右.pre = ' + a.suf + '+' + b.pre + '=' + (a.suf + b.pre) + ') = ' + best + '</code>。最优子段只有三种落位：全在左半、全在右半、或<b>跨越中线</b>——跨线的段 = "以 mid 结尾的左半后缀" + "从 mid+1 开头的右半前缀"（画面 左尾/右头 交界处），各自取最大再相加就是跨线候选的天花板。三类取大一个不漏，四件套缝合完毕、<code>return</code> 给父区间。',
+          do: draw({states:segStates(l, r), marks:mkLR(l, r), stack:snap(), sst:sst(),
+                    Lq:La, Llab:'左孩子 [' + l + '..' + mid + '] 四元组',
+                    Rq:Rb, Rlab:'右孩子 [' + (mid + 1) + '..' + r + '] 四元组',
+                    quad:{total:total, pre:pre, suf:suf, best:best},
+                    qlab:'区间 [' + l + '..' + r + '] 四元组', qhl:['best'],
+                    labels:({ [mid]: '左尾', [mid + 1]: '右头' })})});
+
+        stk.pop();
+        return {total:total, pre:pre, suf:suf, best:best};
+      }
+
+      F.push({hl:[1,2], tag:'读题', cls:'t-grey',
+        msg:'题目不变：挑一段连续的数让和最大。主解法贪心一遍扫完；解法二演示<b>力扣官方方法三「分治」</b>：从中间劈成两半，最优子段只可能完全在左半、完全在右半、或跨越中线。为了让"跨线"情形一步拼出来，每个区间向上返回四件套 <code>(total, pre, suf, best)</code>——区间总和、左端开头的最大前缀、右端结尾的最大后缀、区间内最优。盯住递归栈与四值面板。',
+        do: draw({states:{}, marks:[], stack:[]})});
+      F.push({hl:[15,3], tag:'启动递归', cls:'t-grey',
+        msg:'<code>get(0, ' + (n - 1) + ')</code> 启动（第 15 行）：整个数组交给分治。' + n + ' 个数会展开成一棵二叉递归树——叶子是单个数，内部节点负责把两个孩子缝合。每个数只在叶子与沿途缝合中各碰常数次，T(n) = 2T(n/2) + O(1) = O(n)。',
+        do: draw({states:{}, marks:[], stack:[]})});
+
+      const root = get(0, n - 1);
+
+      F.push({hl:[15], tag:'返回答案', cls:'t-dark',
+        msg:'递归树走完，根区间 <code>[0, ' + (n - 1) + ']</code> 交上四件套 (total ' + root.total + ', pre ' + root.pre + ', suf ' + root.suf + ', best ' + root.best + ') → <code>return best = ' + root.best + '</code>。复盘：分治不比贪心快（都是 O(n)），但"四件套 + 缝合公式"正是<b>线段树</b>维护区间最大子段和的合并式——题目一旦变成"单点修改、反复查询任意区间"，这套机器就是标准解。',
+        do: draw({states:allDone(), marks:[], stack:[],
+                  quad:{total:root.total, pre:root.pre, suf:root.suf, best:root.best},
+                  qlab:'根区间 [0..' + (n - 1) + '] 四元组', qhl:['best'],
+                  result:root.best})});
+
+      return F;
+    }
+  }
+});
+</script>
+</body>
+</html>

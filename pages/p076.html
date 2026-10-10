@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P076 · 买卖股票的最佳时机 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/progress.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 76, num: 121, title: '买卖股票的最佳时机', diff: '简单', cat: '贪心算法',
+  method: 'maxProfit',
+
+  lede: '题目：数组是每天的股价，只能<b>先买一次、后卖一次</b>（买必须在前），求最多能赚多少。' +
+        '不用回头比两两组合：一天天往前走，手里只记两件事——<span class="var r">minPrice</span>＝到今天为止的最低价（历史最佳买点），' +
+        '<span class="var o">ans</span>＝"假如今天卖"能赚到的最大值。每个新价格来了，先试着更新 ans，再顺手刷新最低价。',
+
+  roles: [
+    {c:'blue',   code:'minPrice', text:'历史最低价: 到今天为止最好的买点'},
+    {c:'orange', code:'price',    text:'今天的价格'},
+    {c:'violet', code:'ans',      text:'目前能赚的最多利润'},
+    {c:'green',  code:'买卖点',    text:'取得 ans 时的买入/卖出格'}
+  ],
+
+  codeTitle: '跟着高亮读代码——<code>ans = max(...)</code> 行是"假如今天卖"，<code>minPrice</code> 行是"记录历史最低"。两行每天各执行一次，顺序不能反：先卖后记账，才不会把"今天买了今天卖"当成利润。',
+
+  legend: [
+    {c:'blue', text:'minPrice 所在的格'},
+    {c:'orange', text:'今天 price'},
+    {swatch:'var(--violet-soft)', text:'ans 取得时的买入→卖出区间'}
+  ],
+
+  idea: '只记历史最低价：每天问一句"今天卖能赚多少"（price − minPrice），再顺手更新最低价——一趟扫完，最大利润自然浮出来。',
+
+  qa: [
+    {q:'为什么"先算 ans 再更新 minPrice"顺序不能反？',
+     a:'若先用今天的价格刷新 minPrice 再算利润，就变成<b>今天买今天卖</b>（利润恒为 0），还会把"今天最低"错当成历史最低。先卖后记账，保证 minPrice 永远是"今天之前"的最低价——买在卖前面。'},
+    {q:'为什么只需要记最低价，不用记所有历史价格？',
+     a:'对固定的卖出日，最优买入日一定是它之前价格最低的那天。所以"到今天为止的最低价"这一个数，就浓缩了全部历史信息——这就是贪心/DP 里"维护前缀最优"的思想。'},
+    {q:'股价一路下跌怎么办？',
+     a:'每天 price − minPrice 都是 ≤ 0（包括第一天和自己比自己），ans 被 max 兜底成 0——答案是 0，即"不买卖"。题目允许什么都不做，所以不会亏。'}
+  ],
+
+  complexity: '时间 O(n)（一次遍历）　·　空间 O(1)（只记 minPrice 和 ans 两个变量）',
+
+  form: [
+    {key:'prices', label:'prices', type:'arr', def:[7,1,5,3,6,4]}
+  ],
+  presets: [
+    {label:'[7,1,5,3,6,4]（默认）', values:{prices:[7,1,5,3,6,4]}},
+    {label:'[7,6,4,3,1]（一路跌，答案 0）', values:{prices:[7,6,4,3,1]}},
+    {label:'[2,4,1,7]', values:{prices:[2,4,1,7]}},
+    {label:'[1]（单天，边界）', values:{prices:[1]}}
+  ],
+
+  code: `class Solution:
+    def maxProfit(self, prices):
+        minPrice = prices[0]                   # 到今天为止的最低价
+        ans = 0                                # 目前能赚的最多利润
+        for price in prices:                   # 一天一天往前走
+            ans = max(ans, price - minPrice)   # 假如今天卖, 能赚多少
+            minPrice = min(minPrice, price)    # 顺手记录历史最低价
+        return ans
+`,
+
+  sol(input){
+    const ps = input.prices || [];
+    let minPrice = ps[0], ans = 0;
+    for(const price of ps){
+      ans = Math.max(ans, price - minPrice);
+      minPrice = Math.min(minPrice, price);
+    }
+    return ans;
+  },
+  expected: 5,
+
+  quiz: [
+    {q:'循环里为什么必须"先拿 price − minPrice 算利润,再刷新 minPrice",顺序反了会怎样?',
+     options:['反了会少算一天,答案可能偏小','反了 minPrice 就被今天的价格顶掉,price − minPrice = 0,ans 永远是 0——等于"今天买今天卖"','反了也没事,只是多算一次 max'],
+     answer:1,
+     explain:'顺序反了,算利润那一刻 minPrice 已经是今天的价格,price − price = 0,ans 恒为 0,整个算法报废。先卖后记账,保证 minPrice 永远是"今天之前"的最低价——买在卖前面。还有个细节:今天刚创的新低今天自己用不上(今天卖它利润为 0),它的价值是给以后的日子当买点。',
+     jumpTo:4},
+    {q:'prices = [3,8,2,9,1,5],最大利润是多少?',
+     options:['8','7','6'],
+     answer:1,
+     explain:'逐日推:minPrice=3;第 1 天 8−3=5,ans=5;第 2 天 2 创新低,min=2;第 3 天 9−2=7,ans=7;第 4 天 1 创新低,min=1;第 5 天 5−1=4,不破纪录。答案 7(价 2 买入、价 9 卖出)。选 8 的是拿最大 9 减最小 1——可 1 在 9 后面,先卖后买不合法;选 6 的是 9−3 或 8−2,都是真交易但不是最优。只记"到今天为止的最低价"逐日试卖,才不会踩时间顺序的坑。',
+     jumpTo:15},
+    {q:'只记一个 minPrice 就敢说不错过最优交易,凭什么?不用把所有历史价格都存下来吗?',
+     options:['因为股价波动范围小,存不存都一样','对固定的卖出日,最优买点必然是它之前价格最低的那天——"前缀最低"这一个数就浓缩了全部历史,一天天试卖时最大利润自然浮出来','因为最大差价总出现在相邻两天之间'],
+     answer:1,
+     explain:'这是"维护前缀最优"的思想:把卖出日固定在 day i,买入日无论怎么选,利润 = prices[i] − (i 之前的最小价),所以历史里除了"最低价"全都可以忘掉。每天问一句"今天卖能赚多少",n 天扫完,所有卖出日的最优值一个不漏——O(n) 时间、O(1) 空间。选项 2 错在最优买卖点通常隔很远,选项 0 与正确性无关。',
+     jumpTo:20},
+  ],
+
+  steps(input){
+    const F = [];
+    const ps = (input.prices || []).filter(x => x != null);
+    let minPrice = ps.length ? ps[0] : 0;
+    let ans = 0;
+    let minIdx = 0, buyIdx = -1, sellIdx = -1;
+
+    const nst = (i, st) => {
+      const o = {};
+      if(minIdx < ps.length) o[minIdx] = 'pivot';
+      if(i != null) o[i] = st || 'active';
+      return o;
+    };
+    const mk = i => {
+      const arr = [{name:'price', idx:i, cls:'mi', text:'▲ price'}];
+      if(minIdx < ps.length) arr.push({name:'min', idx:minIdx, cls:'mr', text:'▲ 最低价'});
+      return arr;
+    };
+    const labels = (withTrade) => {
+      const o = {};
+      if(minIdx < ps.length) o[minIdx] = '最低';
+      if(withTrade && buyIdx >= 0){ o[buyIdx] = '买入'; o[sellIdx] = '卖出'; }
+      return o;
+    };
+
+    const draw = (o) => (v) => {
+      const opt = {label:'股价 <code>prices</code>　·　紫框 = 历史最低价', states:o.nst || {}, labels:o.labels || {}};
+      if(o.mk && o.mk.length) opt.markers = o.mk;
+      v.arr('prices', o.ps, opt);
+      v.vars('vars', o.vars, {label:'当前变量', hl:o.hlv || []});
+      if(o.res !== undefined) v.result(o.res, {label:'最大利润'});
+    };
+
+    F.push({hl:[1,2,3,4], tag:'初始化', cls:'t-grey',
+      msg:'minPrice 先站上第 0 格的 <b>' + (ps.length ? ps[0] : '—') + '</b>（紫框＝历史最低价所在格），ans = 0——最差也就是"不买不卖"，利润保底 0。口诀只有一句：<b>每天先试卖、再记最低</b>。这个顺序要命：minPrice 必须始终是"今天之前"的买点，要是先用今天的价格刷新它再算利润，就成了今天买今天卖，利润恒为 0，整个算法直接报废。',
+      do: draw({ps:ps, nst:nst(0, 'pivot'), mk:mk(0), labels:labels(false),
+                vars:{minPrice:minPrice, ans:ans}})});
+
+    for(let i = 0; i < ps.length; i++){
+      const price = ps[i];
+      F.push({hl:[5], tag:'新的一天', cls:'t-ink',
+        msg:'第 <b>' + i + '</b> 格，今天价格 <code>price = ' + price + '</code>（▲ price）。手里的家底：历史最低价 <b>' + minPrice +
+            '</b>（第 ' + minIdx + ' 格，▲ 最低价），目前的最大利润 <b>' + ans + '</b>。今天只干两件事：先问"假如今天卖赚多少"，再看"今天是不是新低"。',
+        do: draw({ps:ps, nst:nst(i), mk:mk(i), labels:labels(false),
+                  vars:{i:i, price:price, minPrice:minPrice, ans:ans}})});
+
+      const profit = price - minPrice;
+      const better = profit > ans;
+      if(better){ ans = profit; buyIdx = minIdx; sellIdx = i; }
+      F.push({hl:[6], ok:better ? 6 : undefined, tag:'假如今天卖', cls:better ? 't-green' : 't-blue',
+        msg:'今天先试卖（刷新最低价是下一帧的事）：<code>price − minPrice = ' + price + ' − ' + minPrice + ' = ' + profit + '</code>，买点用的是第 ' + minIdx + ' 格的旧最低 <b>' + minPrice + '</b>——此刻今天的价格还没进 minPrice，绝不会算出"今天买今天卖"的假利润。' +
+            (better
+              ? '这笔破了纪录 → <b>ans 更新为 ' + ans + '</b>！目前最优操作：第 ' + buyIdx + ' 格（价 ' + ps[buyIdx] + '）买入、第 ' + sellIdx + ' 格（价 ' + ps[sellIdx] + '）卖出，先买后卖，交易合法。'
+              : (profit <= 0
+                  ? '利润 ≤ 0：今天卖不划算（第 0 天甚至是"自己卖自己"，白忙一场）→ max 兜底，ans 保持 ' + ans + '。ans 的保底就是 0——题目允许不买卖，永远不会亏。'
+                  : '赚是赚，但没超过现有纪录 ans = ' + ans + ' → ans 不动。max 每天都问一遍"今天卖"，所以"至今任何一天卖出"的最优值一天都不会漏。')),
+        do: draw({ps:ps, nst:nst(i), mk:mk(i), labels:labels(better),
+                  vars:{price:price, 'price−minPrice':profit, ans:ans}, hlv:better ? ['ans'] : []})});
+
+      const newMin = price < minPrice;
+      F.push({hl:[7], ok:newMin ? 7 : undefined, no:newMin ? undefined : 7, tag:'记最低价', cls:newMin ? 't-blue' : 't-grey',
+        msg:newMin
+          ? '<b>' + price + ' &lt; minPrice = ' + minPrice + '</b> → 历史最低刷新为 ' + price + '（紫框挪到第 ' + i + ' 格）。为什么这步放在算利润<b>之后</b>？若先刷新再算，就是 price − price = 0，ans 永远是 0——先卖后记账，才保证买在卖前面。还要注意：今天这个新低<b>今天自己用不上</b>（今天卖它利润为 0），它的价值是给以后的日子当买点。'
+          : '今天 ' + price + ' 没能便宜过历史最低 ' + minPrice + ' → minPrice 不动（紫框还在第 ' + minIdx + ' 格）。minPrice 的唯一使命是给未来的卖出日当最佳买点，不够便宜就不值得记。',
+        do: draw({ps:ps, nst:nst(i), mk:mk(i), labels:labels(false),
+                  vars:{price:price, minPrice:minPrice, ans:ans}, hlv:newMin ? ['minPrice'] : []})});
+      if(newMin){ minPrice = price; minIdx = i; }
+    }
+
+    F.push({hl:[8], tag:'返回', cls:'t-dark',
+      msg:'扫完 ' + ps.length + ' 天，最大利润 <b>ans = ' + ans + '</b>' +
+          (buyIdx >= 0 ? '：第 ' + buyIdx + ' 格（价 ' + ps[buyIdx] + '）买入 → 第 ' + sellIdx + ' 格（价 ' + ps[sellIdx] + '）卖出，净赚 ' + ans + '。' : '：股价一路不涨，每天试卖都不划算，最优解是按兵不动。') +
+          '为什么只记一个最低价就够？对任何卖出日，最优买点必然是它之前价格最低的那天——"到今天为止的最低价"这一个数就浓缩了全部历史。一趟 O(n)、两个变量 O(1)。',
+      do: draw({ps:ps, nst:nst(null), mk:mk(null), labels:labels(buyIdx >= 0),
+                vars:{minPrice:minPrice, ans:ans}, hlv:['ans'], res:ans})});
+
+    return F;
+  }
+});
+</script>
+</body>
+</html>

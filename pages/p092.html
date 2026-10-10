@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P092 · 最长公共子序列 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/progress.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 92, num: 1143, title: '最长公共子序列', diff: '中等', cat: '多维动态规划',
+  method: 'longestCommonSubsequence',
+
+  lede: '题目：找两个字符串的<b>最长公共子序列</b>（可以跳着挑字符，但顺序不能乱），返回长度——如 <code>abcde</code> 和 <code>ace</code> 的 LCS 是 <code>ace</code>，长 3。' +
+        '动画开一张 (m+1)×(n+1) 的 DP 表：行 = <span class="var r">text1</span>、列 = <span class="var i">text2</span>，' +
+        '<span class="var o">dp[i][j]</span> = "前 i 个 vs 前 j 个字母"的 LCS 长度。每格只看两个<b>新字母</b>：相同就接左上角 +1，不同就继承上、左里较大的。末帧从表尾倒着抓，把 LCS 整条标紫。',
+
+  roles: [
+    {c:'orange', code:'(i,j)',    text:'正在填的 dp 格'},
+    {c:'blue',   code:'上/左',    text:'不同时的两个来源：dp[i−1][j]、dp[i][j−1]'},
+    {c:'violet', code:'左上',     text:'相同时的来源：dp[i−1][j−1]'},
+    {c:'green',  code:'dp&gt;0',  text:'已攒下公共字母的格子'},
+    {c:'violet', code:'LCS',      text:'末帧倒着抓出的公共子序列'}
+  ],
+
+  codeTitle: '跟着高亮读代码——第 7 行变<span style="color:var(--green)">绿</span>＝两个新字母相同（接左上 +1）；变<span style="color:var(--red)">红</span>＝不同，继承上/左较大者。',
+
+  legend: [
+    {c:'orange', text:'(i,j) 正在填'},
+    {c:'violet', text:'左上角来源（相同）/ LCS 格'},
+    {c:'blue',   text:'上/左来源（不同）'},
+    {c:'green',  text:'dp 值 &gt; 0 的格子'}
+  ],
+
+  idea: '字母相同：dp[i][j] = dp[i−1][j−1] + 1；不同：dp[i][j] = max(dp[i−1][j], dp[i][j−1])。第 0 行/列是空串，全 0。',
+
+  qa: [
+    {q:'dp[i][j] 到底代表什么？',
+     a:'text1 的<b>前 i 个</b>字母和 text2 的<b>前 j 个</b>字母之间的 LCS 长度。多出来的第 0 行/第 0 列表示"空串"——空串和谁比较都是 0，这就是 DP 的地基。答案在右下角 dp[m][n]。'},
+    {q:'为什么相同就"左上 +1"，不同就 max(上, 左)？',
+     a:'两串的<b>新</b>字母 text1[i−1]、text2[j−1] 相同时，让它们配成一对，剩下的 LCS 一定落在"都少一个字母"的左上格里；不同时，这俩至少有一个不进 LCS——放弃 text1 的新字母看上格、放弃 text2 的看左格，取较大者，两种情况都不漏。'},
+    {q:'子序列和子串差在哪？',
+     a:'子序列可以跳着挑（ace 是 abcde 的子序列）；子串必须连续。所以这题不能只盯对角线，max(上, 左) 的"跳格继承"正是允许中间断开。'},
+    {q:'复杂度？',
+     a:'每格 O(1)：时间 O(m×n)；表 (m+1)×(n+1)，空间 O(m×n)（滚动数组可压到 O(min(m,n))）。要输出 LCS 本身，就在填完的表上从右下角倒着走一遍。'}
+  ],
+
+  complexity: '时间 O(m × n)　·　空间 O(m × n)（dp 表）',
+
+  form: [
+    {key:'text1', label:'text1', type:'str', maxLength:6, def:'abcde'},
+    {key:'text2', label:'text2', type:'str', maxLength:6, def:'ace'}
+  ],
+  presets: [
+    {label:'abcde / ace → 3', values:{text1:'abcde', text2:'ace'}},
+    {label:'ace / abcde → 3（行列互换）', values:{text1:'ace', text2:'abcde'}},
+    {label:'abc / def → 0（毫无公共）', values:{text1:'abc', text2:'def'}},
+    {label:'abc / abc → 3（完全相同）', values:{text1:'abc', text2:'abc'}}
+  ],
+
+  code: `class Solution:
+    def longestCommonSubsequence(self, text1, text2):
+        m, n = len(text1), len(text2)
+        dp = [[0] * (n + 1) for _ in range(m + 1)]   # dp[i][j]: 两串前缀的 LCS 长度
+        for i in range(1, m + 1):          # 逐行: 引入 text1 的第 i 个字母
+            for j in range(1, n + 1):      # 逐列: 引入 text2 的第 j 个字母
+                if text1[i - 1] == text2[j - 1]:     # 两个新字母相同
+                    dp[i][j] = dp[i - 1][j - 1] + 1  # 接在左上角答案后面
+                else:                      # 不同
+                    dp[i][j] = max(dp[i - 1][j], dp[i][j - 1])   # 继承上/左较优者
+        return dp[m][n]
+`,
+
+  sol(input){
+    const t1 = String(input.text1 == null ? '' : input.text1);
+    const t2 = String(input.text2 == null ? '' : input.text2);
+    const m = t1.length, n = t2.length;
+    const dp = [];
+    for(let i = 0; i <= m; i++) dp.push(new Array(n + 1).fill(0));
+    for(let i = 1; i <= m; i++)
+      for(let j = 1; j <= n; j++)
+        dp[i][j] = t1[i - 1] === t2[j - 1] ? dp[i - 1][j - 1] + 1
+                                           : Math.max(dp[i - 1][j], dp[i][j - 1]);
+    return dp[m][n];
+  },
+  expected: 3,
+
+  quiz: [
+    {q:'两个新字母不同时,为什么是 max(dp[i−1][j], dp[i][j−1]),而不也看看左上角 dp[i−1][j−1]?',
+     options:['看左上会漏解:最优 LCS 往往要"只放弃一个新字母"——上格是放弃 text1 新字母的世界、左格是放弃 text2 的,max 恰好枚举这两种;左上是"两个都放弃",机会只会更小','看左上会算多:不同字母也要 +1 就重复计数了','左上角是"相同"专用来源,不同时读它会数组越界'],
+     answer:0,
+     explain:'两个新字母不相等,就不可能同时挤进 LCS 的最后一对,最优解必然"至少放弃一个":只放弃 text1 的新字母 → 问题缩成上格 dp[i−1][j];只放弃 text2 的 → 左格 dp[i][j−1];两种放弃法必有一个不吃亏,取 max 就不漏。左上格代表"两个都放弃",由于 dp 沿行列单调不减,它永远 ≤ max(上,左)——抄它不亏但常常吃亏:text1="ab"、text2="ab" 的 (2,1) 格(b 对 a),max(上,左) = max(1, 0) = 1,左上却只有 0——看了它,已配上的 "a" 就丢了。',
+     jumpTo:5},
+    {q:'text1 = "yzby",text2 = "yby",LCS 长度是几?',
+     options:['1','2','3','4'],
+     answer:2,
+     explain:'"yby" 本身就是 text1 的子序列(y₀→b₂→y₃),两串逐位相同,长度 3。选 2 的多半把"子序列"记成了"子串":最长公共<b>子串</b>确实只有 2("yb" 或 "by" 必须连续),但这题允许跳着挑——text1 中间的 z 直接跳过即可。选 4 的是把两串长度当成了答案上限的错觉:公共部分最多只有 3 个字母对得上。',
+     jumpTo:37},
+    {q:'把 text1 和 text2 对调(行、列互换),结果和 dp 表会怎么变?',
+     options:['LCS 长度不变(定义对两串对称),dp 表变成原表的转置——右下角还是同一个数','结果和表都一模一样,毫无变化','LCS 长度可能变大也可能变小,取决于哪串当行'],
+     answer:0,
+     explain:'"公共子序列"是两串之间的对称关系,对调后每个公共子序列原样成立,长度必不变——本页预设里 ace/abcde 与 abcde/ace 都返回 3 就是对照。但 dp 表是按"行 = text1、列 = text2"逐格填的,对调后每格含义换成"前 j vs 前 i",整张表是原表的转置:形状变了、中间数值的排布镜像了,只有右下角 dp[m][n] 指向同一个答案。这个对称性还有实用价值:滚动数组压空间时挑短的那串当"列",空间就能压到 O(min(m, n))。',
+     jumpTo:1},
+  ],
+
+  steps(input){
+    const F = [];
+    let t1 = String(input.text1 == null ? '' : input.text1);
+    let t2 = String(input.text2 == null ? '' : input.text2);
+    const notes = [];
+    if(t1.length > 6){ t1 = t1.slice(0, 6); notes.push('text1 太长，取前 6 个字母演示'); }
+    if(t2.length > 6){ t2 = t2.slice(0, 6); notes.push('text2 太长，取前 6 个字母演示'); }
+    const m = t1.length, n = t2.length;
+
+    // 真实跑一遍（与 Python 同逻辑）
+    const dp = [];
+    for(let i = 0; i <= m; i++) dp.push(new Array(n + 1).fill(0));
+
+    /* ---- 绘制（o 全是帧生成那一刻的快照，铁律 5） ---- */
+    const disp = () => dp.map(row => row.slice());
+    const doneSt = () => {
+      const st = {};
+      for(let i = 1; i <= m; i++) for(let j = 1; j <= n; j++) if(dp[i][j] > 0) st[i + ',' + j] = 'done';
+      return st;
+    };
+    const draw = (o) => (v) => {
+      v.arr('t1', t1.split(''), {
+        label:'<code>text1</code>（对应 dp 的<b>行</b>：第 i 行引入第 i−1 格字母）',
+        quotes:true, states:o.s1 || {}, markers:o.m1 || [], idxCls:o.i1 || {}
+      });
+      v.arr('t2', t2.split(''), {
+        label:'<code>text2</code>（对应 dp 的<b>列</b>）',
+        quotes:true, states:o.s2 || {}, markers:o.m2 || [], idxCls:o.i2 || {}
+      });
+      v.grid('dp', o.mat, {
+        label:'DP 表 <code>dp</code>　·　<code>dp[i][j]</code> = text1 前 i 个字母 vs text2 前 j 个字母的 LCS 长度　·　' + o.note,
+        states:o.st || {}, cw:42
+      });
+      if(o.vars) v.vars('vars', o.vars, {label:'当前变量', hl:o.hlv || []});
+      if(o.lcsTxt) v.text('lcs', o.lcsTxt, {label:'LCS（从表尾倒着抓）', html:true});
+      if(o.res !== undefined) v.result(o.res, {label:'返回结果'});
+    };
+
+    F.push({hl:[1,2,3,4], tag:'建表', cls:'t-grey',
+      msg:'行是 text1 = <b>' + LCesc(t1 || '（空串）') + '</b>，列是 text2 = <b>' + LCesc(t2 || '（空串）') + '</b>。dp[i][j] 的含义要咬准：text1 的<b>前 i 个</b>字母 vs text2 的<b>前 j 个</b>字母的 LCS 长度——只看这两段前缀，不管中间怎么跳着挑。多出来的第 0 行/第 0 列代表<b>空串</b>：空串里一个字母都挑不出来，跟谁比 LCS 都是 0，所以整圈边框先填 0。这圈 0 不是摆设——第 1 行/列的格子算的时候都要引用它们，相当于"从零开始攒"的那个零。' + (notes.length ? '（' + notes.join('；') + '）' : ''),
+      do: draw({mat:disp(), note:'第 0 行/列 = 空串基准', vars:{m:m, n:n, 'dp[0][*]':0}})});
+
+    for(let i = 1; i <= m; i++){
+      for(let j = 1; j <= n; j++){
+        const c1 = t1[i - 1], c2 = t2[j - 1];         // 两个新字母（快照）
+        const same = c1 === c2;
+        F.push({hl:[5,6,7], ok: same ? 7 : undefined, no: same ? undefined : 7,
+          tag:'比 (i,j)=(' + i + ',' + j + ')', cls: same ? 't-green' : 't-ink',
+          msg:'轮到 (' + i + ',' + j + ')，比较本轮刚引入的两个<b>新</b>字母（数组上 ▲ 名牌所指）：text1[' + (i - 1) + '] = <code>' + LCesc(c1) + '</code> vs text2[' + (j - 1) + '] = <code>' + LCesc(c2) + '</code>' +
+              (same ? ' —— <b>相同！</b>它俩可以配成 LCS 的最后一对，剩下的问题（两边各退一格）答案就躺在左上角 dp[i−1][j−1] 里，下一帧 +1 写入。' : ' —— <b>不同</b>，它俩配不成一对；LCS 的最后一对至少要空出其中一个新字母的名额，下一帧看"放弃谁"更划算。'),
+          do: draw({mat:disp(), note:same ? '相同 → 看左上角' : '不同 → 看上/左', st:Object.assign(doneSt(), {[i + ',' + j]:'active'}),
+                    s1:{[i - 1]:'active'}, m1:[{name:'c1', idx:i - 1, cls:'mi', text:'▲ text1[i−1]'}], i1:{[i - 1]:'on-i'},
+                    s2:{[j - 1]:'active'}, m2:[{name:'c2', idx:j - 1, cls:'mr', text:'▲ text2[j−1]'}], i2:{[j - 1]:'on-r'},
+                    vars:{i:i, j:j, 'text1[i-1]':c1, 'text2[j-1]':c2}})});
+        if(same){
+          const diag = dp[i - 1][j - 1];
+          dp[i][j] = diag + 1;                        // 真实更新
+          F.push({hl:[8], tag:'配对成功', cls:'t-green',
+            msg:'<code>dp[i][j] = dp[i−1][j−1] + 1 = ' + diag + ' + 1 = ' + dp[i][j] + '</code>，定格。为什么相同就敢只看左上、直接 +1？左上格 dp[' + (i - 1) + '][' + (j - 1) + '] = ' + diag + ' 是"两边都不要这俩新字母"的世界里攒出的最好成绩，接上这对匹配就是 ' + (diag + 1) + '；而走"上格 / 左格"路线能得到的任何公共子序列，要么压根没用这俩新字母（那它就是左上世界里的方案），要么最后一对可以重新牵到这俩相同字母上——长度都超不过 ' + (diag + 1) + '。一句话：相同的字母当场牵手绝不亏，这是整个转移里唯一敢 +1 的地方。画面上紫框标出左上来源，写入后 dp &gt; 0 的格子转绿。',
+            do: draw({mat:disp(), note:'紫框 = 左上角来源', st:Object.assign(doneSt(), {
+                      [(i - 1) + ',' + (j - 1)]:'pivot'}),
+                      s1:{[i - 1]:'active'}, m1:[{name:'c1', idx:i - 1, cls:'mi', text:'▲ text1[i−1]'}], i1:{[i - 1]:'on-i'},
+                      s2:{[j - 1]:'active'}, m2:[{name:'c2', idx:j - 1, cls:'mr', text:'▲ text2[j−1]'}], i2:{[j - 1]:'on-r'},
+                      vars:{i:i, j:j, 'dp[i-1][j-1]':diag, ['dp[' + i + '][' + j + ']']:dp[i][j]},
+                      hlv:['dp[' + i + '][' + j + ']']})});
+        } else {
+          const up = dp[i - 1][j], left = dp[i][j - 1];
+          const take = Math.max(up, left);
+          dp[i][j] = take;                            // 真实更新
+          F.push({hl:[9,10], tag:'继承', cls:'t-blue',
+            msg:'两个新字母不同，配不成对 → <code>max(dp[i−1][j], dp[i][j−1]) = max(' + up + ', ' + left + ') = ' + take + '</code>，抄过来定格。为什么是"放弃一个、取 max"？LCS 的最后一对要在两串里各占一个位置且字符相等——这俩新字母不相等，就不可能同时进最后一对，所以最优解必然是二选一：不用 text1 的新字母（世界缩成上格 dp[i−1][j] = ' + up + '），或不用 text2 的新字母（左格 dp[i][j−1] = ' + left + '）。两种放弃法总有一个不亏，取较大的抄过来就不会漏；画面上上、左两格亮蓝，当前格继承较大值。',
+            do: draw({mat:disp(), note:'蓝 = 上/左来源', st:Object.assign(doneSt(), {
+                      [(i - 1) + ',' + j]:'in', [i + ',' + (j - 1)]:'in'}),
+                      s1:{[i - 1]:'muted'}, i1:{[i - 1]:'on-i'},
+                      s2:{[j - 1]:'muted'}, i2:{[j - 1]:'on-r'},
+                      vars:{i:i, j:j, 'dp[i-1][j]':up, 'dp[i][j-1]':left, 'max':take}})});
+        }
+      }
+    }
+
+    // 末帧回溯：从 (m,n) 倒着抓 LCS（真实查 dp 表）
+    let bi = m, bj = n;
+    const matched = [];                                // 抓到的格子（dp 行列）
+    const lcsTxt = cells => {
+      const seq = cells.slice().reverse().map(([ci, cj]) => '<b>' + LCesc(t2[cj - 1]) + '</b>');
+      return '倒着抓：' + (seq.length ? seq.join(' → ') : '（还什么都没抓到）');
+    };
+    while(bi > 0 && bj > 0){
+      const ci = bi, cj = bj;
+      const same = t1[bi - 1] === t2[bj - 1];
+      if(same){
+        matched.push([ci, cj]);
+        bi--; bj--;
+      } else if(dp[bi - 1][bj] >= dp[bi][bj - 1]){
+        bi--;
+      } else {
+        bj--;
+      }
+      const snap = matched.slice();                   // 快照：已抓到的格子
+      const back = same
+        ? 'text1[' + (ci - 1) + '] = text2[' + (cj - 1) + '] = <code>' + LCesc(t1[ci - 1]) + '</code>，配对格！<b>抓下这个字母</b>，退到左上角 (' + bi + ',' + bj + ')。'
+        : (dp[ci - 1][cj] >= dp[ci][cj - 1]
+            ? '两个字母不同：上面格 dp[' + (ci - 1) + '][' + cj + '] = ' + dp[ci - 1][cj] + ' ≥ 左边格 dp[' + ci + '][' + (cj - 1) + '] = ' + dp[ci][cj - 1] + ' → 数值没涨过，往上退到 (' + bi + ',' + bj + ')。'
+            : '两个字母不同：左边格 dp[' + ci + '][' + (cj - 1) + '] = ' + dp[ci][cj - 1] + ' &gt; 上面格 dp[' + (ci - 1) + '][' + cj + '] = ' + dp[ci - 1][cj] + ' → 往左退到 (' + bi + ',' + bj + ')。');
+      F.push({hl:[11], tag:'倒抓 LCS', cls:'t-violet',
+        msg:'倒着抓 LCS：站在 (' + ci + ',' + cj + ')。' + back + '原理：填表时每个"相同 → 左上+1"的格子都是一次配对发生的现场，倒着走撞见它就把字母抓进 LCS、退左上；"不同"的格子数值没涨过，就沿 dp 值不变的方向退，直到撞上第 0 行/列。画面上抓到的格子和字母都标紫。',
+        do: draw({mat:disp(), note:'紫 = LCS 成员', st:(function(){ const st = doneSt(); snap.forEach(([ci2, cj2]) => st[ci2 + ',' + cj2] = 'target'); return st; })(),
+                  s1: same ? {[ci - 1]:'target'} : {}, m1: same ? [{name:'LCS', idx:ci - 1, cls:'mv', text:'▲ LCS'}] : [],
+                  s2: same ? {[cj - 1]:'target'} : {}, m2: same ? [{name:'LCS', idx:cj - 1, cls:'mv', text:'▲ LCS'}] : [],
+                  lcsTxt:lcsTxt(snap), vars:{当前:'(' + ci + ',' + cj + ')', 已抓:snap.length}})});
+    }
+
+    const lcsStr = matched.slice().reverse().map(([ci, cj]) => t2[cj - 1]).join('');
+    F.push({hl:[11], tag:'返回', cls:'t-dark',
+      msg: matched.length
+        ? '抓完整条：LCS = <b>' + LCesc(lcsStr) + '</b>，长度 <code>dp[' + m + '][' + n + '] = ' + dp[m][n] + '</code> → <code>return ' + dp[m][n] + '</code> 🎉 复盘：每格只做一次字符比较加一次抄写，时间 O(m×n)；"相同接左上、不同取上左 max"两条规则把所有情况不重不漏地覆盖，第 0 行/列的空串 0 则是整个递推的地基。'
+        : '两串没有公共字母，全程一次配对都没发生，所有格子全靠第 0 行/列的地基 0 一路继承 → dp[' + m + '][' + n + '] = 0 → <code>return 0</code>。这也验证了转移公式自洽：不同字母取 max 时 max(0, 0) = 0，答案自然归零。',
+      do: draw({mat:disp(), note:'紫 = LCS 成员', st:(function(){ const st = doneSt(); matched.forEach(([ci, cj]) => st[ci + ',' + cj] = 'target'); return st; })(),
+                lcsTxt:lcsTxt(matched), vars:{LCS:'「' + (lcsStr || '空') + '」', 长度:dp[m][n]}, res:dp[m][n]})});
+    return F;
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P087 · 乘积最大子数组 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/progress.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 87, num: 152, title: '乘积最大子数组', diff: '中等', cat: '动态规划',
+  method: 'maxProduct',
+
+  lede: '题目：在数组 <span class="var r">nums</span> 里找一段<b>连续</b>子数组，使乘积<b>最大</b>（至少含一个元素）。麻烦在于<b>负数</b>：(-2)×(-3)=6，两个负数一乘就翻盘。' +
+        '所以动画里一路<b>双线记录</b>：<span class="var o">curMax</span> 是"以当前元素结尾"的最大积，<span class="var v">curMin</span> 是最小积；' +
+        '遇到负数的瞬间，两者先<b>互换</b>再更新（紫色高亮时刻），<span class="var o">ans</span> 随时收网。',
+
+  roles: [
+    {c:'orange', code:'curMax', text:'以当前元素结尾的最大积'},
+    {c:'violet', code:'curMin', text:'以当前元素结尾的最小积（负数翻盘的火种）'},
+    {c:'green',  code:'ans',    text:'全局答案：见好就收'},
+    {c:'red',    code:'x < 0',  text:'负数来袭：curMax / curMin 先互换'}
+  ],
+
+  codeTitle: '跟着高亮读代码——<code>if x &lt; 0</code> 变<span style="color:var(--green)">绿</span>＝遇到负数，先互换再算；max/min 两行是"另起炉灶 vs 接着乘"的二选一。',
+
+  legend: [
+    {c:'orange', text:'curMax 最大积'},
+    {c:'violet', text:'curMin 最小积'},
+    {c:'green',  text:'ans 刷新时刻'},
+    {c:'red',    text:'负数互换时刻'}
+  ],
+
+  idea: '最大积可能来自"之前的最大积"，也可能来自"之前的最小积"（乘上负数翻盘）——所以 curMax、curMin 成对维护，遇负数先互换：curMax = max(x, curMax·x)，curMin = min(x, curMin·x)。',
+
+  qa: [
+    {q:'为什么要同时记"最小积"？扔掉不行吗？',
+     a:'不行。乘法跟加法不同：一个很大的负数乘上负数会变成很大的正数。比如 [2,3,-2,4,-1] 里，-48（最小积）×(-1)=48 正是答案。只记最大积，就永远错过"烂牌翻身"的机会。'},
+    {q:'互换那一行到底在干嘛？',
+     a:'x < 0 时，大小关系整个颠倒：旧 curMax 乘上 x 会变成新的最小候选，旧 curMin 反而变成最大候选。先 swap，接下来的 max/min 公式就统一了——不用为负数单写一套分支。'},
+    {q:'max(x, curMax·x) 里的 x 是什么意思？',
+     a:'"另起炉灶"：前面接出来的积如果比 x 自己还差（比如前面乘出了 0 或负数），就不如从 x 重新开始一段。所以每步都在"接着乘"和"另起炉灶"里挑大的。'},
+    {q:'和"最大子数组和"(LC 53) 像在哪？',
+     a:'骨架一样：都是"以 i 结尾"的 DP、都每步 ans=max(ans, best)。差别只在乘法要补一条 curMin 支线 + 负数互换；53 里一个 curMax 就够。'}
+  ],
+
+  complexity: '时间 O(n)　·　空间 O(1)（三个变量；演示中另画了历史表）',
+
+  form: [
+    {key:'nums', label:'nums', type:'arr', def:[2,3,-2,4]}
+  ],
+  presets: [
+    {label:'[2,3,-2,4] → 6', values:{nums:[2,3,-2,4]}},
+    {label:'[-2,0,-1] → 0（别选负的）', values:{nums:[-2,0,-1]}},
+    {label:'[2,3,-2,4,-1] → 48（负负得正）', values:{nums:[2,3,-2,4,-1]}},
+    {label:'[-3] → -3（边界）', values:{nums:[-3]}}
+  ],
+
+  code: `class Solution:
+    def maxProduct(self, nums):
+        curMax = curMin = ans = nums[0]   # 以当前元素结尾的最大/最小积 & 全局答案
+        for x in nums[1:]:                # 逐个把 x 接到子数组末尾
+            if x < 0:                     # 乘负数: 大变小, 小变大
+                curMax, curMin = curMin, curMax   # 先互换, 负负得正有救
+            curMax = max(x, curMax * x)   # 另起炉灶 or 接着乘, 取大者
+            curMin = min(x, curMin * x)   # 同理维护最惨的积
+            ans = max(ans, curMax)        # 答案一定在某个结尾处取到
+        return ans
+`,
+
+  sol(input){
+    const nums = input.nums || [];
+    if(!nums.length) return null;
+    let curMax = nums[0], curMin = nums[0], ans = nums[0];
+    for(let k = 1; k < nums.length; k++){
+      const x = nums[k];
+      if(x < 0){ const t = curMax; curMax = curMin; curMin = t; }
+      curMax = Math.max(x, curMax * x);
+      curMin = Math.min(x, curMin * x);
+      ans = Math.max(ans, curMax);
+    }
+    return ans;
+  },
+  expected: 6,
+
+  quiz: [
+    {q:'这题为什么不照搬"最大子数组和"(LC 53) 的骨架、只维护一个当前最大就够了?',
+     options:['其实一个就够,成对维护只是写法上的炫技','乘法与加法不同:现在最小的积(绝对值大的负数)乘上未来的负数会翻成最大的正数,扔掉最小积就错过"烂牌翻身"','因为题目保证数组里一定有负数'],
+     answer:1,
+     explain:'加法里"当前和越小越糟",一个 curMax 足矣;乘法里小×负=大:在 [2,3,-2,4,-1] 里,以 4 结尾的最小积是 2×3×(−2)×4 = −48,它乘上 −1 正是全局答案 48。只记最大积的写法到 −1 时手头只有 4,4×(−1) = −4,ans 停在 6——直接漏掉真答案。curMin 就是给负数埋的"翻盘火种",必须成对维护。',
+     jumpTo:5},
+    {q:'nums = [-2, 3, -4],算法返回几?',
+     options:['3','24','-2','-12'],
+     answer:1,
+     explain:'逐步走:起点 curMax = curMin = ans = −2。x=3(正数不互换):curMax = max(3, −6) = 3,curMin = min(3, −6) = −6,ans = 3。x=−4(负数):先互换,curMax = −6、curMin = 3,再算 curMax = max(−4, (−6)×(−4)) = 24,curMin = min(−4, 3×(−4)) = −12,ans 刷新为 24。选 3 的人只看到了正数段 3;选 −12 的是把最后 curMin 当成了答案。全段 (−2)×3×(−4) = 24,负负得正的翻盘正靠互换这一步。',
+     jumpTo:9},
+    {q:'nums = [3, -1, 0, 4],答案是 4。它说明了 curMax = max(x, curMax·x) 里的 "x" 有什么用?',
+     options:['没用,纯属防御性代码,永远取不到','它允许"另起炉灶":前面的积被 −1 和 0 拖成 0 之后,不如从 4 单独重开一段','它用来处理数组只有一个元素的情况'],
+     answer:1,
+     explain:'到 0 为止,前面任何段的积都 ≤ 0(3×(−1) = −3,再×0 归 0);若只会"接着乘",以 4 结尾最多得 0×4 = 0。公式里的 x 让算法每步都比一比"接旧账 vs 单开新段",烂前缀处果断重开——以 4 自己成段,ans 收网到 4。默认例的 x=4 也一样:接着乘是 (−2)×4 = −8,另起炉灶才是 4。它不是摆设,是 O(n) 一遍流能"反悔"的唯一手段。',
+     jumpTo:15},
+  ],
+
+  steps(input){
+    const F = [];
+    const nums = input.nums || [];
+    const n = nums.length;
+
+    if(n === 0){
+      F.push({hl:[3], tag:'空数组', cls:'t-grey',
+        msg:'数组是空的——题目保证至少含一个元素，这里就不演示了。',
+        do: (v) => { v.arr('nums', [], {label:'数组 <code>nums</code>'}); }});
+      return F;
+    }
+
+    // 真实跑一遍（与 Python 同逻辑）
+    const dpMax = [nums[0]], dpMin = [nums[0]];
+    let curMax = nums[0], curMin = nums[0], ans = nums[0];
+
+    // 区间内暴力找最优子数组（n 很小，展示用，数字保证真实）
+    const bestSeg = (hi) => {
+      let bs = 0, be = 0, bp = -Infinity;
+      for(let a = 0; a <= hi; a++){
+        let p = 1;
+        for(let b = a; b <= hi; b++){
+          p *= nums[b];
+          if(p > bp){ bp = p; bs = a; be = b; }
+        }
+      }
+      return {s:bs, e:be, p:bp};
+    };
+    let best = bestSeg(0);
+    const segStr = (s, e) => '[' + nums.slice(s, e + 1).join(', ') + ']';
+    const mulStr = (a, b) => a + (b < 0 ? '×(' + b + ')' : '×' + b);
+    const prodStr = (s, e) => {
+      const p = nums.slice(s, e + 1).reduce((a, b) => a * b, 1);
+      return s === e ? String(nums[s])
+        : nums.slice(s, e + 1).map(v => v < 0 ? '(' + v + ')' : v).join('×') + ' = ' + p;
+    };
+
+    // 未来格显示 '—'
+    const disp = (arr) => { const a = []; for(let k = 0; k < n; k++) a.push(k < arr.length ? arr[k] : '—'); return a; };
+
+    /* ---- 绘制（o 全是帧生成那一刻的快照，铁律 5） ---- */
+    const draw = (o) => (v) => {
+      v.arr('nums', nums, {
+        label:'数组 <code>nums</code>',
+        states:o.nst || {}, markers:o.mk || [], idxCls:o.ix || {}
+      });
+      v.arr('dpMax', disp(o.dpMaxS), {
+        label:'<code>dpMax</code>　·　以当前元素结尾的最大积（历史）',
+        cw:40, states:o.mst || {}
+      });
+      v.arr('dpMin', disp(o.dpMinS), {
+        label:'<code>dpMin</code>　·　以当前元素结尾的最小积（历史）',
+        cw:40, states:o.nst2 || {}
+      });
+      if(o.vars) v.vars('vars', o.vars, {label:'当前变量', hl:o.hlv || []});
+      if(o.bestTxt) v.text('best', o.bestTxt);
+      if(o.res !== undefined) v.result(o.res, {label:'最大积'});
+    };
+
+    F.push({hl:[1,2,3], tag:'初始化', cls:'t-grey',
+      msg:'三个变量同一起点：<code>curMax = curMin = ans = ' + nums[0] + '</code>——第 0 个元素自己就构成一个子数组，最大、最小、全局答案都从它起步。curMin 眼下看着多余，其实是给负数埋的伏笔：乘法里<b>负负得正</b>，现在最惨的积（绝对值大的负数）一旦乘上未来的负数，反而可能蹿成最大——所以最小积必须一路记着，扔了它就错过"烂牌翻身"。',
+      do: draw({nst:{0:'done'}, mk:[], ix:{}, dpMaxS:dpMax.slice(), dpMinS:dpMin.slice(),
+                mst:{0:'just'}, nst2:{0:'just'},
+                vars:{x:'—', curMax:curMax, curMin:curMin, ans:ans}, hlv:['curMax','curMin','ans'],
+                bestTxt:'目前最优子数组：' + segStr(best.s, best.e) + '　积 = ' + best.p})});
+
+    for(let k = 1; k < n; k++){
+      const x = nums[k];
+      F.push({hl:[4], tag:'拿起 x=' + x, cls:'t-orange',
+        msg:'拿起 <b>x = ' + x + '</b>（第 ' + k + ' 格，橙框 + ▲x 名牌）。任何"以它结尾"的子数组只有两种身世：单独成段（<b>另起炉灶</b>，就是 x 自己），或者接在前面某段的末尾（<b>接着乘</b>）。先把局面摆出来：curMax = ' + curMax + '、curMin = ' + curMin + '、ans = ' + ans + '。',
+        do: draw({nst:{[k]:'active'}, mk:[{name:'x', idx:k, cls:'mi', text:'▲ x'}], ix:{[k]:'on-i'},
+                  dpMaxS:dpMax.slice(), dpMinS:dpMin.slice(), mst:{}, nst2:{},
+                  vars:{x:x, curMax:curMax, curMin:curMin, ans:ans}})});
+
+      if(x < 0){
+        F.push({hl:[5], ok:5, tag:'负数来袭', cls:'t-red',
+          msg:'<b>x = ' + x + ' 是负数！</b>负数一乘，符号全翻转：眼下最大的 curMax = ' + curMax + ' 接上它反而跌成很小的负数，眼下最小的 curMin = ' + curMin + ' 接上它却可能蹿成最大的正数——<b>大小地位整个对调</b>。所以先别急着更新，把两个变量<b>互换</b>一下，后面的 max/min 公式就能照常套用，不用为负数单写一套分支。',
+          do: draw({nst:{[k]:'active'}, mk:[{name:'x', idx:k, cls:'mi', text:'▲ x'}], ix:{[k]:'on-i'},
+                    dpMaxS:dpMax.slice(), dpMinS:dpMin.slice(), mst:{}, nst2:{},
+                    vars:{x:x, curMax:curMax, curMin:curMin, ans:ans}, hlv:['x']})});
+
+        const oldMax = curMax, oldMin = curMin;
+        curMax = oldMin; curMin = oldMax;
+        F.push({hl:[6], tag:'互换', cls:'t-violet',
+          msg:'<b>互换！</b>curMax = ' + oldMax + ' ↔ curMin = ' + oldMin + '，换完 curMax = ' + curMax + '、curMin = ' + curMin + '。账摆在这：旧最大接上负数得 ' + mulStr(oldMax, x) + '，跌得最惨；旧最小接上负数得 ' + mulStr(oldMin, x) + '，才是新的最大候选——<b>答案常常藏在"最小"里</b>，这就是必须成对维护 curMin 的原因。',
+          do: draw({nst:{[k]:'active'}, mk:[{name:'x', idx:k, cls:'mi', text:'▲ x'}], ix:{[k]:'on-i'},
+                    dpMaxS:dpMax.slice(), dpMinS:dpMin.slice(), mst:{}, nst2:{},
+                    vars:{x:x, curMax:curMax, curMin:curMin, ans:ans}, hlv:['curMax','curMin']})});
+      } else {
+        F.push({hl:[5], no:5, tag:'正数/零', cls:'t-blue',
+          msg:'x = ' + x + ' 不是负数（乘正数不变号、乘 0 归零），curMax 和 curMin 的大小秩序不动，<b>不用互换</b>，直接进下面的 max/min 更新——只有负数才配触发"互换"这一步。',
+          do: draw({nst:{[k]:'active'}, mk:[{name:'x', idx:k, cls:'mi', text:'▲ x'}], ix:{[k]:'on-i'},
+                    dpMaxS:dpMax.slice(), dpMinS:dpMin.slice(), mst:{}, nst2:{},
+                    vars:{x:x, curMax:curMax, curMin:curMin, ans:ans}})});
+      }
+
+      const prevMax = curMax;
+      const cands = prevMax * x;
+      const fromFresh = x >= cands;
+      curMax = Math.max(x, cands);
+      dpMax.push(curMax);
+      F.push({hl:[7], tag:'更新 curMax', cls:'t-blue',
+        msg:'<code>curMax = max(x, curMax·x)</code>：两个候选——<b>另起炉灶</b> = x = ' + x + '，<b>接着乘</b> = ' + mulStr(prevMax, x) + ' = ' + cands + ' → 取大的，<b>curMax = ' + curMax + '</b>' +
+            (fromFresh ? '。前面的积拖了后腿（比如乘出过 0 或负数），不如从 x 重新开一段' : '。接在前面的段上继续乘更划算') + '。dpMax 表第 ' + k + ' 格刚写上这个值。',
+        do: draw({nst:{[k]:'active'}, mk:[{name:'x', idx:k, cls:'mi', text:'▲ x'}], ix:{[k]:'on-i'},
+                  dpMaxS:dpMax.slice(), dpMinS:dpMin.slice(),
+                  mst:{[k]:'just'}, nst2:{},
+                  vars:{x:x, curMax:curMax, curMin:curMin, ans:ans}, hlv:['curMax']})});
+
+      const candMin = curMin * x;
+      curMin = Math.min(x, candMin);
+      dpMin.push(curMin);
+      F.push({hl:[8], tag:'更新 curMin', cls:'t-violet',
+        msg:'对称地维护最惨的积：<code>curMin = min(x, curMin·x)</code>：另起炉灶 = ' + x + '，接着乘 = ' + candMin + ' → 取小的，<b>curMin = ' + curMin + '</b>（dpMin 表第 ' + k + ' 格落位）。别嫌它占地方——这颗"翻盘火种"一旦遇上后面的负数就会爆发成最大积，只记最大积的写法在 [2,3,-2,4,-1] 这类输入上会直接漏掉答案。',
+        do: draw({nst:{[k]:'active'}, mk:[{name:'x', idx:k, cls:'mi', text:'▲ x'}], ix:{[k]:'on-i'},
+                  dpMaxS:dpMax.slice(), dpMinS:dpMin.slice(),
+                  mst:{}, nst2:{[k]:'just'},
+                  vars:{x:x, curMax:curMax, curMin:curMin, ans:ans}, hlv:['curMin']})});
+
+      const before = ans;
+      const improve = curMax > before;
+      if(improve){ ans = curMax; best = bestSeg(k); }
+      F.push({hl:[9], tag:'收网 ans', cls: improve ? 't-green' : 't-ink',
+        msg:'<code>ans = max(ans, curMax) = max(' + before + ', ' + curMax + ')</code>' +
+            (improve ? ' → <b>ans 刷新为 ' + ans + '</b>！目前最优子数组是 ' + segStr(best.s, best.e) + '，下方说明同步更新。'
+                     : ' → ans 保持 ' + ans + '：以 ' + x + ' 结尾翻不出新高度，这次不收网。') +
+            '最大积一定在"以某个元素结尾"处取到，所以每个结尾的 curMax 都要过一遍 ans，一个都不放过。',
+        do: draw({nst:{[k]:'done'}, mk:[], ix:{},
+                  dpMaxS:dpMax.slice(), dpMinS:dpMin.slice(), mst:{}, nst2:{},
+                  vars:{x:x, curMax:curMax, curMin:curMin, ans:ans}, hlv:['ans'],
+                  bestTxt:'目前最优子数组：' + segStr(best.s, best.e) + '　积 = ' + best.p})});
+    }
+
+    const bestFinal = bestSeg(n - 1);
+    F.push({hl:[10], tag:'返回', cls:'t-dark',
+      msg:'扫完了，<code>return ans = ' + ans + '</code> 🎉 最优子数组：<b>' + segStr(bestFinal.s, bestFinal.e) + '</b>，积 = ' + prodStr(bestFinal.s, bestFinal.e) + '。复盘：骨架与"最大子数组和"相同（以 i 结尾的 DP + 随手收网），乘法只多两条规矩——curMin 成对维护、遇负数先互换；时间 O(n)、空间 O(1)。回头看 dpMin 那一行：一路记着最惨的积，就为负数翻盘这一刻。',
+      do: draw({nst:{}, mk:[], ix:{},
+                dpMaxS:dpMax.slice(), dpMinS:dpMin.slice(),
+                mst:{[n - 1]:'target'}, nst2:{[n - 1]:'target'},
+                vars:{x:'—', curMax:curMax, curMin:curMin, ans:ans}, hlv:['ans'],
+                bestTxt:'最优子数组：' + segStr(bestFinal.s, bestFinal.e) + '　积 = ' + bestFinal.p,
+                res:ans})});
+
+    return F;
+  }
+});
+</script>
+</body>
+</html>

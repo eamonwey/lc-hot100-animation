@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P090 · 不同路径 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/progress.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 90, num: 62, title: '不同路径', diff: '中等', cat: '多维动态规划',
+  method: 'uniquePaths',
+
+  lede: '题目：机器人从 m×n 网格的<b>左上角 (0,0)</b> 出发，每步只能 <b>向右</b> 或 <b>向下</b>，走到右下角一共有几种走法？' +
+        '动画把 <span class="var o">dp[r][c]</span>（走到 (r,c) 的走法数）逐格填进网格：' +
+        '填 <span class="var i">(r,c)</span> 时，<b>上面的格子</b>和<b>左边的格子</b>同时亮蓝——到这格的最后一步要么从上来、要么从左来，两条路的人数直接相加。',
+
+  roles: [
+    {c:'orange', code:'(r,c)',  text:'正在填的格子'},
+    {c:'blue',   code:'上/左',  text:'两个来源格：dp[r−1][c] 和 dp[r][c−1]'},
+    {c:'green',  code:'定格',   text:'已填好的格子'},
+    {c:'violet', code:'终点',   text:'右下角 = 答案所在'}
+  ],
+
+  codeTitle: '跟着高亮读代码——第 10 行是全题唯一的公式：上格 + 左格。第一行、第一列没有"另一个来源"，只能各填 1。',
+
+  legend: [
+    {c:'orange', text:'(r,c) 正在填'},
+    {c:'blue',   text:'上格 / 左格 来源'},
+    {c:'green',  text:'已定格'},
+    {c:'violet', text:'dp 终点'}
+  ],
+
+  idea: 'dp[r][c] = dp[r−1][c] + dp[r][c−1]：最后一步要么从上来、要么从左来；第一行第一列都只有 1 种（一路直走）。',
+
+  qa: [
+    {q:'为什么是"上格 + 左格"？',
+     a:'走到 (r,c) 的最后一步只有两种可能：从 (r−1,c) 向下、或从 (r,c−1) 向右。两类走法不重叠又拼得完，所以数目直接相加——这是"计数型 DP"的标准套路：不重不漏就敢加。'},
+    {q:'第一行、第一列为什么全是 1？',
+     a:'第一行的格子没有"上面"，只能从起点一路向右；第一列没有"左边"，只能一路向下——各只有一种走法。它们就是 DP 的地基，后面所有格子都踩着这两条边长出来。'},
+    {q:'这题有 O(1) 的数学解吗？',
+     a:'有：总共走 m+n−2 步，其中 m−1 步向下，答案 = C(m+n−2, m−1)。但面试先讲清 DP 转移更稳，组合数公式可以作为"再优化"的彩蛋。'},
+    {q:'复杂度？',
+     a:'每格算一次加法：时间 O(m×n)；dp 表也是 m×n，空间 O(m×n)（用一维滚动数组可压到 O(n)）。'}
+  ],
+
+  complexity: '时间 O(m × n)　·　空间 O(m × n)（dp 表，可滚动压缩到 O(n)）',
+
+  form: [
+    {key:'m', label:'m（行数）', type:'num', integer:true, min:1, max:5, def:3},
+    {key:'n', label:'n（列数）', type:'num', integer:true, min:1, max:7, def:4}
+  ],
+  presets: [
+    {label:'3×4 → 10', values:{m:3, n:4}},
+    {label:'1×1 → 1（边界）', values:{m:1, n:1}},
+    {label:'2×2 → 2', values:{m:2, n:2}},
+    {label:'3×7 → 28', values:{m:3, n:7}}
+  ],
+
+  code: `class Solution:
+    def uniquePaths(self, m, n):
+        dp = [[0] * n for _ in range(m)]   # dp[r][c]: 到 (r,c) 的走法数
+        for c in range(n):                 # 第一行: 只能一路向右
+            dp[0][c] = 1
+        for r in range(m):                 # 第一列: 只能一路向下
+            dp[r][0] = 1
+        for r in range(1, m):              # 逐行往下填
+            for c in range(1, n):          # 行内逐列往右填
+                dp[r][c] = dp[r - 1][c] + dp[r][c - 1]   # 上面来的 + 左边来的
+        return dp[m - 1][n - 1]
+`,
+
+  sol(input){
+    const m = Math.max(1, Math.floor(+input.m || 1));
+    const n = Math.max(1, Math.floor(+input.n || 1));
+    const dp = [];
+    for(let r = 0; r < m; r++) dp.push(new Array(n).fill(1));
+    for(let r = 1; r < m; r++)
+      for(let c = 1; c < n; c++)
+        dp[r][c] = dp[r - 1][c] + dp[r][c - 1];
+    return dp[m - 1][n - 1];
+  },
+  expected: 10,
+
+  quiz: [
+    {q:'从 (0,0) 到 (1,1) 需要"一右一下"。为什么 dp[1][1] = 2 而不是 1——"先右后下"和"先下后右"不该算同一种吗?',
+     options:['应该算 1 种,经过的格子集合一样就是同一条路','算 2 种:路径是"每步走到哪"的序列,右→下 路过 (0,1),下→右 路过 (1,0),中间轨迹不同就是两条路线','应该取 max,两种走法只记最好的一种'],
+     answer:1,
+     explain:'计数 DP 数的是"步的序列",不是"访问过的格子集合":先右后下与先下后右在半路分道扬镳(一个先到 (0,1)、一个先到 (1,0)),最后殊途同归——是两条不同走法。转移式的分类恰好把它们都收进来:最后一步从上格下来的是"先下后右"那 1 条,从左格过来的是"先右后下"那 1 条,两类最后一步不同、无公共成员,1+1=2 不重不漏。',
+     jumpTo:10},
+    {q:'m=3, n=5(3 行 5 列),dp 表右下角最终是几?',
+     options:['10','15','20','25'],
+     answer:1,
+     explain:'逐行滚:第一行全 1;第二行从左到右累加出 1,2,3,4,5;第三行 1,3,6,10,15——右下角 dp[2][4] = 上格 10 + 左格 5 = 15。选 10 的是拿 3×4 的答案当了 3×5;选 20 的是错用了 C(6,3)(公式是 C(m+n−2, m−1) = C(6,2) = 15,分母要选"向下的步数" m−1 = 2)。也可以验算:总步数 6 步里选 2 步向下,共 C(6,2) = 15。',
+     jumpTo:21},
+    {q:'dp 表为什么能压成一维滚动数组、把空间降到 O(n)?',
+     options:['因为 dp 里的数值很小,存省一点是一点','因为填第 r 行只读"上一行同列"和"本行左格"两处——旧的一行用完即可覆写,一维数组从左到右做 dp[c] += dp[c−1] 就滚出新一层','因为把表倒着填就不用保留上一行了'],
+     answer:1,
+     explain:'转移只依赖两处:上格(上一行的旧值)和左格(本行刚算的新值)。用一维数组从左往右扫,dp[c] 还没更新时正好是"上一行"的旧值,dp[c−1] 已更新正好是"本行"新值——一次原地累加就把两路来源都凑齐了。这与数值大小无关;方向也不能反:从右往左扫时 dp[c−1] 还是上一行的旧值,"左格"来源就丢了。',
+     jumpTo:21},
+  ],
+
+  steps(input){
+    const F = [];
+    const mRaw = Math.floor(+input.m || 0), nRaw = Math.floor(+input.n || 0);
+    const m = Math.max(1, Math.min(5, mRaw));
+    const n = Math.max(1, Math.min(7, nRaw));
+    const notes = [];
+    if(m !== mRaw || n !== nRaw) notes.push('演示范围 1≤m≤5、1≤n≤7，超出已截取');
+
+    // 真实跑一遍（与 Python 同逻辑）：null = 还没填
+    const dp = [];
+    for(let r = 0; r < m; r++) dp.push(new Array(n).fill(null));
+
+    /* ---- 绘制（o 全是帧生成那一刻的快照，铁律 5） ---- */
+    const disp = () => dp.map(row => row.map(x => x == null ? '·' : x));
+    const doneSt = () => {
+      const st = {};
+      for(let r = 0; r < m; r++) for(let c = 0; c < n; c++) if(dp[r][c] != null) st[r + ',' + c] = 'done';
+      return st;
+    };
+    const draw = (o) => (v) => {
+      v.grid('dp', o.mat, {
+        label:'DP 表 <code>dp</code>　·　<code>dp[r][c]</code> = 从 (0,0) 走到 (r,c) 的走法数　·　' + o.note,
+        states:o.st || {}
+      });
+      if(o.vars) v.vars('vars', o.vars, {label:'当前变量', hl:o.hlv || []});
+      if(o.res !== undefined) v.result(o.res, {label:'返回结果'});
+    };
+
+    F.push({hl:[1,2,3], tag:'题意与开表', cls:'t-grey',
+      msg:'机器人从 (0,0) 出发，每步只能 <b>向右</b> 或 <b>向下</b>，要数清走到 (' + (m - 1) + ',' + (n - 1) + ') 共有几种走法——岔路一多硬掰手指必漏，所以开一张 ' + m + '×' + n + ' 的 dp 表逐格记数（· = 还没填）。核心公式：<b>到任何格 = 到它上格 + 到它左格</b>。为什么到一格只有"从上来 / 从左来"两种方式、还敢直接相加？最后一步要么从上格<b>向下</b>一步、要么从左格<b>向右</b>一步，不能斜走不能跳，所以"全部路径"恰好被切成"从上来的"和"从左来的"两堆——两堆的最后一步不同、没有公共成员，加起来就是不重不漏的总数。' + (notes.length ? '（' + notes.join('；') + '）' : ''),
+      do: draw({mat:disp(), note:'· = 还没填', vars:{m:m, n:n}})});
+
+    for(let c = 0; c < n; c++){
+      dp[0][c] = 1;                                   // 真实更新
+      F.push({hl:[4,5], tag:'填第一行', cls:'t-blue',
+        msg:'第一行 (0,' + c + ')' + (c === 0 ? '是起点自己：站在这里只有"原地不动"这 1 种方式' : '再往上就出界、没有"上格"可来，唯一来路是从起点一路向右，路线只有一条') + ' → dp[0][' + c + '] = <b>1</b>。别小看这些边上的 1：主公式要同时读上、左两格，第一行没有上格、第一列没有左格，只能先各填 1 当<b>地基</b>——地基不铺好，里面任何一格都开不了工。画面上当前格亮橙，已定格的格子转绿。',
+        do: draw({mat:disp(), note:'绿 = 已定格', st:Object.assign(doneSt(), {[0 + ',' + c]:'active'}),
+                  vars:{r:0, c:c, ['dp[0][' + c + ']']:1}, hlv:['dp[0][' + c + ']']})});
+    }
+
+    for(let r = 0; r < m; r++){
+      dp[r][0] = 1;                                   // 真实更新
+      F.push({hl:[6,7], tag:'填第一列', cls:'t-blue',
+        msg:'第一列 (' + r + ',0) 再往左就出界、没有"左格"可来，唯一来路是一路向下，路线只有一条 → dp[' + r + '][0] = <b>1</b>' + (r === 0 ? '（(0,0) 是起点，原地不动算 1 种，再盖一遍章）' : '') + '。至此两条边铺完：中间任何格子都能在表里查到自己的上、左两个来源，主公式可以开工了。',
+        do: draw({mat:disp(), note:'绿 = 已定格', st:Object.assign(doneSt(), {[r + ',0']:'active'}),
+                  vars:{r:r, c:0, ['dp[' + r + '][0]']:1}})});
+    }
+
+    for(let r = 1; r < m; r++){
+      for(let c = 1; c < n; c++){
+        const a = dp[r - 1][c], b = dp[r][c - 1];     // 快照：两个来源值
+        F.push({hl:[8,9], tag:'到 (r,c)=(' + r + ',' + c + ')', cls:'t-orange',
+          msg:'轮到 (' + r + ',' + c + ')，先读两个来源：上格 dp[' + (r - 1) + '][' + c + '] = ' + a + '、左格 dp[' + r + '][' + (c - 1) + '] = ' + b + '（两个来源格亮蓝、当前格亮橙）。为什么只看这两格、还敢直接加？最后一步只能"从上格向下"或"从左格向右"，没有第三种来路，全部路径恰好分成这两堆；两堆的最后一步不同、没有公共路径，所以 ' + a + ' + ' + b + ' 不重不漏。',
+          do: draw({mat:disp(), note:'蓝 = 来源格', st:Object.assign(doneSt(), {
+                    [(r - 1) + ',' + c]:'in', [r + ',' + (c - 1)]:'in', [r + ',' + c]:'active'}),
+                    vars:{r:r, c:c, 'dp[r-1][c]':a, 'dp[r][c-1]':b}})});
+        dp[r][c] = a + b;                             // 真实更新
+        F.push({hl:[10], tag:'写入', cls:'t-green',
+          msg:'<code>dp[' + r + '][' + c + '] = ' + a + ' + ' + b + ' = ' + (a + b) + '</code>，定格：到 (' + r + ',' + c + ') 共 <b>' + (a + b) + '</b> 种走法，其中 ' + a + ' 条从 (' + (r - 1) + ',' + c + ') 下来、' + b + ' 条从 (' + r + ',' + (c - 1) + ') 过来。就像数到某会场的路线——走高速的、走省道的分开各数各的，最后相加；DP 用这招把"数完全部路径"这个指数级的活，拆成每格一次加法。',
+          do: draw({mat:disp(), note:'绿 = 已定格', st:Object.assign(doneSt(), {
+                    [(r - 1) + ',' + c]:'in', [r + ',' + (c - 1)]:'in'}),
+                    vars:{r:r, c:c, ['dp[' + r + '][' + c + ']']:a + b}, hlv:['dp[' + r + '][' + c + ']']})});
+      }
+    }
+
+    F.push({hl:[11], tag:'返回', cls:'t-dark',
+      msg:'全表填完，<code>return dp[' + (m - 1) + '][' + (n - 1) + '] = ' + dp[m - 1][n - 1] + '</code> 🎉 紫色终点格里的数，就是 ' + m + '×' + n + ' 网格的全部走法。复盘：每格只做一次加法，时间 O(m×n)；每格只依赖上、左两个"更早算好"的格子，所以按行从左上往右下填，永远不缺原料——这就是计数型 DP 的全部秘密。',
+      do: draw({mat:disp(), note:'紫 = 终点', st:Object.assign(doneSt(), {[(m - 1) + ',' + (n - 1)]:'target'}),
+                vars:{['dp[' + (m - 1) + '][' + (n - 1) + ']']:dp[m - 1][n - 1]}, res:dp[m - 1][n - 1]})});
+    return F;
+  }
+});
+</script>
+</body>
+</html>

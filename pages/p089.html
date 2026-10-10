@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P089 · 最长有效括号 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/progress.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 89, num: 32, title: '最长有效括号', diff: '困难', cat: '动态规划',
+  method: 'longestValidParentheses',
+
+  lede: '题目：在只含 <code>(</code> 和 <code>)</code> 的字符串里找<b>连续</b>的有效括号子串，返回它的长度（如 <code>)()())</code> 里 <code>()()</code> 最长，答案是 4）。' +
+        '动画里 <span class="var o">dp[i]</span> 表示"<b>必须以 i 结尾</b>的有效串有多长"——只有 <code>)</code> 才配当结尾：' +
+        '<span class="var i">j = i − dp[i−1] − 1</span> 先跳过 dp[i−1] 那段，再看 <code>s[j]</code> 是不是 <code>(</code>；配上了就把中间整段、这一对、以及 <code>(</code> 左边挂着的有效段<b>接龙缝合</b>。',
+
+  roles: [
+    {c:'orange', code:'i',     text:'正在确定 dp[i]：以 s[i] 结尾的最长有效长度'},
+    {c:'blue',   code:'j',     text:'跳过 dp[i−1] 那段后，找来配对的 <code>(</code> 位置'},
+    {c:'green',  code:'有效段', text:'已确认有效的字符（绿色）'},
+    {c:'violet', code:'接龙',  text:'把 <code>(</code> 左边的有效段也拼上来'},
+    {c:'grey',   code:'dp=0',  text:'以它结尾凑不出有效段'}
+  ],
+
+  codeTitle: '跟着高亮读代码——第 9 行变<span style="color:var(--green)">绿</span>＝s[j] 正好是 <code>(</code>，配对成功；变<span style="color:var(--red)">红</span>＝配不上或越界，dp[i] 保持 0。',
+
+  legend: [
+    {c:'orange', text:'s[i] / dp[i] 当前'},
+    {c:'blue',   text:'s[j] 找来配对的 ('},
+    {c:'green',  text:'有效段内的字符'},
+    {c:'violet', text:'接龙拼上左边一段'}
+  ],
+
+  idea: 'dp[i] 只在 s[i] 为 ) 时可能非 0：j = i − dp[i−1] − 1 跳过前面整段有效串去找 (，配上就 dp[i] = dp[i−1] + 2 + dp[j−1]，答案取全表最大。',
+
+  qa: [
+    {q:'为什么 j = i − dp[i−1] − 1？',
+     a:'如果 s[i−1] 结尾已经拖着一段长 dp[i−1] 的有效串，它必须<b>整体</b>跟更前面的一个 <code>(</code> 配对。跳过这一段，j 就落在"_candidate 左括号"的位置上：s[j] 是 <code>(</code> 则配对成功。这个式子把"紧挨着的 ()"和"嵌套的 ((...))"两种情况统一了——s[i−1] 是 ( 时 dp[i−1] = 0，j 正好就是 i−1 自己。'},
+    {q:'dp[j−1] 那步在拼什么？',
+     a:'配对成功后，<code>(</code> 的<b>左边</b>可能还挂着一段有效串（比如 <code>()(())</code> 里最后的 <code>)</code> 配完对，左边还躺着 <code>()</code>）。它们紧挨着、能连成一段更长的，所以 dp[i] += dp[j−1] 缝上去——这就是"接龙"。'},
+    {q:'为什么答案不能只看 dp[n−1]？',
+     a:'dp[i] 只统计"以 i 结尾"的长度，而最长有效串可能停在中间（如 <code>()()</code> 后面跟个 <code>(</code>）。所以边填表边用 best 记录历史最大，最后 return best 才稳。'},
+    {q:'复杂度？',
+     a:'每个位置只往前跳一步做 O(1) 判断：时间 O(n)；dp 数组长 n，空间 O(n)。栈解法同样 O(n)，但 dp 的转移式更能讲清"段与段怎么缝合"。'}
+  ],
+
+  complexity: '时间 O(n)　·　空间 O(n)（dp 表）',
+
+  form: [
+    {key:'s', label:'s', type:'str', maxLength:8, def:')()())'}
+  ],
+  presets: [
+    {label:')()()) → 4', values:{s:')()())'}},
+    {label:'()(()) → 6（接龙缝合）', values:{s:'()(())'}},
+    {label:'((())) → 6（嵌套配对）', values:{s:'((()))'}},
+    {label:'(((( → 0（边界：全是左括号）', values:{s:'(((('}}
+  ],
+
+  code: `class Solution:
+    def longestValidParentheses(self, s):
+        n = len(s)
+        dp = [0] * n                  # dp[i]: 以 s[i] 结尾的最长有效长度
+        best = 0
+        for i in range(1, n):         # 逐个位置看"以它结尾"能多长
+            if s[i] == ')':           # 有效段一定以 ')' 收尾
+                j = i - dp[i - 1] - 1   # 跳过 dp[i-1] 那段, 找配对的 '('
+                if j >= 0 and s[j] == '(':
+                    dp[i] = dp[i - 1] + 2   # 中间整段 + 这一对
+                    if j >= 1:
+                        dp[i] += dp[j - 1]  # '(' 左边还挂着一段? 拼上
+                if dp[i] > best:
+                    best = dp[i]      # 记录全局最长
+        return best
+`,
+
+  sol(input){
+    const s = String(input.s == null ? '' : input.s);
+    const n = s.length;
+    const dp = new Array(n).fill(0);
+    let best = 0;
+    for(let i = 1; i < n; i++){
+      if(s[i] === ')'){
+        const j = i - dp[i - 1] - 1;
+        if(j >= 0 && s[j] === '('){
+          dp[i] = dp[i - 1] + 2;
+          if(j >= 1) dp[i] += dp[j - 1];
+        }
+        if(dp[i] > best) best = dp[i];
+      }
+    }
+    return best;
+  },
+  expected: 4,
+
+  quiz: [
+    {q:'dp[i] 的定义为什么要强调「以 s[i] 结尾」?',
+     options:['这样每个 i 只算一次,答案取全表最大值即可','只是习惯写法,定义成"前 i 个里的最长"也一样能算','因为题目要求返回结尾位置'],
+     answer:0,
+     explain:'"以 i 结尾"给了 dp 一个可递推的接口:配对成功时,d[前面的段] 能直接缝到 i 后面。若定义成"前 i 个里的最长"(全局),配对信息就断了——没法从 dp[i−1] 推 dp[i]。全局答案用 best 顺手记,两者不冲突。',
+     jumpTo:1},
+    {q:'s[i] 是右括号时,为什么找配对要看 j = i − dp[i−1] − 1 这个位置?',
+     options:['j 是随机挑的一个位置','要先跳过紧挨着的有效段 dp[i−1],它整段要被包进这对括号里,能与新 ) 配对的 ( 只能再往前找一格','因为 j 永远等于 i−2'],
+     answer:1,
+     explain:'如果 s[i−1] 结尾已有长 dp[i−1] 的有效段(如 "…()"),那这个 ) 想配对的 ( 必须站在这一段的紧前面——中间不能有空隙,否则就不连续了。所以先跳过 dp[i−1] 个字符,再看 j 位置是不是 (。',
+     jumpTo:6},
+    {q:'配对成功后,为什么还要再加上 dp[j−1]?',
+     options:['凑个更大的数而已,不加也对','( 和 ) 配上的只是中间那段+这一对;j 左边若还挂着一段有效串(如 "(())()" 的开头),不接上就会算短','题目要求返回两段之和'],
+     answer:1,
+     explain:'以 ")()()()" 类场景为例:中间段和这一对缝合后,j 左边的有效串与它是紧挨着的,拼起来仍是以 i 结尾的合法有效串。漏加 dp[j−1] 就会把两段本该连体的有效串拆开算——这正是"接龙"一步存在的意义。',
+     jumpTo:9},
+  ],
+
+  steps(input){
+    const F = [];
+    let s = String(input.s == null ? '' : input.s);
+    const notes = [];
+    if(s.length > 8){ s = s.slice(0, 8); notes.push('串太长，画面只取前 8 个字符演示'); }
+    const n = s.length;
+    const chars = s.split('');
+    const dp = new Array(n).fill(0);
+    let best = 0;
+
+    /* ---- 绘制（o 全是帧生成那一刻的快照，铁律 5） ---- */
+    const draw = (o) => (v) => {
+      v.arr('s', chars, {
+        label:'字符串 <code>s</code>　·　绿 = 有效段内的字符',
+        quotes:true, states:o.sst || {}, markers:o.smk || [], idxCls:o.six || {}
+      });
+      v.arr('dp', o.dpd, {
+        label:'DP 表 <code>dp</code>　·　<code>dp[i]</code> = 以 s[i] 结尾的最长有效长度',
+        cw:42, states:o.dst || {}, markers:o.dmk || [], idxCls:o.dix || {}
+      });
+      if(o.vars) v.vars('vars', o.vars, {label:'当前变量', hl:o.hlv || []});
+      if(o.res !== undefined) v.result(o.res, {label:'返回结果'});
+    };
+    // s 状态：当前 i active、j in、有效段 done（快照函数，调用即定格）
+    const mkS = (cur, j, len) => {
+      const st = {};
+      if(len > 0) for(let k = cur - len + 1; k <= cur; k++) if(k >= 0 && k < n) st[k] = 'done';
+      if(j != null && j >= 0 && j < n && st[j] !== 'done') st[j] = 'in';
+      if(cur != null && cur >= 0 && cur < n) st[cur] = 'active';
+      return st;
+    };
+    // dp 状态：正格 done、当前 active、j in
+    const mkD = (cur, j) => {
+      const st = {};
+      for(let k = 0; k < n; k++) if(dp[k] > 0) st[k] = 'done';
+      if(j != null && j >= 0 && j < n) st[j] = 'in';
+      if(cur != null) st[cur] = 'active';
+      return st;
+    };
+    const mi = () => ({name:'i', cls:'mi', text:'▲ i'});
+    const mj = () => ({name:'j', cls:'mr', text:'▲ j'});
+
+    F.push({hl:[1,2,3,4,5], tag:'初始化', cls:'t-grey',
+      msg:'先把定义咬清楚：<code>dp[i]</code> = <b>必须以 s[i] 结尾</b>的有效括号长度——不是全局最长！开头全 0、best = 0。左括号当不了结尾，所以只有扫到 <code>)</code> 才有戏。' + (notes.length ? '（' + notes.join('；') + '）' : ''),
+      do: draw({dpd:dp.slice(), sst:mkS(null, null, 0), dst:mkD(null, null),
+                vars:{n:n, best:best}})});
+
+    for(let i = 1; i < n; i++){
+      const c = s[i];
+      F.push({hl:[6], tag:'i=' + i, cls:'t-orange',
+        msg:'轮到 i = <b>' + i + '</b>，字符 s[' + i + '] = <code>' + LCesc(c) + '</code>。',
+        do: draw({dpd:dp.slice(), sst:mkS(i, null, dp[i]), smk:[mi()], six:{[i]:'on-i'},
+                  dst:mkD(i, null), dmk:[mi()], dix:{[i]:'on-i'},
+                  vars:{i:i, 's[i]':c, 'dp[i]':dp[i], best:best}})});
+
+      if(c !== ')'){
+        F.push({hl:[7], no:7, tag:'左括号', cls:'t-red',
+          msg:'s[' + i + '] = <code>(</code> 是左括号——有效段至少得有一对，不可能以 <code>(</code> 收尾 → dp[' + i + '] 保持 0，直接看下一个位置。',
+          do: draw({dpd:dp.slice(), sst:mkS(i, null, 0), smk:[mi()], six:{[i]:'on-i'},
+                    dst:mkD(i, null), dmk:[mi()], dix:{[i]:'on-i'},
+                    vars:{i:i, 's[i]':c, 'dp[i]':0, best:best}})});
+        continue;
+      }
+
+      F.push({hl:[7], ok:7, tag:'右括号', cls:'t-blue',
+        msg:'s[' + i + '] = <code>)</code>：结尾合格，看看能不能配出一对、再接上多长。',
+        do: draw({dpd:dp.slice(), sst:mkS(i, null, dp[i]), smk:[mi()], six:{[i]:'on-i'},
+                  dst:mkD(i, null), dmk:[mi()], dix:{[i]:'on-i'},
+                  vars:{i:i, 's[i]':c, 'dp[i-1]':dp[i - 1], best:best}})});
+
+      const jm = i - dp[i - 1] - 1;
+      F.push({hl:[8], tag:'算 j 找配对', cls:'t-ink',
+        msg:'<code>j = i − dp[i−1] − 1 = ' + i + ' − ' + dp[i - 1] + ' − 1 = ' + jm + '</code>：先跳过 dp[i−1] = ' + dp[i - 1] + ' 那段（若它已是有效段，得整体一起配），j 就落在候选左括号的位置。' +
+            (jm >= 0 ? 's[' + jm + '] = <code>' + LCesc(s[jm]) + '</code>。' : 'j = −1，前面已经没字符可看了。'),
+        do: draw({dpd:dp.slice(), sst:mkS(i, jm, dp[i]), smk:[mi(), mj()], six:{[i]:'on-i', [jm]:'on-r'},
+                  dst:mkD(i, jm), dmk:[mi(), mj()], dix:{[i]:'on-i', [jm]:'on-r'},
+                  vars:{i:i, 'dp[i-1]':dp[i - 1], j:jm}})});
+
+      const okp = jm >= 0 && s[jm] === '(';
+      F.push({hl:[9], ok: okp ? 9 : undefined, no: okp ? undefined : 9, tag:'配对检查', cls: okp ? 't-green' : 't-red',
+        msg: okp
+          ? 's[' + jm + '] = <code>(</code>，正好和 s[' + i + '] = <code>)</code> 配成一对！中间夹的 dp[i−1] 那段也跟着整体有效。'
+          : (jm < 0
+              ? 'j = −1 越界：这个 <code>)</code> 前面已经顶到头，没有多余的 <code>(</code> 可配 → dp[' + i + '] = 0。'
+              : 's[' + jm + '] = <code>' + LCesc(s[jm]) + '</code> 不是 <code>(</code>（它是之前被消耗掉的右括号）→ 配不上，dp[' + i + '] = 0。'),
+        do: draw({dpd:dp.slice(), sst:mkS(i, jm, dp[i]), smk:[mi(), mj()], six:{[i]:'on-i', [jm]:'on-r'},
+                  dst:mkD(i, jm), dmk:[mi(), mj()], dix:{[i]:'on-i', [jm]:'on-r'},
+                  vars:{i:i, j:jm, 's[j]':jm >= 0 ? s[jm] : '越界'}})});
+
+      if(okp){
+        const v1 = dp[i - 1] + 2;
+        dp[i] = v1;                                   // 真实更新
+        F.push({hl:[10], tag:'配对成功', cls:'t-green',
+          msg:'<code>dp[i] = dp[i−1] + 2 = ' + dp[i - 1] + ' + 2 = ' + v1 + '</code>：中间那段 + 这一对括号，以 i 结尾的有效长度先记 <b>' + v1 + '</b>。',
+          do: draw({dpd:dp.slice(), sst:mkS(i, null, dp[i]), smk:[mi()], six:{[i]:'on-i'},
+                    dst:mkD(i, null), dmk:[mi()], dix:{[i]:'on-i'},
+                    vars:{i:i, 'dp[i-1]':dp[i - 1], 'dp[i]':dp[i]}, hlv:['dp[i]']})});
+
+        if(jm >= 1){
+          const add = dp[jm - 1];
+          dp[i] += add;                               // 真实更新
+          F.push({hl:[11,12], ok:11, tag:'接龙缝合', cls:'t-violet',
+            msg:'j = ' + jm + ' ≥ 1，<code>(</code> 的左边还挂着长 <code>dp[j−1] = dp[' + (jm - 1) + '] = ' + add + '</code> 的有效串 → <b>拼上！</b>dp[' + i + '] = ' + v1 + ' + ' + add + ' = <b>' + dp[i] + '</b>。一对括号把左右两段有效串缝合成更长的一段——这就是"接龙"。' + (add === 0 ? '（这次加的是 0：左边那格还没攒下有效段，但缝合逻辑一步没少。）' : ''),
+            do: draw({dpd:dp.slice(), sst:mkS(i, null, dp[i]), smk:[mi()], six:{[i]:'on-i'},
+                      dst:mkD(i, null), dmk:[mi()], dix:{[i]:'on-i'},
+                      vars:{i:i, 'dp[j-1]':add, 'dp[i]':dp[i]}, hlv:['dp[i]']})});
+        } else {
+          F.push({hl:[11], no:11, tag:'到头了', cls:'t-grey',
+            msg:'j = 0：<code>(</code> 已经顶到串头，左边没有字符可拼 → dp[' + i + '] 就定在 ' + dp[i] + '。',
+            do: draw({dpd:dp.slice(), sst:mkS(i, null, dp[i]), smk:[mi()], six:{[i]:'on-i'},
+                      dst:mkD(i, null), dmk:[mi()], dix:{[i]:'on-i'},
+                      vars:{i:i, 'dp[i]':dp[i]}})});
+        }
+      }
+
+      const imp = dp[i] > best;
+      F.push({hl:[13], ok: imp ? 13 : undefined, no: imp ? undefined : 13, tag:'刷新 best', cls: imp ? 't-green' : 't-ink',
+        msg: imp
+          ? 'dp[' + i + '] = ' + dp[i] + '，超过了 best = ' + best + ' → 全局最长要刷新！'
+          : 'dp[' + i + '] = ' + dp[i] + '，没超过 best = ' + best + ' → best 不动。',
+        do: draw({dpd:dp.slice(), sst:mkS(i, null, dp[i]), smk:[mi()], six:{[i]:'on-i'},
+                  dst:mkD(i, null), dmk:[mi()], dix:{[i]:'on-i'},
+                  vars:{i:i, 'dp[i]':dp[i], best:best}})});
+      if(imp){
+        best = dp[i];                                 // 真实更新
+        F.push({hl:[14], tag:'best=' + best, cls:'t-green',
+          msg:'<code>best = ' + best + '</code>。best 随时记、随时更——最长有效串可能停在任何位置，不能只看最后一格。',
+          do: draw({dpd:dp.slice(), sst:mkS(i, null, dp[i]), smk:[mi()], six:{[i]:'on-i'},
+                    dst:mkD(i, null), dmk:[mi()], dix:{[i]:'on-i'},
+                    vars:{i:i, best:best}, hlv:['best']})});
+      }
+    }
+
+    let e = -1;
+    for(let k = 0; k < n; k++) if(best > 0 && dp[k] === best) e = k;
+    F.push({hl:[15], tag:'返回', cls:'t-dark',
+      msg: best > 0
+        ? '全表填完，<code>return best = ' + best + '</code> 🎉 最长有效括号串是 <b>' + LCesc(s.slice(e - best + 1, e + 1)) + '</b>（位置 ' + (e - best + 1) + ' ~ ' + e + '），dp 表里以它结尾那格正好记着 ' + best + '。'
+        : '全表填完 best 还是 0 → <code>return 0</code>：整串里一对有效括号都凑不出来。',
+      do: draw({dpd:dp.slice(), sst:mkS(e, null, best), dst:mkD(e, null),
+                vars:{best:best}, res:best})});
+    return F;
+  }
+});
+</script>
+</body>
+</html>

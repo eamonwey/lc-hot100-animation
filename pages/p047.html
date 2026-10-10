@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P047 · 路径总和 III · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/progress.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+/* 本地布局：默认树有 11 个节点，把格距收紧一点避免溢出。
+   孩子关系用 left/right 取（与校验器一致），不用 2i+1 下标公式。 */
+function layoutLC(T){
+  const CELLW = 42, GAPX = 16, ROWH = 68, pad = 6;
+  const byKey = {}; T.nodes.forEach(n => byKey[n.key] = n);
+  const nodes = [], edges = [];
+  if(T.root == null) return {nodes, edges, w:120, h:60};
+  let maxD = 0, counter = 0;
+  (function rec(k, d){
+    const nd = byKey[k];
+    if(nd.left != null) rec(nd.left, d + 1);
+    nodes.push({key:k, val:nd.val, x: pad + counter * (CELLW + GAPX), y: pad + d * ROWH,
+                leaf: nd.left == null && nd.right == null});
+    counter++; maxD = Math.max(maxD, d);
+    if(nd.right != null) rec(nd.right, d + 1);
+  })(T.root, 0);
+  T.nodes.forEach(n => {
+    if(n.left != null) edges.push([n.key, n.left]);
+    if(n.right != null) edges.push([n.key, n.right]);
+  });
+  return {
+    nodes, edges,
+    w: Math.max(120, pad * 2 + T.nodes.length * (CELLW + GAPX) - GAPX),
+    h: Math.max(60, pad * 2 + (maxD + 1) * ROWH)
+  };
+}
+
+LC.register({
+  order: 47, num: 437, title: '路径总和 III', diff: '中等', cat: '二叉树',
+  method: 'pathSum',
+
+  lede: '题目：数一数树里有几条<b>向下</b>的路径，和恰好等于 <span class="var r">targetSum</span>（不要求从根出发、也不要求到叶子）。' +
+        '暴力枚举每条路径是 O(n²)。聪明办法是<b>前缀和 + 哈希计数</b>：从根往下走，<span class="var i">cur</span> 记"根到当前节点"的和；' +
+        '如果之前有个前缀和 = <code>cur − target</code>，那两 prefix 之间那段路就恰好凑出 target。' +
+        '哈希表 <span class="var o">cnt</span> 记每个前缀和出现过几次，<b>离开子树时回溯注销</b>，保证表里只有"当前路上"的前缀。',
+
+  roles: [
+    {c:'orange', code:'active', text:'当前走到的节点'},
+    {c:'blue',   code:'in',     text:'当前路径上的祖先'},
+    {c:'violet', code:'target', text:'凑出 target 的那一段'},
+    {c:'green',  code:'cnt',    text:'cnt：前缀和 → 出现次数'}
+  ],
+
+  codeTitle: '跟着高亮读代码——第 10 行是灵魂：<code>cnt[cur − target]</code> 有几个，就几条路径在此收口；第 14 行回溯（次数 −1）保证 cnt 只装"当前这条路"的记忆。',
+
+  legend: [
+    {c:'orange', text:'当前节点 cur'},
+    {c:'violet', text:'命中：suffix 段和 = target'},
+    {c:'green', text:'cnt 哈希表（前缀和计数）'}
+  ],
+
+  idea: '像"和为 K 的子数组"在树上重演：cur 是前缀和，cnt 记每个前缀出现过几次，cnt[cur − target] 就是到此节点收口、和为 target 的路径条数；回溯时注销。',
+
+  qa: [
+    {q:'cnt[cur − target] 为什么就是路径条数？',
+     a:'设路径 sum(a→b) = prefix(b) − prefix(a 的前驱)。要它等于 target，就是 prefix(a 的前驱) = prefix(b) − target = cur − target。这样的"老前缀"在 cnt 里有几个，以当前节点结尾的和为 target 的路径就有几条——一查表全出来。'},
+    {q:'为什么表里要先放 {0: 1}？',
+     a:'0 代表"空前缀"（什么都还没走）。当 cur 本身就等于 target 时，cur − target = 0 能查到它 → "从根到当前节点"这一整条也被算作一条合法路径。没有这个哨兵就会漏数从根开始的路径。'},
+    {q:'回溯 cnt[cur] -= 1 到底在撤什么？',
+     a:'DFS 走完某个子树回到父节点时，那个子树的前缀已经<b>不在当前路径上</b>了。cnt 应该只装"根到当前节点这条路"上的前缀，所以离开就把计数减回去——不然会把拐进别家子树的前缀错算成邻居。'},
+    {q:'为什么这题必须用"次数"而不是"是否存在"？',
+     a:'前缀和可能重复（比如路径上有 0 或正负抵消）。同一个前缀值出现 3 次，就意味着 3 条不同的起点，都能和当前节点拼出 target——所以存次数、答案加 cnt[cur − target] 而不是 +1。'}
+  ],
+
+  complexity: '时间 O(n)（每节点进出各一次，查表 O(1)）　·　空间 O(n)（哈希表 + 递归栈 O(h)）',
+
+  form: [
+    {key:'root', label:'root', type:'tree', def:[10,5,-3,3,2,null,11,3,-2,null,1]},
+    {key:'targetSum', label:'targetSum', type:'num', def:8}
+  ],
+  presets: [
+    {label:'默认树 target=8 → 3 条', values:{root:[10,5,-3,3,2,null,11,3,-2,null,1], targetSum:8}},
+    {label:'[1,2,3] target=3 → 2 条', values:{root:[1,2,3], targetSum:3}},
+    {label:'右链 [1,null,2,null,3] target=3', values:{root:[1,null,2,null,3], targetSum:3}},
+    {label:'单节点 [5] target=5', values:{root:[5], targetSum:5}}
+  ],
+
+  code: `class Solution:
+    def pathSum(self, root, targetSum):
+        cnt = {0: 1}                  # 前缀和 -> 出现次数(空前缀哨兵)
+        ans = 0
+        def go(node, cur):            # cur = 根一路走到 node 的和
+            nonlocal ans
+            if not node:
+                return
+            cur += node.val           # 走到 node, 更新前缀和
+            ans += cnt.get(cur - targetSum, 0)   # 能凑出 target 的老前缀
+            cnt[cur] = cnt.get(cur, 0) + 1       # 登记当前前缀
+            go(node.left, cur)        # 左子树里继续找
+            go(node.right, cur)       # 右子树里继续找
+            cnt[cur] -= 1             # 回溯: 注销前缀(只留当前路)
+        go(root, 0)
+        return ans
+`,
+
+  sol(input){
+    const T = Viz.parseTree(input.root || []);
+    const byKey = {}; T.nodes.forEach(n => byKey[n.key] = n);
+    const target = input.targetSum;
+    const cnt = new Map([[0, 1]]);
+    let ans = 0;
+    (function go(k, cur){
+      if(k == null) return;
+      cur += byKey[k].val;
+      ans += cnt.get(cur - target) || 0;
+      cnt.set(cur, (cnt.get(cur) || 0) + 1);
+      go(byKey[k].left, cur);
+      go(byKey[k].right, cur);
+      cnt.set(cur, cnt.get(cur) - 1);
+    })(T.root, 0);
+    return ans;
+  },
+  expected: 3,
+
+  quiz: [
+    {q:'本题的「路径」要满足什么条件?',
+     options:['必须从根出发、到叶子结束','方向必须向下(父→子),但不要求从根出发、也不要求到叶子——树上任何"向下的一段"都算','可以左一下右一下折着走,只要总和恰好等于 targetSum'],
+     answer:1,
+     explain:'和路径总和 I/II 不同:起点、终点都任意,唯一约束是只能沿父→子方向走,不能折返。默认树的第一条命中 5→3 既不从根开始、也不到叶子,照样算数。正因为起终点自由,暴力枚举所有 (起点, 终点) 对是 O(n²);前缀和+哈希把"找起点"变成一步查表,整体降到 O(n)。',
+     jumpTo:13},
+    {q:'把输入换成树 [1,2,3]、targetSum=3,返回几条?',
+     options:['1','2','3'],
+     answer:1,
+     explain:'恰好 2 条:①1→2(1+2=3);②节点 3 自己单独成路(3)。走一遍算法:节点 1,cur=1,查 cnt[1−3=−2] 未中,登记 1;节点 2,cur=3,查 cnt[3−3=0] 命中哨兵 → "从根到 2"整条算 1 条,登记 3;节点 3,cur=3,查 cnt[0]=1 → 又 1 条。若忘了放哨兵 {0:1},这两条从 cur=target 情形收口的路径全会漏数——哨兵代表"空前缀",专门接住"从根开始"的路径。',
+     jumpTo:61},
+    {q:'DFS 回溯时的 cnt[cur] -= 1 到底在撤什么?不撤会怎样?',
+     options:['纯粹为了给哈希表省内存','把"已离开当前路径"的前缀请出表:否则拐进另一棵子树时,外人的前缀会被误认成路上的老前缀,数出不存在的跨子树路径','没有实际作用,删掉结果完全一样'],
+     answer:1,
+     explain:'cnt 的铁律是只装"根到当前节点这一条路"上的前缀。走完左子树回到父节点时,左子树的前缀已不在路上——马上要拐进右子树,右子树节点和左子树毫无祖先关系,左子树的前缀若赖在表里,右子树做减法时会把它当成"路上的老前缀",凭空数出跨子树的假路径。逐个注销,等于给每棵子树一个干净的表。',
+     jumpTo:22},
+  ],
+
+  steps(input){
+    const F = [];
+    const T = Viz.parseTree(input.root || []);
+    const t = layoutLC(T);
+    const byKey = {}; T.nodes.forEach(n => byKey[n.key] = n);
+    const target = input.targetSum;
+    const cnt = new Map([[0, 1]]);
+    let ans = 0;
+    let callSeq = 0;
+
+    const pathKeys = [];    // 当前路径节点 key
+    const pathSums = [];    // 对应前缀和
+
+    const cntSnap = () => Array.from(cnt.entries());
+    const nm = k => '节点' + LCesc(String(byKey[k].val));
+    const sufOf = need => {           // 最深的 i < 末尾 使 pathSums[i] === need → 之后那段即命中段
+      for(let i = pathSums.length - 2; i >= 0; i--){
+        if(pathSums[i] === need) return i;
+      }
+      return -1;                      // -1 = 命中段从根开始(对应哨兵前缀 0)
+    };
+    const pathHtml = sufStart => {    // sufStart: 命中段起点下标(-1 不高亮)
+      return pathKeys.map((k, i) => {
+        const piece = LCesc(String(byKey[k].val)) + ' <small>(' + pathSums[i] + ')</small>';
+        return i > sufStart ? '<span style="color:var(--violet);font-weight:700">' + piece + '</span>' : piece;
+      }).join(' <span style="color:#a8a496">→</span> ');
+    };
+
+    /* ★ 快照原则：cnt/ans/path/suffix 全部在 push 那一刻切片定死，do() 只读快照 o */
+    const draw = o => (v) => {
+      const states = {};
+      (o.path || []).forEach(k => { if(states[k] == null) states[k] = 'in'; });
+      (o.suf || []).forEach(k => { states[k] = 'target'; });
+      if(o.cur != null) states[o.cur] = 'active';
+      const tags = {};
+      if(o.cur != null) tags[o.cur] = {text:'cur=' + o.curSum, cls:'mi'};
+      v.tree('T', t, {label:'二叉树　·　紫 = 恰好凑出 target 的那一段', states, tags});
+      v.map('cnt', o.cnt, {label:'<code>cnt</code>　·　前缀和 → 出现次数', hlK:o.hlK});
+      if(o.vars) v.vars('vars', o.vars, {label:'变量', hl:o.hlVars || []});
+      if(o.pathHtml != null) v.text('path', o.pathHtml, {html:true, label:'当前路径　·　括号里是前缀和'});
+      if(o.result != null) v.result(o.result, {label:'路径总数 ans'});
+    };
+
+    function go(kk, cur, frames){
+      const id = 'c' + (++callSeq);
+      const stack = frames.concat([{key:id, val:'go(' + (kk == null ? '空' : String(byKey[kk].val)) + ',' + cur + ')'}]);
+      const base = extra => Object.assign({
+        cnt: cntSnap(), ans, path: pathKeys.slice(), pathHtml: pathHtml(-1), curSum: cur
+      }, extra || {});
+      if(kk == null){
+        F.push({hl:[7,8], ok:7, tag:'递归出口', cls:'t-grey',
+          msg:'<code>go(空)</code> → 直接返回：空位不是节点，不产生前缀、也不产生路径，cnt 和 ans 原封不动。这条出口保证：只有真实存在的节点才配进表、才有资格收口一条路径。',
+          do: draw(base())});
+        return;
+      }
+      F.push({hl:[7,8], no:7, tag:'进入子树', cls:'t-blue',
+        msg:'进入 <b>go(' + nm(kk) + ', cur=' + cur + ')</b>：从父亲手里接过前缀和 cur=' + cur + '（根走到父亲为止的累加和）。节点存在 → 先把自己的值加进去，得到"根到' + nm(kk) + '"的前缀和。画面：调用栈压入新的一层。',
+        do: draw(base({stack}))});
+
+      cur += byKey[kk].val;
+      pathKeys.push(kk);
+      pathSums.push(cur);
+      F.push({hl:[9], tag:'更新前缀和', cls:'t-ink',
+        msg:'<code>cur += ' + byKey[kk].val + '</code> → <b>cur = ' + cur + '</b>：这就是"根一路加到' + nm(kk) + '"的前缀和，树上每往下走一步只做一次加法。为什么它是主角？任意一段向下路径的和 = 两个前缀和相减——待会儿全靠减法破案。画面：节点头顶标 cur=' + cur + '，右侧路径面板同步记下这一站。',
+        do: draw(base({stack, cur:kk, curSum:cur, vars:{cur:cur, ans:ans}, hlVars:['cur']}))});
+
+      const need = cur - target;
+      const c = cnt.get(need) || 0;
+      const hit = c > 0;
+      const sIdx = hit ? sufOf(need) : -1;
+      ans += c;
+      const sufKeys = hit ? pathKeys.slice(sIdx + 1) : [];
+      F.push({hl:[10], ok: hit ? 10 : undefined, no: hit ? undefined : 10,
+        tag: hit ? '命中 ' + c + ' 条!' : '查表未中', cls: hit ? 't-violet' : 't-red',
+        msg: hit
+          ? '<code>cnt[cur − target] = cnt[' + need + ']</code> 有 <b>' + c + '</b> 个 → 命中 ' + c + ' 条！一步减法破案：路径和 = 现在前缀 − 老前缀 = ' + cur + ' − ' + need + ' = ' + target + '。' +
+            (sIdx >= 0
+              ? '老前缀 ' + need + ' 记在当前路径的' + nm(pathKeys[sIdx]) + '头上 → 从 ' + LCesc(String(byKey[sufKeys[0]].val)) + ' 一路到' + nm(kk) + '，这段 ' + sufKeys.map(k => LCesc(String(byKey[k].val))).join('→') + ' 恰好凑出 ' + target + '。'
+              : '老前缀 ' + need + ' 只能是哨兵 0 → 从根一路到' + nm(kk) + '，整条路径恰好凑出 ' + target + '。') +
+            '<code>ans += ' + c + '</code> → <b>ans = ' + ans + '</b>。画面：紫色格子就是刚被翻出来的那段路。'
+          : '<code>cnt[' + need + ']</code> 不在表里（cur=' + cur + '，target=' + target + '）→ ans 不变。为什么没中就等于没路径？想以' + nm(kk) + '结尾凑出 ' + target + '，必须有一位"老前缀 = cur − target = ' + need + '"等在当前路上——表里没有，说明一条也凑不出。查表只花 O(1)，这就是整套算法快的原因。',
+        do: draw(base({stack, cur:kk, curSum:cur, suf: sufKeys, hlK: String(need),
+                       vars:{cur:cur, 'cur−target': need, ans:ans}, hlVars:['ans'],
+                       pathHtml: pathHtml(sIdx)}))});
+
+      cnt.set(cur, (cnt.get(cur) || 0) + 1);
+      F.push({hl:[11], tag:'登记前缀', cls:'t-green',
+        msg:'<code>cnt[' + cur + '] += 1</code>：把当前前缀 ' + cur + ' 登记进表（现在出现 ' + cnt.get(cur) + ' 次）。顺序有讲究：先查 <code>cnt[cur − target]</code> 再登记 cur——保证"老前缀"严格排在当前节点之前，不会把自己错算成自己的老前缀、数出假路径。往后任何子孙做减法时，都能查到这份账。',
+        do: draw(base({stack, cur:kk, curSum:cur, hlK:String(cur),
+                       vars:{cur:cur, ans:ans}, hlVars:['cur']}))});
+
+      go(byKey[kk].left, cur, stack);
+      if(byKey[kk].left != null){
+        F.push({hl:[12], tag:'左边回来', cls:'t-ink',
+          msg: nm(kk) + ' 的左子树全部找完，回到 ' + nm(kk) + '。cnt 现在只剩"根到' + nm(kk) + '这条主路"上的前缀——属于左子树的前缀已被逐个注销（回溯干的活）。这一步是正确性的命门：马上要拐进右子树，右子树节点和左子树<b>没有祖先关系</b>，左子树的前缀若还赖在表里，会被右子树误认成"路上的老前缀"，数出不存在的跨子树路径。',
+          do: draw(base({stack, cur:kk, curSum:cur}))});
+      }
+
+      go(byKey[kk].right, cur, stack);
+
+      cnt.set(cur, cnt.get(cur) - 1);
+      F.push({hl:[13,14], tag:'回溯注销', cls:'t-orange',
+        msg: byKey[kk].right != null
+          ? '右子树也找完了 → <code>cnt[' + cur + '] -= 1</code>（现在 ' + cnt.get(cur) + ' 次）：注销' + nm(kk) + '的前缀。它随递归返回就要离开当前路径，而 cnt 的铁律是<b>只装"根到当前节点"这条路上的前缀</b>——再不注销，等回溯到祖先、拐进别的子树时，外路人会把它误查成路上的老前缀。类比：退房要交房卡，房间不能一直占着。'
+          : '右边是空位 → <code>cnt[' + cur + '] -= 1</code>（现在 ' + cnt.get(cur) + ' 次）：注销' + nm(kk) + '的前缀。它的子树到头了，递归返回后它就离开当前路径——表里不能留"不在路上"的前缀，否则别的子树会把它错认成路上的老前缀。go(' + nm(kk) + ') 返回，把干净的表交还给父亲。',
+        do: draw(base({stack: frames, path: pathKeys.slice(0, -1), cur:kk, curSum: cur,
+                       hlK:String(cur), vars:{cur:cur, ans:ans}, hlVars:['ans']}))});
+      pathKeys.pop();
+      pathSums.pop();
+    }
+
+    F.push({hl:[1,2,3,4,5,6], tag:'初始化', cls:'t-grey',
+      msg:'套路 = "和为 K 的子数组"搬到树上：<b>cur 记"根一路走到这里"的前缀和，cnt 记每个前缀和出现过几次</b>。<code>cnt = {0:1}</code> 先放一个<b>空前缀哨兵</b>——0 代表"什么都还没走"：当 cur 本身就等于 ' + target + ' 时，查 cur−target=0 也得能命中，否则"从根开始"的路径会被漏数。<code>ans = 0</code>，DFS 马上出发。',
+      do: draw({cnt: cntSnap(), ans:0, path:[], vars:{cur:'-', ans:0}, pathHtml:'（还没出发）'})});
+
+    F.push({hl:[15], tag:'发起 DFS', cls:'t-blue',
+      msg:'<code>go(root, 0)</code>：前缀和从 0 起步（还没加任何节点值）。接下来盯住绿色哈希表：每一条和为 ' + target + ' 的向下路径，都会在"查表命中"那一步被紫色标出来——不用枚举起点和终点，一张表全兜住。',
+      do: draw({cnt: cntSnap(), ans:0, path:[], vars:{cur:0, ans:0}, pathHtml:'（还没出发）'})});
+
+    if(T.root != null){
+      go(T.root, 0, []);
+      F.push({hl:[16], tag:'返回答案', cls:'t-dark',
+        msg:'🎉 <code>return ans</code> = <b>' + ans + '</b>：整棵树共 ' + ans + ' 条向下路径和为 ' + target + '，每一条都在"查表命中"那步被紫色标出。复杂度复盘：每个节点进出递归各一次、查表 O(1) → 时间 O(n)；对比暴力"从每个起点往下扫"的 O(n²)，前缀和把重复求和全省了。',
+        do: draw({cnt: cntSnap(), ans, path:[], pathHtml:'（已走完全树）', result: ans})});
+    } else {
+      F.push({hl:[16], tag:'返回答案', cls:'t-dark',
+        msg:'空树 → 没有任何节点，自然也没有任何向下路径，<code>return ans = 0</code>。哨兵 {0:1} 还留在表里，但它等不到任何查询。',
+        do: draw({cnt: cntSnap(), ans:0, path:[], pathHtml:'（空树）', result:0})});
+    }
+
+    return F;
+  },
+
+  /* ========= 解法二：力扣官方题解 · 方法一 双重 DFS（枚举起点） ========= */
+  alt: {
+    label: '官方 · 双重 DFS',
+    method: 'pathSum',
+
+    lede: '同一道题，这次用<b>官方题解方法一「双重 DFS」</b>——最贴题面的暴力版：' +
+          '外层 <span class="var o">dfs</span> 给树上<b>每个节点</b>一次"当路径起点"的机会（树上橙框起点名牌）；' +
+          '每换一个起点，内层 <span class="var i">rootSum</span> 就从它出发向下探路，<span class="var r">cur</span> 一路累加节点值，' +
+          '<b>cur 恰好撞上 targetSum 的那一刻，从起点到脚下的整条路就是一条合法路径</b>（紫色）。' +
+          '没有哈希表、没有哨兵、没有回溯注销——用"枚举一切"换简单直观，代价是慢一档。',
+
+    roles: [
+      {c:'orange', code:'active', text:'内层正在探的节点'},
+      {c:'blue',   code:'in',     text:'从起点走到这里的路径'},
+      {c:'violet', code:'target', text:'命中：整条和恰好 = targetSum'},
+      {c:'green',  code:'+n',     text:'外层进度：已收工起点贡献的条数'}
+    ],
+
+    codeTitle: '解法二就是"枚举起点"的直觉版：外层 <code>dfs</code> 逐个点名起点，内层 <code>rootSum</code> 从起点向下探路；第 7 行变<span style="color:var(--green)">绿</span>＝cur 恰好凑出 targetSum，脚下整条路记 1 条。',
+
+    legend: [
+      {c:'orange', text:'橙框 = 当前起点'},
+      {c:'blue', text:'正在探的路径（括号内为累加和）'},
+      {c:'violet', text:'命中：整条和 = targetSum'},
+      {c:'green', text:'已收工起点的命中数'}
+    ],
+
+    idea: '暴力但直观：每个节点都当一次路径起点，从它向下 DFS 累加，cur 撞上 targetSum 就记一条——所有向下路径按"起点"分类，一条不漏。',
+
+    complexity: '时间 O(n²)（n 个起点，每个都要向下扫一遍自己的子树）　·　空间 O(h)（只有递归栈，无哈希表）',
+
+    qa: [
+      {q:'为什么主解法（前缀和+哈希）是 O(n)，双重 DFS 却是 O(n²)？',
+       a:'双重 DFS 里，同一段路会被<b>不同的起点反复重走</b>：想知道 10→5→2→1 凑不凑得出，从 10 出发要走四步做四次加法；换 5 当起点，前三步的加法又要再做一遍。每个起点 × 每条向下的路都老老实实求和，链状树最坏 1+2+…+n = O(n²)。前缀和把"找起点"变成查表：走到每个节点，<code>cnt[cur − target]</code> 一步 O(1) 拿到所有能配对的祖先，每个节点只进出一次，整体 O(n)。'},
+      {q:'既然慢，双重 DFS 还有存在价值吗？',
+       a:'有，官方题解也把它排在第一种。它<b>最贴题面</b>："路径可以从任意节点开始"→ 那就让每个节点都当一次起点。不用哈希表、不用 {0:1} 哨兵、不用回溯注销，几乎不会写错；小树（几十个节点）下两者都是瞬间出结果。面试时可以先写它拿稳基本分，再升级到前缀和展示功力。'},
+      {q:'两种解法数出来的路径集合一样吗？',
+       a:'完全一样。双重 DFS 按<b>起点</b>分类：每条向下路径恰好被它最上端的起点数到一次；前缀和按<b>终点</b>分类：每条路径在它最下端的终点处被 <code>cnt[cur − target]</code> 查出来恰好一次。分类角度不同，覆盖的都是"全部向下路径"，答案必然相等。'},
+      {q:'内层探路需要像主解法那样"回溯注销"吗？',
+       a:'不需要。主解法的 cnt 表必须"只装当前路径上的前缀"，离开子树就要注销，否则会数出跨子树的假路径。双重 DFS 没有任何全局表——cur 是随递归参数传递的局部量，返回时自动还原，天然不会把别家子树的和掺进来。这也是它"不易写错"的根本原因。'}
+    ],
+
+    code: `class Solution:
+    def pathSum(self, root, targetSum):
+        ans = 0
+        def rootSum(node, cur):          # 以 node 为起点向下探, 路径和累加到 cur
+            nonlocal ans
+            cur += node.val              # 把 node 加进路径和
+            if cur == targetSum:         # 恰好凑出 → 脚下整条路都是合法路径
+                ans += 1
+            if node.left:                # 有左孩子就向左继续探
+                rootSum(node.left, cur)
+            if node.right:               # 有右孩子就向右继续探
+                rootSum(node.right, cur)
+        def dfs(node):                   # 外层: 枚举每个节点当一次路径起点
+            rootSum(node, 0)             # ① 以 node 为起点, 从 0 开始探
+            if node.left:                # ② 左子树里的节点也要当起点
+                dfs(node.left)
+            if node.right:               # ③ 右子树里的节点也要当起点
+                dfs(node.right)
+        if root:
+            dfs(root)
+        return ans
+`,
+
+    sol(input){
+      const T = Viz.parseTree(input.root || []);
+      const byKey = {}; T.nodes.forEach(n => byKey[n.key] = n);
+      const target = input.targetSum;
+      let ans = 0;
+      function rootSum(k, cur){
+        if(k == null) return;
+        cur += byKey[k].val;
+        if(cur === target) ans++;
+        rootSum(byKey[k].left, cur);
+        rootSum(byKey[k].right, cur);
+      }
+      function dfs(k){
+        if(k == null) return;
+        rootSum(k, 0);
+        dfs(byKey[k].left);
+        dfs(byKey[k].right);
+      }
+      dfs(T.root);
+      return ans;
+    },
+    expected: 3,
+
+    steps(input){
+      const F = [];
+      const T = Viz.parseTree(input.root || []);
+      const t = layoutLC(T);
+      const byKey = {}; T.nodes.forEach(n => byKey[n.key] = n);
+      const target = input.targetSum;
+      let ans = 0;
+      let startKey = null;         // 当前外层起点
+      let startHits = 0;           // 当前起点的命中数
+      let totalVisits = 0;         // 内层探路总次数（复盘用）
+      const startLog = [];         // 已收工起点: {key, val, cnt}
+      const path = [];             // 从起点到当前节点: [{key, sum}]
+
+      const nm = k => '节点' + LCesc(String(byKey[k].val));
+      const pathHtml = (ps, violet) => ps.length
+        ? ps.map(p => {
+            const piece = LCesc(String(byKey[p.key].val)) + ' <small>(' + p.sum + ')</small>';
+            return violet ? '<span style="color:var(--violet);font-weight:700">' + piece + '</span>' : piece;
+          }).join(' <span style="color:#a8a496">→</span> ')
+        : '（空）';
+      const progHtml = () => startLog.length
+        ? startLog.map((l, i) => '起点 #' + (i + 1) + '（值 ' + LCesc(String(l.val)) + '）→ 命中 <b>' + l.cnt + '</b> 条').join('<br>')
+        : '（还没有起点收工）';
+      const startTags = () => {
+        const arr = [];
+        startLog.forEach(l => { if(l.key !== startKey) arr.push({key: l.key, text: '+' + l.cnt, cls: 'mg'}); });
+        if(startKey != null) arr.push({key: startKey, text: '起点', cls: 'mi'});
+        return arr;
+      };
+
+      /* ★ 快照原则：path/suf/tags/vars/进度全部在 push 那一刻求值定死，do() 只读快照 o */
+      const draw = o => (v) => {
+        const states = {};
+        (o.path || []).forEach(p => { states[p.key] = 'in'; });
+        (o.suf || []).forEach(k => { states[k] = 'target'; });
+        if(o.start != null) states[o.start] = 'pivot';
+        if(o.cur != null) states[o.cur] = 'active';
+        const tags = {};
+        (o.tags || []).forEach(tg => { tags[tg.key] = {text: tg.text, cls: tg.cls}; });
+        v.tree('T', t, {label:'二叉树　·　橙框=当前起点 橙=正在探路 蓝=已走路径 紫=命中路径', states, tags});
+        if(o.pathHtml != null) v.text('path', o.pathHtml, {html:true, label:'从起点到当前节点的路径　·　括号里是累加和'});
+        if(o.progHtml != null) v.text('prog', o.progHtml, {html:true, label:'外层进度　·　每个节点都要当一次起点'});
+        if(o.vars) v.vars('vars', o.vars, {label:'变量', hl:o.hlVars || []});
+        if(o.result !== undefined) v.result(o.result, {label:'路径总数 ans'});
+      };
+
+      const base = extra => Object.assign({
+        path: [], suf: [], start: startKey, cur: null, tags: startTags(),
+        pathHtml: '（这条起点还没开始探）', progHtml: progHtml(),
+        vars: {起点: startKey == null ? '—' : byKey[startKey].val, cur: '—', ans: ans}
+      }, extra || {});
+
+      function inner(kk, cur){
+        cur += byKey[kk].val;
+        path.push({key: kk, sum: cur});
+        totalVisits++;
+        const hit = cur === target;
+        if(hit){ ans += 1; startHits += 1; }
+        const hl = [6,7];
+        if(byKey[kk].left != null) hl.push(9,10);
+        if(byKey[kk].right != null) hl.push(11,12);
+        F.push({hl, ok: hit ? 7 : undefined, no: hit ? undefined : 7,
+          tag: hit ? '整条凑出 ' + target + '！' : '内层探路', cls: hit ? 't-violet' : 't-blue',
+          msg: hit
+            ? '<code>cur += ' + LCesc(String(byKey[kk].val)) + '</code> → <b>cur = ' + cur + ' = targetSum</b> → 命中！从' + nm(startKey) + '到' + nm(kk) + '的<b>整条路</b>（' + path.map(p => LCesc(String(byKey[p.key].val))).join('→') + '）恰好凑出 ' + target + '。注意和主解法的区别：双重 DFS 的命中段永远是从起点开始的完整路——因为路径不许中途开始。'
+            : '<code>cur += ' + LCesc(String(byKey[kk].val)) + '</code> → <b>cur = ' + cur + '</b>：从' + nm(startKey) + '走到' + nm(kk) + '的累加和。' +
+              (cur < target
+                ? '还差 ' + (target - cur) + ' 才到 ' + target + '，但路径必须<b>连续向下</b>，每条路都要走到头才知道凑不凑得出，所以继续往孩子探。'
+                : '已经超过 ' + target + '——代码不做"超了就停"的剪枝（负值节点可能让后面绕回来），照探不误，保证任何输入都正确。') +
+              '画面：蓝色是从起点走到这里的路径，括号里是每站的累加和。',
+          do: draw(base({
+            start: startKey, cur: kk, path: path.slice(),
+            suf: hit ? path.map(p => p.key) : [],
+            pathHtml: pathHtml(path.slice(), hit),
+            vars: {起点: byKey[startKey].val, cur: cur, ans: ans}, hlVars: hit ? ['ans'] : ['cur']
+          }))});
+        if(hit){
+          F.push({hl:[8], tag:'命中 +1', cls:'t-violet',
+            msg:'<code>ans += 1</code> → <b>ans = ' + ans + '</b>，这条记在"起点值 ' + LCesc(String(byKey[startKey].val)) + '"名下（树上紫色就是它）。为什么说这套暴力是 O(n²)？同一段路会被不同起点反复重走：从根出发要重走 10→5→2→1 四步才知道答案，而这些加法换一个起点还要再做一遍——"起点 × 向下路径"全都老实加一遍。',
+            do: draw(base({
+              start: startKey, cur: kk, path: path.slice(),
+              suf: path.map(p => p.key), pathHtml: pathHtml(path.slice(), true),
+              vars: {起点: byKey[startKey].val, cur: cur, ans: ans}, hlVars: ['ans']
+            }))});
+        }
+        if(byKey[kk].left != null) inner(byKey[kk].left, cur);
+        if(byKey[kk].right != null) inner(byKey[kk].right, cur);
+        path.pop();
+      }
+
+      function outer(kk){
+        startKey = kk;
+        startHits = 0;
+        F.push({hl:[13,14], tag:'外层 · 换起点', cls:'t-orange',
+          msg:'外层 <code>dfs</code> 走到' + nm(kk) + '：轮到它<b>当一次起点</b>（橙框）。内层马上执行 <code>rootSum(' + LCesc(String(byKey[kk].val)) + ', 0)</code>——从它出发、从 cur=0 开始向下探路。为什么每个节点都要当一次起点？因为本题路径可以从<b>任意</b>节点开始，不要求从根出发。',
+          do: draw(base({start: kk, cur: kk, pathHtml: '（准备以' + nm(kk) + '为起点探路）'}))});
+        inner(kk, 0);
+        startLog.push({key: kk, val: byKey[kk].val, cnt: startHits});
+        const guard = (byKey[kk].left == null && byKey[kk].right == null)
+          ? '（它是叶子，两个 if 都跳过，直接返回）'
+          : ((byKey[kk].left == null ? '（左子树为空，跳过）' : '') + (byKey[kk].right == null ? '（右子树为空，跳过）' : ''));
+        F.push({hl:[15,16,17,18], tag:'起点收工', cls:'t-ink',
+          msg:'以' + nm(kk) + '为起点收工：命中 <b>' + startHits + '</b> 条。外层继续点名：左右子树里的节点也要逐个请出来当起点' + guard + '。把"起点 × 向下路径"的组合全部数完，答案就齐了。',
+          do: draw(base({start: kk, cur: null, path: [], pathHtml: '（这段起点找完了）',
+                         vars: {起点: byKey[kk].val, cur: '—', ans: ans}}))});
+        if(byKey[kk].left != null) outer(byKey[kk].left);
+        if(byKey[kk].right != null) outer(byKey[kk].right);
+      }
+
+      if(T.root == null){
+        F.push({hl:[19], ok:19, tag:'空树', cls:'t-grey',
+          msg:'根为空 → <code>if root</code> 不成立，外层连一次探路都不会发起。没有节点就没有路径，<code>ans</code> 保持 0。',
+          do: draw(base({}))});
+        F.push({hl:[21], tag:'返回', cls:'t-dark',
+          msg:'🎉 <code>return ans = 0</code>：空树的路径总数为 0。',
+          do: draw(base({result: 0}))});
+        return F;
+      }
+
+      F.push({hl:[1,2,3,4,5], tag:'初始化', cls:'t-grey',
+        msg:'解法二是<b>官方题解方法一「双重 DFS」</b>，一句话：<b>让每个节点都当一次路径起点，从它向下探路，路径和恰好等于 targetSum 就记一条</b>。先备好零件：<code>ans = 0</code> 计总数；内层 <code>rootSum(node, cur)</code> 负责"从 node 出发向下探，cur 是已累加的路径和"；外层 <code>dfs(node)</code> 负责点名。对比主解法：没有哈希表、没有 {0:1} 哨兵、也不用回溯注销——用"枚举一切"换直观。',
+        do: draw(base({}))});
+      F.push({hl:[19,20], tag:'发起外层', cls:'t-blue',
+        msg:'<code>dfs(root)</code>：外层从根' + nm(T.root) + '开始先序点名——每个节点都会轮到一次"当起点"。盯住右下"外层进度"面板：每收工一个起点就多一行命中记录；树上绿色小标签 +n 表示该起点贡献了几条。',
+        do: draw(base({}))});
+
+      outer(T.root);
+      startKey = null;
+
+      F.push({hl:[21], tag:'返回答案', cls:'t-dark',
+        msg:'🎉 <code>return ans = ' + ans + '</code>：与主解法（前缀和 + 哈希）的答案完全一致——只是分类角度不同：它按<b>起点</b>数，前缀和按<b>终点</b>数，覆盖的都是全部向下路径。复杂度对账：' + startLog.length + ' 个起点，内层合计探了 ' + totalVisits + ' 次节点 → O(n²)；主解法每个节点只进出一次、查表 O(1) → O(n)。小树两者都瞬间完成，节点上万时只有前缀和扛得住。',
+        do: draw(base({start: null, path: [], pathHtml: '（全树枚举完毕）', result: ans}))});
+
+      return F;
+    }
+  }
+});
+</script>
+</body>
+</html>

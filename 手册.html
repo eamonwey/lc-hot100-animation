@@ -1,0 +1,1931 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LeetCode 热题 100 · 速查手册</title>
+<style>
+  :root{--paper:#f7f6f1;--card:#fffdf9;--ink:#262a33;--muted:#7a7f8c;--line:#e6e2d7;
+    --blue:#3355c8;--green:#1e7a4e;--orange:#c9541f;--red:#c23a33;--mono:Consolas,monospace}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Segoe UI","Microsoft YaHei",sans-serif;background:var(--paper);color:var(--ink);
+    padding:26px 16px 60px;line-height:1.65;font-size:14px}
+  .head{max-width:960px;margin:0 auto 18px}
+  .head h1{font-size:26px}
+  .head p{color:var(--muted);margin-top:6px}
+  .toc{display:inline-block;font-size:12.5px;color:var(--blue);text-decoration:none;
+    background:var(--card);border:1px solid var(--line);border-radius:999px;padding:3px 12px;margin:3px 3px 0 0}
+  main{max-width:960px;margin:0 auto}
+  h2{font-size:20px;margin:30px 0 12px;padding-bottom:6px;border-bottom:2px solid var(--line)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;
+    padding:14px 18px;margin-bottom:14px;break-inside:avoid;page-break-inside:avoid}
+  h3{font-size:16px;margin-bottom:6px}
+  .pn{font-family:var(--mono);font-size:12px;color:var(--muted);font-weight:500}
+  .df{font-size:11px;border-radius:999px;padding:1px 9px;vertical-align:2px}
+  .d1{background:#e4f3ea;color:var(--green)} .d2{background:#fbeee4;color:var(--orange)} .d3{background:#fbe9e7;color:var(--red)}
+  .ap{font-size:12.5px;color:var(--muted);margin-bottom:6px}
+  .idea{background:#faf3dd;border:1px solid #ecd9a8;border-radius:8px;padding:6px 12px;margin-bottom:8px;font-size:13px}
+  .code{font-family:var(--mono);font-size:12px;line-height:1.7;white-space:pre-wrap;
+    background:#fbfaf5;border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:6px}
+  .cx{font-family:var(--mono);font-size:12px;color:var(--muted)}
+  .lnk{font-size:12px;margin-top:4px}
+  .altblock{margin-top:10px;border-top:1px dashed var(--line);padding-top:10px}
+  .altlab{font-size:13px;font-weight:650;color:var(--blue);margin-bottom:6px}
+  .alt-idea{background:#eef2fb;border-color:#c3cff3}
+  .lnk a{color:var(--blue)}
+  @media print{
+    body{background:#fff;padding:0}
+    .card{border-color:#ddd}
+    h2{page-break-after:avoid}
+    a{color:inherit;text-decoration:none}
+  }
+</style>
+</head>
+<body>
+<div class="head">
+  <h1>📖 LeetCode 热题 100 · 速查手册</h1>
+  <p>100 张复习卡: 核心一句话 + 完整 Python 代码 + 复杂度。由 <a href="index.html">动画题解</a> 自动生成,
+     打印(Ctrl+P)可当纸质复习册。生成时间: 2026/10/10 23:53:16</p>
+  <div><a class="toc" href="#cat-哈希">🗂哈希 · 3</a><a class="toc" href="#cat-双指针">👉双指针 · 4</a><a class="toc" href="#cat-滑动窗口">🪟滑动窗口 · 2</a><a class="toc" href="#cat-子串">🧵子串 · 3</a><a class="toc" href="#cat-普通数组">🔢普通数组 · 5</a><a class="toc" href="#cat-矩阵">⬜矩阵 · 4</a><a class="toc" href="#cat-链表">🔗链表 · 13</a><a class="toc" href="#cat-二叉树">🌳二叉树 · 15</a><a class="toc" href="#cat-图论">🗺图论 · 4</a><a class="toc" href="#cat-回溯">🧭回溯 · 8</a><a class="toc" href="#cat-二分查找">🔍二分查找 · 6</a><a class="toc" href="#cat-栈">🥞栈 · 5</a><a class="toc" href="#cat-堆">⛰堆 · 3</a><a class="toc" href="#cat-贪心算法">💰贪心算法 · 4</a><a class="toc" href="#cat-动态规划">📈动态规划 · 10</a><a class="toc" href="#cat-多维动态规划">🧮多维动态规划 · 5</a><a class="toc" href="#cat-技巧">🎩技巧 · 6</a></div>
+</div>
+<main>
+<h2 id="cat-哈希">🗂 哈希</h2><section class="card d1"><h3><span class="pn">P001 · LC1</span> 两数之和 <span class="df d1">简单</span></h3><p class="ap">解法: 一次遍历 + 哈希表（值→下标）</p><p class="idea">💡 别回头找搭档：把"我还需要谁"记进哈希表，让答案自己来撞上门——空间换时间。</p><pre class="code">class Solution:
+    def twoSum(self, nums, target):
+        seen = {}                     # 值 -&gt; 下标
+        for i, x in enumerate(nums):
+            y = target - x            # 需要的另一半
+            if y in seen:             # 之前出现过吗?
+                return [seen[y], i]
+            seen[x] = i               # 登记自己
+</pre><p class="cx">时间 O(n)　·　空间 O(n)（哈希表最多存 n 个数）</p><p class="lnk"><a href="pages/p001.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/two-sum/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P002 · LC49</span> 字母异位词分组 <span class="df d2">中等</span></h3><p class="ap">解法: 排序作 key + 哈希分组</p><p class="idea">💡 给每个词发一张“排序后的身份证”：异位词身份证必然相同——哈希表按身份证分堆，一组不漏。</p><pre class="code">class Solution:
+    def groupAnagrams(self, strs):
+        groups = {}                     # 钥匙(排序后的词) -&gt; 组员名单
+        for s in strs:                  # 逐个处理单词
+            key = ''.join(sorted(s))    # 异位词排序后长得一模一样
+            if key not in groups:       # 第一次见到这把钥匙?
+                groups[key] = []        # 先开一个新组
+            groups[key].append(s)       # 飞进自己的组
+        return list(groups.values())    # 每串名单就是一组答案
+</pre><p class="cx">时间 O(n·k log k)（n 个单词，词长 k）　·　空间 O(n·k)（哈希表存全部单词）</p><p class="lnk"><a href="pages/p002.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/group-anagrams/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P003 · LC128</span> 最长连续序列 <span class="df d2">中等</span></h3><p class="ap">解法: 哈希集合，只从序列起点向右数</p><p class="idea">💡 连续段必有“没人差它一”的头：只让头向右数到底，其余数原地待命——每个数最多被摸两次，O(n) 拿下。</p><pre class="code">class Solution:
+    def longestConsecutive(self, nums):
+        numSet = set(nums)              # 全部丢进哈希集合, 查询 O(1)
+        best = 0                        # 目前最长的连续长度
+        for x in numSet:                # 每个数都试着当一次起点
+            if x - 1 in numSet:         # x-1 也在集合里?
+                continue                # 是 -&gt; x 不是头, 让位
+            length = 1                  # x 就是头, 链条至少长 1
+            while x + length in numSet: # 右邻 x+length 也在?
+                length += 1             # 在! 链条再加一节
+            best = max(best, length)    # 这段数完, 刷新纪录
+        return best
+</pre><p class="cx">时间 O(n)（每个数最多被查常数次）　·　空间 O(n)（哈希集合）</p><p class="lnk"><a href="pages/p003.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/longest-consecutive-sequence/" target="_blank">力扣原题 ↗</a></p></section><h2 id="cat-双指针">👉 双指针</h2><section class="card d1"><h3><span class="pn">P004 · LC283</span> 移动零 <span class="df d1">简单</span></h3><p class="ap">解法: 快慢指针，非零数前移</p><p class="idea">💡 fast 只管找非零数，找到就换到 slow 手里；slow 是非零区的墙、只进不退——一遍扫完，0 全被挤到右边。</p><pre class="code">class Solution:
+    def moveZeroes(self, nums):
+        slow = 0                        # 墙: slow 左边全是排好的非零数
+        for fast in range(len(nums)):   # fast 逐格探路
+            if nums[fast] != 0:         # 捡到非零数?
+                nums[slow], nums[fast] = nums[fast], nums[slow]  # 换到墙外
+                slow += 1               # 非零区向右扩一格
+</pre><p class="cx">时间 O(n)（fast 每格只看一次）　·　空间 O(1)（原地双指针）</p><p class="lnk"><a href="pages/p004.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/move-zeroes/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P005 · LC11</span> 盛最多水的容器 <span class="df d2">中等</span></h3><p class="ap">解法: 两端夹逼，每次移动矮的一侧</p><p class="idea">💡 水由短板封顶：留住高板、挪走矮板，才可能遇到更高的搭档——每次牺牲一点宽度换高度的可能，一趟 O(n) 夹逼出答案。</p><pre class="code">class Solution:
+    def maxArea(self, height):
+        l, r = 0, len(height) - 1       # 左右两根板, 从最两端出发
+        best = 0                        # 目前最大的装水量
+        while l &lt; r:                    # 两板没碰头, 就继续试
+            area = min(height[l], height[r]) * (r - l)  # 水量 = 矮板高 × 宽
+            best = max(best, area)      # 刷新纪录
+            if height[l] &lt; height[r]:   # 左板更矮?
+                l += 1                  # 挪走矮的左板, 保留高板
+            else:
+                r -= 1                  # 右板不比左板高, 挪走右板
+        return best
+</pre><p class="cx">时间 O(n)（每轮挪一根板，最多 n−1 轮）　·　空间 O(1)</p><p class="lnk"><a href="pages/p005.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/container-with-most-water/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P006 · LC15</span> 三数之和 <span class="df d2">中等</span></h3><p class="ap">解法: 排序 + 固定一个 + 左右双指针</p><p class="idea">💡 排序后固定 i，l、r 夹逼：和小 l 右移、和大 r 左移；命中后 i、l、r 三处各跳过重复值，一组不多、一组不少。</p><pre class="code">class Solution:
+    def threeSum(self, nums):
+        nums.sort()                     # 先排好队: 相同的数会挨在一起
+        res = []
+        for i in range(len(nums) - 2):  # 固定第一个数 nums[i]
+            if i &gt; 0 and nums[i] == nums[i - 1]:  # 去重①: 该基准刚用过
+                continue
+            l, r = i + 1, len(nums) - 1  # 左右指针从两端向中间夹逼
+            while l &lt; r:                # 没碰头就继续找
+                s = nums[i] + nums[l] + nums[r]
+                if s &lt; 0:               # 和偏小 -&gt; 左针右移
+                    l += 1
+                elif s &gt; 0:             # 和偏大 -&gt; 右针左移
+                    r -= 1
+                else:                   # 和正好为 0, 记录!
+                    res.append([nums[i], nums[l], nums[r]])
+                    while l &lt; r and nums[l] == nums[l + 1]: l += 1  # 去重②: 跳过重复左数
+                    while l &lt; r and nums[r] == nums[r - 1]: r -= 1  # 去重③: 跳过重复右数
+                    l += 1; r -= 1      # 双双内缩, 找下一组
+        return res
+</pre><p class="cx">时间 O(n²)（排序 + 一层双指针）　·　空间 O(log n)（排序递归栈，不算答案）</p><p class="lnk"><a href="pages/p006.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/3sum/" target="_blank">力扣原题 ↗</a></p></section><section class="card d3"><h3><span class="pn">P007 · LC42</span> 接雨水 <span class="df d3">困难</span></h3><p class="ap">解法: 双指针 + 两侧最大值，水往矮处流</p><p class="idea">💡 水位由两侧最高墙中较矮的一堵决定：lm < rm 时第 l 格水位必是 lm（右边罩得住），放心结算再移动矮的一侧——一趟扫完，空间 O(1)。</p><pre class="code">class Solution:
+    def trap(self, height):
+        ans = 0
+        l, r = 0, len(height) - 1      # 两个哨兵
+        lm, rm = 0, 0                  # 两侧见过的最高墙
+        while l &lt; r:
+            lm = max(lm, height[l])    # 刷新左半最高
+            rm = max(rm, height[r])    # 刷新右半最高
+            if lm &lt; rm:                # 矮的一侧说了算
+                ans += lm - height[l]  # 左端水位 = lm
+                l += 1
+            else:
+                ans += rm - height[r]  # 右端水位 = rm
+                r -= 1
+        return ans
+</pre><p class="cx">时间 O(n)（l、r 合起来各走一趟）　·　空间 O(1)（只用几个变量）</p><p class="lnk"><a href="pages/p007.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/trapping-rain-water/" target="_blank">力扣原题 ↗</a></p></section><h2 id="cat-滑动窗口">🪟 滑动窗口</h2><section class="card d2"><h3><span class="pn">P008 · LC3</span> 无重复字符的最长子串 <span class="df d2">中等</span></h3><p class="ap">解法: 右针扩张 + 左针收缩，集合查重</p><p class="idea">💡 右手无脑扩张，左手只在撞车时收缩——窗口永远是"以 r 结尾的最长无重复子串"，每稳住一次量一遍，最长即答案。</p><pre class="code">class Solution:
+    def lengthOfLongestSubstring(self, s):
+        occ = set()                    # 窗口内的字符名单
+        ans, l = 0, 0                  # 最长长度 与 左端
+        for r, c in enumerate(s):      # 右手 r 一路向右捡
+            while c in occ:            # 撞见重复 -&gt; 左手收缩
+                occ.remove(s[l])       # 把左端字符请出窗
+                l += 1
+            occ.add(c)                 # 新字符进窗
+            ans = max(ans, r - l + 1)  # 量一量窗口长度
+        return ans
+</pre><p class="cx">时间 O(n)（l、r 各走一趟）　·　空间 O(|Σ|)（名单最多装字符集大小）</p><p class="lnk"><a href="pages/p008.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/longest-substring-without-repeating-characters/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P009 · LC438</span> 找到字符串中所有字母异位词 <span class="df d2">中等</span></h3><p class="ap">解法: 定长窗口 + 计数差</p><p class="idea">💡 别每次重排再比较——用"计数差"记账：进窗补一笔、滑出退一笔，账本恰好全平（differ = 0）的瞬间，定长窗口就是 p 的异位词。</p><pre class="code">class Solution:
+    def findAnagrams(self, s, p):
+        m = len(p)
+        cnt = {}                        # 计数差 = 窗口 - 需求 (负 = 还缺)
+        for c in p:
+            cnt[c] = cnt.get(c, 0) - 1  # 先把 p 的账记成欠着
+        differ = len(cnt)               # 账没平的字符种类数
+        ans = []
+        for r, c in enumerate(s):
+            cnt[c] = cnt.get(c, 0) + 1  # 右端进窗, 补一笔
+            if cnt[c] == 0:
+                differ -= 1             # 这笔刚好平了
+            elif cnt[c] == 1:
+                differ += 1             # 反倒多出来了
+            if r &gt;= m:                  # 窗口超长, 左端滑出
+                d = s[r - m]
+                cnt[d] -= 1
+                if cnt[d] == 0:
+                    differ -= 1
+                elif cnt[d] == -1:
+                    differ += 1
+            if r &gt;= m - 1 and differ == 0:
+                ans.append(r - m + 1)   # 账全平 -&gt; 命中一段异位词
+        return ans
+</pre><p class="cx">时间 O(|s| + |p|)　·　空间 O(|Σ|)（账本最多装出现过的字符种类）</p><p class="lnk"><a href="pages/p009.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/find-all-anagrams-in-a-string/" target="_blank">力扣原题 ↗</a></p></section><h2 id="cat-子串">🧵 子串</h2><section class="card d2"><h3><span class="pn">P010 · LC560</span> 和为 K 的子数组 <span class="df d2">中等</span></h3><p class="ap">解法: 前缀和 + 哈希表</p><p class="idea">💡 子数组的和 = 两段前缀相减。在第 i 格查"前缀和等于 pre−k 的旧前缀有几个"，一个旧前缀对应一段答案——哈希账本把 O(n²) 压成 O(n)，还不怕负数。</p><pre class="code">class Solution:
+    def subarraySum(self, nums, k):
+        pre = 0                        # 当前前缀和
+        cnt = {0: 1}                   # 账本: 前缀和 -&gt; 出现次数
+        ans = 0
+        for x in nums:
+            pre += x                   # 前缀和走到当前格
+            ans += cnt.get(pre - k, 0) # 有几个旧前缀 = pre-k
+            cnt[pre] = cnt.get(pre, 0) + 1  # 登记当前前缀(先查后记!)
+        return ans
+</pre><p class="cx">时间 O(n)（一趟扫描）　·　空间 O(n)（账本最多 n+1 种前缀和）</p><p class="lnk"><a href="pages/p010.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/subarray-sum-equals-k/" target="_blank">力扣原题 ↗</a></p></section><section class="card d3"><h3><span class="pn">P011 · LC239</span> 滑动窗口最大值 <span class="df d3">困难</span></h3><p class="ap">解法: 单调递减队列</p><p class="idea">💡 队列里只留"还可能当最大"的下标：队尾小的被新元素碾掉，队头过期的请走——队头即窗口最大，进出队各一次，均摊 O(n)。</p><pre class="code">from collections import deque
+
+class Solution:
+    def maxSlidingWindow(self, nums, k):
+        dq = deque()                   # 存下标, 值从队头到队尾递减
+        ans = []
+        for i, x in enumerate(nums):
+            if dq and dq[0] &lt;= i - k:  # 队头滑出窗口左界 -&gt; 请走
+                dq.popleft()
+            while dq and nums[dq[-1]] &lt;= x:
+                dq.pop()               # 队尾比 x 小: 留着也没用
+            dq.append(i)               # 新下标进队尾
+            if i &gt;= k - 1:
+                ans.append(nums[dq[0]])  # 队头 = 当前窗口最大值
+        return ans
+</pre><p class="cx">时间 O(n)（每个下标至多进队、出队各一次）　·　空间 O(k)（队列里最多 k 个下标）</p><div class="altblock"><p class="altlab">📘 解法二 · 官方 · 优先队列(堆)</p><p class="idea alt-idea">💡 堆里全都要：每个 (值取负, 下标) 都进大顶堆，堆顶过期就懒删除——堆顶永远是"值最大、最靠前"的合法候选。</p><pre class="code"># 解法二:力扣官方题解 方法一(优先队列)
+import heapq
+
+class Solution:
+    def maxSlidingWindow(self, nums, k):
+        h = []                         # 堆: 存 (值取负, 下标)
+        ans = []
+        for i, x in enumerate(nums):
+            heapq.heappush(h, (-x, i))     # 新元素进堆, 值大者浮上堆顶
+            while h[0][1] &lt;= i - k:        # 堆顶下标滑出窗口 -&gt; 懒删除
+                heapq.heappop(h)
+            if i &gt;= k - 1:
+                ans.append(-h[0][0])       # 堆顶 = 当前窗口最大值
+        return ans
+</pre><p class="cx">时间 O(n log n)（每个元素进出堆各一次，堆操作 O(log n)）　·　空间 O(n)（懒删除：过期元素可能滞留堆中）</p></div><p class="lnk"><a href="pages/p011.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/sliding-window-maximum/" target="_blank">力扣原题 ↗</a></p></section><section class="card d3"><h3><span class="pn">P012 · LC76</span> 最小覆盖子串 <span class="df d3">困难</span></h3><p class="ap">解法: 滑动窗口 + 需求计数</p><p class="idea">💡 右指针无脑扩张捡货，凑齐就让左指针贪心收缩扔货——每次"刚好要不够"的瞬间量一下窗口长短，最短的那个就是答案。</p><pre class="code">class Solution:
+    def minWindow(self, s, t):
+        need = {}                        # 购物清单: t 里每种字符要几个
+        for c in t:
+            need[c] = need.get(c, 0) + 1
+        win = {}                         # 购物车: 窗口里已有多少
+        valid = 0                        # 已凑够需求的字符种类数
+        best, l = '', 0                  # 最优答案 与 左端
+        for r, c in enumerate(s):        # 阶段1: 右端一路扩张
+            if c in need:
+                win[c] = win.get(c, 0) + 1
+                if win[c] == need[c]:    # 这种字符正好凑够
+                    valid += 1
+            while valid == len(need):    # 阶段2: 凑齐了 → 收缩
+                if not best or r - l + 1 &lt; len(best):
+                    best = s[l:r+1]      # 记下更短的覆盖
+                d = s[l]                 # 看看左端要扔谁
+                if d in need:
+                    if win[d] == need[d]:
+                        valid -= 1       # 扔完后这种字符不够了
+                    win[d] -= 1
+                l += 1
+        return best
+</pre><p class="cx">时间 O(|s| + |t|)（两个指针各走一趟）　·　空间 O(|Σ|)（need/win 最多装字符集大小）</p><p class="lnk"><a href="pages/p012.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/minimum-window-substring/" target="_blank">力扣原题 ↗</a></p></section><h2 id="cat-普通数组">🔢 普通数组</h2><section class="card d2"><h3><span class="pn">P013 · LC53</span> 最大子数组和 <span class="df d2">中等</span></h3><p class="ap">解法: DP：前缀为负就丢掉</p><p class="idea">💡 一路走一路攒和：cur 攒成负数就当场扔掉重开——"前面的累赘一个不带"；ans 只负责记下 cur 跑出的最高分。</p><pre class="code">class Solution:
+    def maxSubArray(self, nums):
+        ans = nums[0]               # 全局最大: 至少选一个数
+        cur = 0                     # 以当前格结尾的连续和
+        for x in nums:
+            if cur &lt; 0:             # 手上这段是负资产
+                cur = 0             # 扔掉! 从 x 重新开始
+            cur += x                # 把 x 接到当前段末尾
+            if cur &gt; ans:           # 出现更高的分
+                ans = cur           # 刷新答案
+        return ans
+</pre><p class="cx">时间 O(n)（一遍扫描）　·　空间 O(1)（只留 cur、ans 两个变量）</p><div class="altblock"><p class="altlab">📘 解法二 · 官方 · 分治</p><p class="idea alt-idea">💡 一分为二：区间答案 = max(左内最优, 右内最优, 左尾接右头)——total/pre/suf/best 四个量恰好凑齐"拼接"所需的全部信息。</p><pre class="code">class Solution:
+    def maxSubArray(self, nums):
+        def get(l, r):                # 线段 [l,r] 的四元组
+            if l == r:                # 叶子: 只剩一个数
+                x = nums[l]
+                return (x, x, x, x)   # (total, pre, suf, best)
+            mid = (l + r) // 2
+            a = get(l, mid)           # 左半的四元组
+            b = get(mid + 1, r)       # 右半的四元组
+            total = a[0] + b[0]                 # ① 总和: 两半全要
+            pre = max(a[1], a[0] + b[1])        # ② 左端开头的最大前缀
+            suf = max(b[2], b[0] + a[2])        # ③ 右端结尾的最大后缀
+            best = max(a[3], b[3], a[2] + b[1]) # ④ 不跨 / 跨中线
+            return (total, pre, suf, best)
+        return get(0, len(nums) - 1)[3]
+</pre><p class="cx">时间 O(n)（T(n) = 2T(n/2) + O(1)）　·　空间 O(log n)（递归栈深度）</p></div><p class="lnk"><a href="pages/p013.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/maximum-subarray/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P014 · LC56</span> 合并区间 <span class="df d2">中等</span></h3><p class="ap">解法: 按左端排序 + 依次合并</p><p class="idea">💡 排好序后，"要不要合并"只看一件小事：新来的左端 ≤ 结果末尾的右端。排序把所有可能的纠缠，都变成了"只看前一个"的线性扫描。</p><pre class="code">class Solution:
+    def merge(self, intervals):
+        intervals.sort(key=lambda x: x[0])   # 按左端点从小到大排
+        merged = []                          # 结果: 已合并的区间们
+        for it in intervals:
+            if merged and it[0] &lt;= merged[-1][1]:
+                merged[-1][1] = max(merged[-1][1], it[1])  # 重叠→延伸末尾
+            else:
+                merged.append(list(it))      # 不重叠→新开一段
+        return merged
+</pre><p class="cx">时间 O(n log n)（排序为主，扫描 O(n)）　·　空间 O(n)（存结果）</p><p class="lnk"><a href="pages/p014.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/merge-intervals/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P015 · LC189</span> 轮转数组 <span class="df d2">中等</span></h3><p class="ap">解法: 整体翻转 + 两段各自翻转</p><p class="idea">💡 旋转 = 整体翻转 + 前后各翻回来：[1,2,3,4,5,6,7] → [7,6,5,4,3,2,1] → [5,6,7|4,3,2,1] → [5,6,7|1,2,3,4]。</p><pre class="code">class Solution:
+    def rotate(self, nums, k):
+        n = len(nums)
+        k %= n                       # k 可能比 n 大, 先取余
+        def rev(i, j):               # 原地翻转 nums[i..j]
+            while i &lt; j:
+                nums[i], nums[j] = nums[j], nums[i]
+                i += 1; j -= 1
+        rev(0, n - 1)                # 1) 整体翻转
+        rev(0, k - 1)                # 2) 翻转前 k 个
+        rev(k, n - 1)                # 3) 翻转后面一段
+</pre><p class="cx">时间 O(n)（每个元素被交换常数次）　·　空间 O(1)（原地交换，不开新数组）</p><div class="altblock"><p class="altlab">📘 解法二 · 官方 · 环状替换</p><p class="idea alt-idea">💡 下标 i 的家在 (i+k)%n：拎着值沿环直送、把被覆盖的接着拎走；一圈走 n/gcd(n,k) 步回起点，共走 gcd(n,k) 圈才能铺满 n 格。</p><pre class="code">from math import gcd
+
+class Solution:
+    def rotate(self, nums, k):
+        n = len(nums)
+        k %= n                      # k 可能比 n 大, 先取余
+        count = gcd(n, k)           # 圈数 = gcd(n, k)
+        start = 0
+        while count &gt; 0:            # 一圈一圈归位
+            cur = start
+            prev = nums[start]      # 手里拎着待安放的值
+            while True:             # 沿环跳跃
+                nxt = (cur + k) % n # cur 的值最终要去的格子
+                nums[nxt], prev = prev, nums[nxt]   # 安放, 并拎起被覆盖的值
+                cur = nxt
+                if cur == start:    # 绕回起点 → 这一圈闭合
+                    break
+            start += 1              # 下一个圈从 start+1 出发
+            count -= 1
+</pre><p class="cx">时间 O(n)（每个元素恰好被写入一次）　·　空间 O(1)（只借一个变量拎值）</p></div><p class="lnk"><a href="pages/p015.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/rotate-array/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P016 · LC238</span> 除自身以外数组的乘积 <span class="df d2">中等</span></h3><p class="ap">解法: 前缀乘 × 后缀乘</p><p class="idea">💡 答案 = 左边乘积 × 右边乘积。两遍扫描，第二遍用一个滚动变量顺手把右积乘上去——不用除法，也不用额外数组。</p><pre class="code">class Solution:
+    def productExceptSelf(self, nums):
+        n = len(nums)
+        ans = [1] * n                # ans[i] 先存"左边全部乘积"
+        for i in range(1, n):
+            ans[i] = ans[i-1] * nums[i-1]
+        right = 1                    # 右边全部乘积(不含 i)
+        for i in range(n - 1, -1, -1):
+            ans[i] *= right          # 左积 × 右积 = 答案
+            right *= nums[i]         # 右积滚给下一格
+        return ans
+</pre><p class="cx">时间 O(n)（两遍扫描）　·　空间 O(1)（输出数组不计入额外空间）</p><p class="lnk"><a href="pages/p016.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/product-of-array-except-self/" target="_blank">力扣原题 ↗</a></p></section><section class="card d3"><h3><span class="pn">P017 · LC41</span> 缺失的第一个正数 <span class="df d3">困难</span></h3><p class="ap">解法: 原地哈希：把 x 换到下标 x-1</p><p class="idea">💡 把值 x 搬到下标 x−1 当"家"：搬完再从头验收，第一个 nums[i] ≠ i+1 的位置，答案就是 i+1。</p><pre class="code">class Solution:
+    def firstMissingPositive(self, nums):
+        n = len(nums)
+        for i in range(n):             # 第一轮: 把值搬回家
+            while 1 &lt;= nums[i] &lt;= n and nums[nums[i] - 1] != nums[i]:
+                j = nums[i] - 1        # nums[i] 的家
+                nums[i], nums[j] = nums[j], nums[i]   # 换过去
+        for i in range(n):             # 第二轮: 从头验收
+            if nums[i] != i + 1:       # 第一个对不上号的
+                return i + 1           # 缺的就是它
+        return n + 1                   # 1~n 全齐, 答案是 n+1
+</pre><p class="cx">时间 O(n)（每个数最多被换一次家）　·　空间 O(1)（原地交换，不开新表）</p><p class="lnk"><a href="pages/p017.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/first-missing-positive/" target="_blank">力扣原题 ↗</a></p></section><h2 id="cat-矩阵">⬜ 矩阵</h2><section class="card d2"><h3><span class="pn">P018 · LC73</span> 矩阵置零 <span class="df d2">中等</span></h3><p class="ap">解法: 首行首列当标记位</p><p class="idea">💡 先立记号后置零：某行有 0 → 行首记 0，某列有 0 → 列首记 0；首行首列当记号本，fr/fc 先抄底。</p><pre class="code">class Solution:
+    def setZeroes(self, matrix):
+        m, n = len(matrix), len(matrix[0])
+        fr = any(matrix[0][j] == 0 for j in range(n))   # 首行自带 0 吗?
+        fc = any(matrix[i][0] == 0 for i in range(m))   # 首列自带 0 吗?
+        for i in range(1, m):            # 第一遍: 扫内部, 立记号
+            for j in range(1, n):
+                if matrix[i][j] == 0:
+                    matrix[i][0] = 0     # 行记号 → 首列
+                    matrix[0][j] = 0     # 列记号 → 首行
+        for i in range(1, m):            # 第二遍: 按记号置零
+            for j in range(1, n):
+                if matrix[i][0] == 0 or matrix[0][j] == 0:
+                    matrix[i][j] = 0
+        for j in range(n):               # 最后补清首行
+            if fr: matrix[0][j] = 0
+        for i in range(m):               # 最后补清首列
+            if fc: matrix[i][0] = 0
+        # 原地修改完成: 不返回任何值, matrix 本身就是答案
+</pre><p class="cx">时间 O(mn)（两遍扫描）　·　空间 O(1)（只开 fr/fc 两个布尔）</p><p class="lnk"><a href="pages/p018.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/set-matrix-zeroes/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P019 · LC54</span> 螺旋矩阵 <span class="df d2">中等</span></h3><p class="ap">解法: 四条边界逐层收缩</p><p class="idea">💡 四条边界像相框一圈圈往里拆：→ ↓ ← ↑ 各收一条边，每圈收完 top+1、bottom−1、left+1、right−1，边界交错就停。</p><pre class="code">class Solution:
+    def spiralOrder(self, matrix):
+        m, n = len(matrix), len(matrix[0])
+        top, bottom = 0, m - 1
+        left, right = 0, n - 1
+        out = []
+        while top &lt;= bottom and left &lt;= right:   # 还有没收的地盘
+            for j in range(left, right + 1):     # → 顶行
+                out.append(matrix[top][j])
+            for i in range(top + 1, bottom + 1): # ↓ 右列
+                out.append(matrix[i][right])
+            if top &lt; bottom:                     # 底行别和顶行重合
+                for j in range(right - 1, left - 1, -1):   # ← 底行
+                    out.append(matrix[bottom][j])
+            if left &lt; right:                     # 左列别和右列重合
+                for i in range(bottom - 1, top, -1):       # ↑ 左列
+                    out.append(matrix[i][left])
+            top += 1; bottom -= 1; left += 1; right -= 1   # 内缩一圈
+        return out
+</pre><p class="cx">时间 O(mn)（每格收一次）　·　空间 O(1)（不算输出数组）</p><p class="lnk"><a href="pages/p019.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/spiral-matrix/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P020 · LC48</span> 旋转图像 <span class="df d2">中等</span></h3><p class="ap">解法: 先转置，再左右翻转</p><p class="idea">💡 顺时针 90° = 先转置（沿对角线对折），再左右翻转（每行照镜子）：(r,c)→(c,r)→(c, n−1−r)。</p><pre class="code">class Solution:
+    def rotate(self, matrix):
+        n = len(matrix)
+        for i in range(n):               # 第 1 步: 转置
+            for j in range(i + 1, n):    # 只扫对角线右上三角
+                matrix[i][j], matrix[j][i] = matrix[j][i], matrix[i][j]
+        for i in range(n):               # 第 2 步: 每行左右翻转
+            for j in range(n // 2):
+                matrix[i][j], matrix[i][n - 1 - j] = matrix[i][n - 1 - j], matrix[i][j]
+</pre><p class="cx">时间 O(n²)（两遍各扫一半）　·　空间 O(1)（原地 swap）</p><p class="lnk"><a href="pages/p020.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/rotate-image/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P021 · LC240</span> 搜索二维矩阵 II <span class="df d2">中等</span></h3><p class="ap">解法: 从右上角出发，走 BST 式搜索</p><p class="idea">💡 站上右上角：大了往左、小了往下——每一步淘汰一整行或一整列，最多 m+n 步，像走一棵 BST。</p><pre class="code">class Solution:
+    def searchMatrix(self, matrix, target):
+        i, j = 0, len(matrix[0]) - 1     # 从右上角出发
+        while i &lt; len(matrix) and j &gt;= 0:   # 还在矩阵里
+            x = matrix[i][j]
+            if x == target:              # 命中!
+                return True
+            elif x &gt; target:             # 太大: 这一列越往下越大
+                j -= 1                   #   → 整列作废, 往左
+            else:                        # 太小: 这一行越往左越小
+                i += 1                   #   → 整行作废, 往下
+        return False                     # 走出矩阵还没见着 → 没有
+</pre><p class="cx">时间 O(m+n)（每步淘汰一行或一列）　·　空间 O(1)（两个指针）</p><p class="lnk"><a href="pages/p021.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/search-a-2d-matrix-ii/" target="_blank">力扣原题 ↗</a></p></section><h2 id="cat-链表">🔗 链表</h2><section class="card d1"><h3><span class="pn">P022 · LC160</span> 相交链表 <span class="df d1">简单</span></h3><p class="ap">解法: 双指针互换轨道，相遇即交点</p><p class="idea">💡 让两个指针走同样的总路程：pA 走完 A 就去走 B，pB 走完 B 就去走 A——路程相同，要么在交点相遇，要么一起到 None。</p><pre class="code">class Solution:
+    def getIntersectionNode(self, headA, headB):
+        pA, pB = headA, headB
+        while pA is not pB:
+            pA = pA.next if pA else headB  # 走到头就换到另一条链
+            pB = pB.next if pB else headA
+        return pA                          # 相遇点就是交点(可能为 None)
+</pre><p class="cx">时间 O(m+n)　·　空间 O(1)（只有两个指针）</p><div class="altblock"><p class="altlab">📘 解法二 · 官方 · 哈希表</p><p class="idea alt-idea">💡 官方最直白的思路：先把 A 链整条登记进哈希集合，B 链第一个查到的就是交点——用 O(m) 空间买"不用绕跑道"的简单。</p><pre class="code">class Solution:
+    def getIntersectionNode(self, headA, headB):
+        seen = set()                      # 哈希集合: 登记见过的每个节点
+        pA = headA
+        while pA:                         # 上半场: 扫 A 链, 逐个登记
+            seen.add(pA)
+            pA = pA.next
+        pB = headB
+        while pB:                         # 下半场: 扫 B 链, 逐个查表
+            if pB in seen:                # 第一个查到的 = 交点
+                return pB
+            pB = pB.next
+        return None                       # B 走完都没查到 → 不相交
+</pre><p class="cx">时间 O(m+n)（两条链各扫一遍）　·　空间 O(m)（seen 最坏存下整条 A 链；先扫短的那条可降到 O(min(m,n))）</p></div><p class="lnk"><a href="pages/p022.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/intersection-of-two-linked-lists/" target="_blank">力扣原题 ↗</a></p></section><section class="card d1"><h3><span class="pn">P023 · LC206</span> 反转链表 <span class="df d1">简单</span></h3><p class="ap">解法: 迭代：prev/cur/next 三指针</p><p class="idea">💡 一边走一边把箭头掉头：save next → 反指 → prev、cur 各进一步，走完时 prev 就是新头。</p><pre class="code">class Solution:
+    def reverseList(self, head):
+        prev, cur = None, head
+        while cur:              # 还有节点没处理
+            nxt = cur.next      # 先记住下一个
+            cur.next = prev     # 箭头掉头, 指向 prev
+            prev = cur          # prev 前进一格
+            cur = nxt           # cur 前进一格
+        return prev             # 新表头
+</pre><p class="cx">时间 O(n)　·　空间 O(1)（只动三个指针）</p><div class="altblock"><p class="altlab">📘 解法二 · 官方 · 递归</p><p class="idea alt-idea">💡 递归版把反转推迟到回溯阶段：先一路递到链尾定死新表头，回来时才让后继回头指向自己、再斩断自己的旧箭头。</p><pre class="code">class Solution:
+    def reverseList(self, head):
+        if head is None or head.next is None:  # 递归出口: 空表 / 尾节点
+            return head                        # 尾节点就是新表头
+        newHead = self.reverseList(head.next)  # 下探: 先反转后面那一截
+        head.next.next = head                  # 回溯: 后继回头指向自己
+        head.next = None                       # 斩断旧箭头, 防止成环
+        return newHead                         # 新表头原样上交
+</pre><p class="cx">时间 O(n)（每个节点回溯时处理一次）　·　空间 O(n)（递归调用栈最深 n 层）</p></div><p class="lnk"><a href="pages/p023.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/reverse-linked-list/" target="_blank">力扣原题 ↗</a></p></section><section class="card d1"><h3><span class="pn">P024 · LC234</span> 回文链表 <span class="df d1">简单</span></h3><p class="ap">解法: 快慢找中点 + 反转后半 + 比对</p><p class="idea">💡 回文 = 后半段反转后和前半段一模一样：快慢指针找中点 → 掉头后半 → 一对一对比，全相等就是回文。</p><pre class="code">class Solution:
+    def isPalindrome(self, head):
+        slow = fast = head              # 快慢指针找中点
+        while fast and fast.next:       # 快的到尾, 慢的到中点
+            slow = slow.next
+            fast = fast.next.next
+        prev = None                     # 准备反转后半段
+        while slow:
+            nxt = slow.next             # 先记住下一个
+            slow.next = prev            # 箭头掉头
+            prev = slow                 # prev 右移
+            slow = nxt                  # slow 右移
+        while head and prev and head.val == prev.val:
+            head = head.next            # 这一对相等, 双双右移
+            prev = prev.next
+        return head is None or prev is None  # 没被拦住 = 是回文
+</pre><p class="cx">时间 O(n)　·　空间 O(1)（原链表会被拆成两段）</p><p class="lnk"><a href="pages/p024.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/palindrome-linked-list/" target="_blank">力扣原题 ↗</a></p></section><section class="card d1"><h3><span class="pn">P025 · LC141</span> 环形链表 <span class="df d1">简单</span></h3><p class="ap">解法: 快慢指针，追上即有环</p><p class="idea">💡 操场跑圈：跑得快的人每圈必从背后追上慢的人——快指针"套圈"撞上慢指针就有环；快指针能走到 None 就没环。</p><pre class="code">class Solution:
+    def hasCycle(self, head):
+        slow = fast = head          # 快慢指针同一地点出发
+        while fast and fast.next:   # 快的能再走两步才继续
+            slow = slow.next        # 慢的走 1 步
+            fast = fast.next.next   # 快的走 2 步
+            if slow is fast:        # 快的绕圈追上慢的
+                return True         # 有环实锤
+        return False                # 快的到头 = 无环
+</pre><p class="cx">时间 O(n)　·　空间 O(1)</p><div class="altblock"><p class="altlab">📘 解法二 · 官方 · 哈希集合</p><p class="idea alt-idea">💡 有环 = 走着走着撞见老面孔：逐节点登记进哈希集合，重复即有环、走到 None 即无环——思路最直白，代价是 O(n) 空间。</p><pre class="code">class Solution:
+    def hasCycle(self, head):
+        visited = set()             # 集合: 登记见过的每个节点
+        cur = head                  # 从头出发
+        while cur:                  # 还没走出链尾就继续
+            if cur in visited:      # 撞见老面孔 → 有环实锤
+                return True
+            visited.add(cur)        # 登记当前节点
+            cur = cur.next          # 往前走一步
+        return False                # 冲到 None 没重复 → 无环
+</pre><p class="cx">时间 O(n)（每个节点最多登记一次）　·　空间 O(n)（visited 最坏存下整条链）</p></div><p class="lnk"><a href="pages/p025.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/linked-list-cycle/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P026 · LC142</span> 环形链表 II <span class="df d2">中等</span></h3><p class="ap">解法: 相遇后一个回到头，同步走再相遇</p><p class="idea">💡 相遇后一个指针回 head，两指针同步一步一步走：a = (k-1)·圈长 + (圈长-b)，再次相遇处必是入环口。</p><pre class="code">class Solution:
+    def detectCycle(self, head):
+        slow = fast = head
+        while fast and fast.next:        # 阶段一: 快慢指针判环
+            slow = slow.next
+            fast = fast.next.next
+            if slow is fast:             # 相遇 → 有环, 开始找入口
+                meet, p = slow, head     # meet 留原地, p 回到开头
+                while p is not meet:     # 阶段二: 同步一步一步走
+                    p = p.next
+                    meet = meet.next
+                return p                 # 再相遇处就是入环口
+        return None                      # 无环
+</pre><p class="cx">时间 O(n)　·　空间 O(1)</p><p class="lnk"><a href="pages/p026.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/linked-list-cycle-ii/" target="_blank">力扣原题 ↗</a></p></section><section class="card d1"><h3><span class="pn">P027 · LC21</span> 合并两个有序链表 <span class="df d1">简单</span></h3><p class="ap">解法: 哑节点 + 逐个摘取较小值</p><p class="idea">💡 哑节点当起跑线，每轮摘下较小的队头接到 tail 后面；一边空了，另一边整段直接拖过来。</p><pre class="code">class Solution:
+    def mergeTwoLists(self, list1, list2):
+        dummy = ListNode(0)             # 哑节点: 结果链的起跑线
+        tail = dummy                    # tail 永远站在结果链末尾
+        while list1 and list2:                # 两边都还有节点才比
+            if list1.val &lt;= list2.val:        # 较小(相等取 list1)的先接
+                tail.next = list1
+                list1 = list1.next
+            else:
+                tail.next = list2
+                list2 = list2.next
+            tail = tail.next            # 结果尾巴右移
+        tail.next = list1 if list1 else list2    # 没比完的一整段直接接上
+        return dummy.next               # 跳过哑节点就是答案
+</pre><p class="cx">时间 O(m+n)　·　空间 O(1)（只接指针，不新建节点）</p><p class="lnk"><a href="pages/p027.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/merge-two-sorted-lists/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P028 · LC2</span> 两数相加 <span class="df d2">中等</span></h3><p class="ap">解法: 逐位相加 + 进位</p><p class="idea">💡 逆序存储 = 个位在头：两条链同步右移逐位相加，s = carry + 两边的位，本位留 s%10，进位 s//10 带给下一位；链走完但 carry 还有 1 时，while 的 or carry 会多跑一轮把它挂上去。</p><pre class="code">class Solution:
+    def addTwoNumbers(self, l1, l2):
+        dummy = ListNode(0)              # 结果链的哑节点占位
+        cur, carry = dummy, 0            # cur 是结果链尾巴, carry 是进位
+        while l1 or l2 or carry:         # 还有位没加(或还挂着进位)
+            s = carry                    # 先把上一位的进位带来
+            if l1:
+                s += l1.val              # 加上 l1 这一位
+                l1 = l1.next
+            if l2:
+                s += l2.val              # 加上 l2 这一位
+                l2 = l2.next
+            carry = s // 10              # 满 10 进 1
+            cur.next = ListNode(s % 10)  # 本位数字挂到结果链
+            cur = cur.next               # 结果链长一格
+        return dummy.next
+</pre><p class="cx">时间 O(max(m,n))　·　空间 O(1)（结果链是必须返回的输出，不计）</p><p class="lnk"><a href="pages/p028.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/add-two-numbers/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P029 · LC19</span> 删除链表的倒数第 N 个结点 <span class="df d2">中等</span></h3><p class="ap">解法: 哑节点 + 快指针先走 N 步</p><p class="idea">💡 用"距离"换"回头"：fast 先走 n+1 步，让两针永远隔着 n+1；fast 落到 null 时，slow 与末尾恰好隔 n 个——它就是被删节点的前驱，一步跳过即可。</p><pre class="code">class Solution:
+    def removeNthFromEnd(self, head, n):
+        dummy = ListNode(0, head)     # 哑节点: 删头也不用特判
+        fast = slow = dummy
+        for _ in range(n + 1):        # fast 先走 n+1 步
+            fast = fast.next
+        while fast:                   # 两个一起走到尾
+            fast = fast.next
+            slow = slow.next
+        slow.next = slow.next.next    # 跳过被删节点
+        return dummy.next
+</pre><p class="cx">时间 O(N)（一趟扫描）　·　空间 O(1)</p><p class="lnk"><a href="pages/p029.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/remove-nth-node-from-end-of-list/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P030 · LC24</span> 两两交换链表中的节点 <span class="df d2">中等</span></h3><p class="ap">解法: 哑节点 + 每次换一对</p><p class="idea">💡 每对三根线：a.next = b.next 先斩后路保住后半段 → b.next = a 掉头 → prev.next = b 接上前段；然后 prev 挪到 a，进入下一对。</p><pre class="code">class Solution:
+    def swapPairs(self, head):
+        dummy = ListNode(0, head)
+        prev = dummy                    # prev 站在一对的前面压阵
+        while prev.next and prev.next.next:   # 凑得齐一对才换
+            a = prev.next               # 这一对的第一个
+            b = a.next                  # 这一对的第二个
+            a.next = b.next             # ① a 先挂住 b 后面那截
+            b.next = a                  # ② b 反过头指向 a
+            prev.next = b               # ③ 前一段牵住 b
+            prev = a                    # a 换完落在后面, 接着当"前一个"
+        return dummy.next
+</pre><p class="cx">时间 O(N)　·　空间 O(1)（只动指针，不建新节点）</p><p class="lnk"><a href="pages/p030.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/swap-nodes-in-pairs/" target="_blank">力扣原题 ↗</a></p></section><section class="card d3"><h3><span class="pn">P031 · LC25</span> K 个一组翻转链表 <span class="df d3">困难</span></h3><p class="ap">解法: 先数够 K 个，组内反转再接回</p><p class="idea">💡 先数后翻，不翻断链：end 从 prev 数够 k 个才动手；组内反转时 pre 从"下一组开头"出发，第一根箭头自然跨到下一组；翻完 prev.next 接新组头、prev 跳到原组尾，进入下一组。</p><pre class="code">class Solution:
+    def reverseKGroup(self, head, k):
+        dummy = ListNode(0, head)
+        prev = dummy                      # 上一组的尾巴
+        while True:
+            end = prev
+            for _ in range(k):            # 探路: 从 prev 数 k 个
+                end = end.next
+                if not end:               # 数空了: 不够 k 个
+                    return dummy.next     # 剩下的原样保留
+            old = prev.next               # 本组原头(反转后当组尾)
+            stop = end.next               # 下一组开头(反转的边界)
+            cur, pre = old, stop
+            while cur != stop:            # 组内箭头逐个掉头(同 206)
+                nxt = cur.next
+                cur.next = pre
+                pre, cur = cur, nxt
+            prev.next = pre               # 前段接上本组新头
+            prev = old                    # 原头变组尾, 接着处理下一组
+</pre><p class="cx">时间 O(N)（每个节点被数一次、被翻一次）　·　空间 O(1)</p><p class="lnk"><a href="pages/p031.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/reverse-nodes-in-k-group/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P032 · LC138</span> 随机链表的复制 <span class="df d2">中等</span></h3><p class="ap">解法: 三步法：穿插复制 / 补随机 / 拆分</p><p class="idea">💡 把复制品穿插进原链，"某个节点的复制品"就变成了 O(1) 可达——主人.next；于是 random 也能一步抄到位：cur.next.random = cur.random.next，最后把带撇的节点串起来拆走。</p><pre class="code">class Solution:
+    def copyRandomList(self, head):
+        if not head: return None
+        cur = head
+        while cur:                    # ① 每个节点后面插一个复制品
+            dup = Node(cur.val)       # Node 是力扣判题环境自带的节点类
+            dup.next = cur.next
+            cur.next = dup
+            cur = dup.next
+        cur = head                    # 回到开头, 第二遍补 random
+        while cur:                    # ② 复制品的 random 跟着主人走
+            if cur.random:
+                cur.next.random = cur.random.next
+            cur = cur.next.next
+        dummy = Node(0)               # ③ 把复制品拆成新链
+        tail, cur = dummy, head
+        while cur:
+            tail.next = cur.next
+            tail = tail.next
+            cur.next = cur.next.next
+            cur = cur.next
+        return dummy.next
+</pre><p class="cx">时间 O(n)（三趟扫描）　·　空间 O(1)（不算返回的新链本身）</p><div class="altblock"><p class="altlab">📘 解法二 · 官方 · 哈希表</p><p class="idea alt-idea">💡 random 能乱指，边建边接会扑空；先把所有复制品建完、用哈希表记账「原 → 新」，第二遍接线时任何目标都能 O(1) 查到。时间 O(n)、空间 O(n)——直白版的正确。</p><pre class="code">class Solution:
+    def copyRandomList(self, head):
+        if not head: return None
+        dic = {}                          # 原节点 → 新节点 的映射表
+        cur = head
+        while cur:                        # ① 第一遍: 复制各节点, 登记映射
+            dic[cur] = Node(cur.val)
+            cur = cur.next
+        cur = head                        # 回到开头, 第二遍照表接线
+        while cur:                        # ② 补 next 和 random
+            dic[cur].next = dic.get(cur.next)
+            dic[cur].random = dic.get(cur.random)
+            cur = cur.next
+        return dic[head]                  # ③ 新链表的头节点
+</pre><p class="cx">时间 O(n) · 两遍各扫一次；空间 O(n) · dic 存 n 对映射。对比解法一：穿插法 O(1) 空间但技巧性强，哈希法 O(n) 空间但一眼写对——面试先讲这版。</p></div><p class="lnk"><a href="pages/p032.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/copy-list-with-random-pointer/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P033 · LC148</span> 排序链表 <span class="df d2">中等</span></h3><p class="ap">解法: 快慢找中点 + 归并排序</p><p class="idea">💡 链表版归并排序：快慢指针找中点断开 → 两半各自排好 → merge 按大小逐个摘节点接起来。</p><pre class="code">class Solution:
+    def sortList(self, head):
+        if not head or not head.next:      # 递归出口: 空或单节点
+            return head
+        slow, fast = head, head.next       # fast 从第二个出发
+        while fast and fast.next:          # 快慢指针找中点
+            slow = slow.next
+            fast = fast.next.next
+        mid = slow.next                    # 中点后的第一格
+        slow.next = None                   # 剪断, 左右两段独立
+        l = self.sortList(head)            # 左半段排好序
+        r = self.sortList(mid)             # 右半段排好序
+        return self.merge(l, r)            # 归并成一条
+
+    def merge(self, a, b):
+        dummy = tail = ListNode(0)         # tail: 已合并部分的尾巴
+        while a and b:
+            if a.val &lt;= b.val:             # 两边队头比一比
+                tail.next = a; a = a.next  # 摘左边的
+            else:
+                tail.next = b; b = b.next  # 摘右边的
+            tail = tail.next               # 尾巴后移
+        tail.next = a if a else b          # 接上没比完的剩余段
+        return dummy.next
+</pre><p class="cx">时间 O(n log n)（每层归并 O(n)，共 log n 层）　·　空间 O(log n)（递归栈）</p><p class="lnk"><a href="pages/p033.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/sort-list/" target="_blank">力扣原题 ↗</a></p></section><section class="card d3"><h3><span class="pn">P034 · LC23</span> 合并 K 个升序链表 <span class="df d3">困难</span></h3><p class="ap">解法: 分治：两两合并（归并）</p><p class="idea">💡 分治两两合并：每轮把相邻两条升序链合成一条，条数减半，log K 轮后只剩一条——每次合并就是第 21 题的"摘队头"工序。</p><pre class="code">class Solution:
+    def mergeKLists(self, lists):
+        # LeetCode 传入 K 条升序链表, 这里用数组模拟节点
+        def merge2(a, b):                  # 合并两条升序链
+            i = j = 0; out = []
+            while i &lt; len(a) and j &lt; len(b):
+                if a[i] &lt;= b[j]:           # 两队头比一比
+                    out.append(a[i]); i += 1
+                else:
+                    out.append(b[j]); j += 1
+            out += a[i:]; out += b[j:]     # 接上没比完的剩余段
+            return out
+        ls = [list(x) for x in lists]      # 每条链开一份拷贝
+        while len(ls) &gt; 1:                 # 两两合并, 条数每轮减半
+            nxt = []
+            for i in range(0, len(ls) - 1, 2):
+                nxt.append(merge2(ls[i], ls[i + 1]))
+            if len(ls) % 2:                # 落单的原样晋级
+                nxt.append(ls[-1])
+            ls = nxt
+        return ls[0] if ls else []
+</pre><p class="cx">时间 O(N log K)（N 为节点总数，每轮 O(N)，共 log K 轮）　·　空间 O(1)（链表版只改指针；动画用数组模拟）</p><p class="lnk"><a href="pages/p034.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/merge-k-sorted-lists/" target="_blank">力扣原题 ↗</a></p></section><h2 id="cat-二叉树">🌳 二叉树</h2><section class="card d1"><h3><span class="pn">P035 · LC94</span> 二叉树的中序遍历 <span class="df d1">简单</span></h3><p class="ap">解法: 递归：左 → 根 → 右</p><p class="idea">💡 中序 = 根在中间：先把左子树整个走完，回来记下自己，再去右子树。空位是递归的刹车。</p><pre class="code">class Solution:
+    def inorderTraversal(self, root):
+        res = []                       # 访问序列
+        def dfs(node):                 # 中序: 左 → 根 → 右
+            if not node:               # 空位: 什么都不记
+                return
+            dfs(node.left)             # 1. 先走完左子树
+            res.append(node.val)       # 2. 回到根, 记下它
+            dfs(node.right)            # 3. 再去右子树
+        dfs(root)                      # 从根开始
+        return res
+</pre><p class="cx">时间 O(n)（每个节点恰好访问一次）　·　空间 O(h)（递归栈，h 为树高，最坏 O(n)）</p><div class="altblock"><p class="altlab">📘 解法二 · 官方 · 迭代(显式栈)</p><p class="idea alt-idea">💡 显式栈就是手动模拟的调用栈：cur 一路向左把祖先压栈，压到头弹栈访问、再转向右子树——递归转迭代的通用套路。</p><pre class="code">class Solution:
+    def inorderTraversal(self, root):
+        res = []
+        stack = []                  # 显式栈: 手动模拟调用栈
+        cur = root                  # 当前指针
+        while cur or stack:         # 指针还有路走 或 栈里还有活
+            while cur:              # 一路向左
+                stack.append(cur)   # 途经节点全部压栈
+                cur = cur.left
+            cur = stack.pop()       # 左边到底: 弹栈访问
+            res.append(cur.val)     # 记入访问序列
+            cur = cur.right         # 转向右子树
+        return res
+</pre><p class="cx">时间 O(n)（每个节点压栈、弹栈、记录各一次）　·　空间 O(h)（显式栈深 = 树高，最坏 O(n)）</p></div><p class="lnk"><a href="pages/p035.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/binary-tree-inorder-traversal/" target="_blank">力扣原题 ↗</a></p></section><section class="card d1"><h3><span class="pn">P036 · LC104</span> 二叉树的最大深度 <span class="df d1">简单</span></h3><p class="ap">解法: 递归：max(左深,右深)+1</p><p class="idea">💡 树的答案 = 问左右孩子要答案：depth(树) = max(depth(左), depth(右)) + 1，空树是出口 0。</p><pre class="code">class Solution:
+    def maxDepth(self, root):
+        if not root:                    # 递归出口: 空树
+            return 0
+        l = self.maxDepth(root.left)    # 问左子树多深
+        r = self.maxDepth(root.right)   # 问右子树多深
+        return max(l, r) + 1            # 较大者 + 自己这一层
+</pre><p class="cx">时间 O(n)（每个节点访问一次）　·　空间 O(h)（递归栈，h 为树高，最坏 O(n)）</p><p class="lnk"><a href="pages/p036.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/maximum-depth-of-binary-tree/" target="_blank">力扣原题 ↗</a></p></section><section class="card d1"><h3><span class="pn">P037 · LC226</span> 翻转二叉树 <span class="df d1">简单</span></h3><p class="ap">解法: 递归交换左右子树</p><p class="idea">💡 每个节点只做一件事：左右指针互换；左右子树"内部怎么翻"交给递归——三层交换下来整棵树就是镜像。</p><pre class="code">class Solution:
+    def invertTree(self, root):
+        if not root:                   # 递归出口: 空树
+            return None
+        root.left, root.right = root.right, root.left   # 左右整棵互换
+        self.invertTree(root.left)     # 翻转(新的)左子树
+        self.invertTree(root.right)    # 翻转(新的)右子树
+        return root                    # 返回当前子树的根
+</pre><p class="cx">时间 O(n)（每个节点访问一次、交换一次）　·　空间 O(h)（递归栈，h 为树高）</p><p class="lnk"><a href="pages/p037.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/invert-binary-tree/" target="_blank">力扣原题 ↗</a></p></section><section class="card d1"><h3><span class="pn">P038 · LC101</span> 对称二叉树 <span class="df d1">简单</span></h3><p class="ap">解法: 双指针递归：镜像位置互比</p><p class="idea">💡 对称 = 左右子树互为镜像：compare(a, b) 同时审一对镜像节点，外侧配外侧、内侧配内侧，两边都空就是出口 true。</p><pre class="code">class Solution:
+    def isSymmetric(self, root):
+        def compare(a, b):                 # 镜像位置上的一对节点
+            if not a and not b:            # 两边都空: 对称
+                return True
+            if not a or not b:             # 只有一边空: 不对称
+                return False
+            if a.val != b.val:             # 值不同: 不对称
+                return False
+            out = compare(a.left, b.right)     # 外侧配外侧
+            inside = compare(a.right, b.left)  # 内侧配内侧
+            return out and inside
+        return compare(root, root)         # 根和自己配对, 从顶比到底
+</pre><p class="cx">时间 O(n)（每个节点只被比较一次）　·　空间 O(h)（递归栈，h 为树高）</p><p class="lnk"><a href="pages/p038.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/symmetric-tree/" target="_blank">力扣原题 ↗</a></p></section><section class="card d1"><h3><span class="pn">P039 · LC543</span> 二叉树的直径 <span class="df d1">简单</span></h3><p class="ap">解法: 递归深度，顺便更新左+右</p><p class="idea">💡 递归要的是高度，顺手赚的是直径：过每个点的最长路 = 左高 + 右高，全局取 max。</p><pre class="code">class Solution:
+    def diameterOfBinaryTree(self, root):
+        self.ans = 0                     # 全局最长直径(边数)
+        def depth(node):                 # 返回 node 的高度(按节点数)
+            if not node:                 # 递归出口: 空位
+                return 0
+            l = depth(node.left)         # 左子树高度
+            r = depth(node.right)        # 右子树高度
+            self.ans = max(self.ans, l + r)   # 过当前节点的弯路, 试试能不能刷新
+            return max(l, r) + 1         # 向上汇报: 高度 = 较高一侧 + 自己
+        depth(root)
+        return self.ans
+</pre><p class="cx">时间 O(n)（每个节点访问一次）　·　空间 O(h)（递归栈，h 为树高）</p><p class="lnk"><a href="pages/p039.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/diameter-of-binary-tree/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P040 · LC102</span> 二叉树的层序遍历 <span class="df d2">中等</span></h3><p class="ap">解法: 队列 BFS，按层出队</p><p class="idea">💡 BFS 用队列排队：先定死本层人数 n，再只弹 n 个——弹一个记一个，孩子排在队尾，天然分成一层一层。</p><pre class="code">from collections import deque
+
+class Solution:
+    def levelOrder(self, root):
+        if not root:                 # 空树直接返回
+            return []
+        q = deque([root])            # 队列: 还没处理的节点
+        res = []
+        while q:                     # 每一轮处理完整的一层
+            n = len(q)               # 先定死本层人数
+            row = []
+            for _ in range(n):       # 只弹 n 个, 不会带出下一层
+                node = q.popleft()   # 队首出队
+                row.append(node.val) # 记进本层清单
+                if node.left:        # 左孩子在队尾排队
+                    q.append(node.left)
+                if node.right:
+                    q.append(node.right)
+            res.append(row)          # 本层收工, 存入结果
+        return res
+</pre><p class="cx">时间 O(n)（每个节点入队、出队各一次）　·　空间 O(n)（队列最宽时约一层，最多 n/2 个）</p><div class="altblock"><p class="altlab">📘 解法二 · 官方思路 · 手写队列(不用 deque)</p><p class="idea alt-idea">💡 队列的本质是"头指针 + 追尾"：出队不必真删元素，head 右移一格即可——deque 的内部就是这么工作的。</p><pre class="code">class Solution:
+    def levelOrder(self, root):
+        if not root:                 # 空树直接返回
+            return []
+        queue = [root]               # 数组当队列: 节点依次排进来
+        head = 0                     # 队头下标: 出队 = head+1
+        res = []
+        while head &lt; len(queue):     # head 没追上队尾 = 队列非空
+            n = len(queue) - head    # 本层人数 = 队尾 - 队头
+            row = []
+            for _ in range(n):       # 只出队 n 个
+                node = queue[head]; head += 1   # 出队(不删元素)
+                row.append(node.val)
+                if node.left:        # 孩子排到数组尾
+                    queue.append(node.left)
+                if node.right:
+                    queue.append(node.right)
+            res.append(row)
+        return res
+</pre><p class="cx">时间 O(n)（每个节点进出队各一次）　·　空间 O(n)（数组保留所有节点）</p></div><p class="lnk"><a href="pages/p040.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/binary-tree-level-order-traversal/" target="_blank">力扣原题 ↗</a></p></section><section class="card d1"><h3><span class="pn">P041 · LC108</span> 将有序数组转换为二叉搜索树 <span class="df d1">简单</span></h3><p class="ap">解法: 取中点做根，左右递归</p><p class="idea">💡 中点当根、左右两段递归：有序数组的中点天生是平衡 BST 的根，切下去、递归下去，树就长出来了。</p><pre class="code">class Solution:
+    def sortedArrayToBST(self, nums):
+        def build(lo, hi):               # 负责 nums[lo..hi] 这一段
+            if lo &gt; hi:                  # 空段 -&gt; 空树
+                return None
+            mid = (lo + hi) // 2         # 取中点, 左右段最平衡
+            node = TreeNode(nums[mid])   # 中点建根
+            node.left = build(lo, mid - 1)    # 左半段全部比它小
+            node.right = build(mid + 1, hi)   # 右半段全部比它大
+            return node                  # 把根交回给上层挂接
+        root = build(0, len(nums) - 1)
+        out, q = [], [root]              # 树层序化成数组, 便于和输出格式对拍
+        while q:
+            n = q.pop(0)
+            if n is None:
+                out.append(None); continue
+            out.append(n.val); q.append(n.left); q.append(n.right)
+        while out and out[-1] is None: out.pop()
+        return out
+</pre><p class="cx">时间 O(n)（每个元素建一个节点）　·　空间 O(log n)（递归栈，平衡树高）</p><p class="lnk"><a href="pages/p041.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/convert-sorted-array-to-bst/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P042 · LC98</span> 验证二叉搜索树 <span class="df d2">中等</span></h3><p class="ap">解法: 递归携带上下界</p><p class="idea">💡 递归携带上下界：左子树上界收紧成当前值、右子树下界抬高成当前值，一路收紧，谁出界谁暴露。</p><pre class="code">class Solution:
+    def isValidBST(self, root):
+        def check(node, lo, hi):          # node 的值必须落在开区间 (lo, hi)
+            if not node:                  # 空位天然合法
+                return True
+            if not (lo &lt; node.val &lt; hi):  # 越出允许区间 -&gt; 不是 BST
+                return False
+            l = check(node.left, lo, node.val)    # 左走: 上界收紧为当前值
+            r = check(node.right, node.val, hi)   # 右走: 下界抬高为当前值
+            return l and r
+        return check(root, float('-inf'), float('inf'))
+</pre><p class="cx">时间 O(n)（每个节点访问一次）　·　空间 O(h)（递归栈，h 为树高）</p><p class="lnk"><a href="pages/p042.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/validate-binary-search-tree/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P043 · LC230</span> 二叉搜索树中第 K 小的元素 <span class="df d2">中等</span></h3><p class="ap">解法: 中序遍历数到第 k 个</p><p class="idea">💡 BST 中序遍历 = 升序输出：一边递归一边数，seq 记到第 k 个的那一刻，答案就到手，剩下的全剪掉。</p><pre class="code">class Solution:
+    def kthSmallest(self, root, k):
+        seq = []                           # 中序依次记下的值(越来越大)
+        def go(node):                      # 中序: 左 -&gt; 根 -&gt; 右
+            if not node or len(seq) &gt;= k:  # 空位 / 已数够, 不用再走
+                return
+            go(node.left)                  # 1) 先走左边
+            if len(seq) &gt;= k:              # 答案在左边出现了?
+                return                     # 是 -&gt; 直接返回(剪枝)
+            seq.append(node.val)           # 2) 轮到当前: 记一个数
+            go(node.right)                 # 3) 再走右边
+        go(root)
+        return seq[k - 1]                  # 第 k 个记下的就是答案
+</pre><p class="cx">时间最坏 O(n)，平均 O(h + k)　·　空间 O(h)（递归栈，h 为树高）</p><p class="lnk"><a href="pages/p043.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/kth-smallest-element-in-a-bst/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P044 · LC199</span> 二叉树的右视图 <span class="df d2">中等</span></h3><p class="ap">解法: 层序取每层最后一个</p><p class="idea">💡 层序遍历照旧，唯一附加动作：每层弹到第 n 个（i == n-1）时把它的值记进 ans——那就是右侧能看到的一切。</p><pre class="code">from collections import deque
+
+class Solution:
+    def rightSideView(self, root):
+        if not root:                     # 空树: 谁也看不到
+            return []
+        q = deque([root])                # 队列: 正在处理的这一层
+        ans = []
+        while q:                         # 一轮 = 完整一层
+            n = len(q)                   # 先拍死本层人数
+            for i in range(n):
+                node = q.popleft()       # 从左往右依次出队
+                if i == n - 1:           # 本层最后一个 = 右侧能看到
+                    ans.append(node.val)
+                if node.left:            # 孩子排进下一层
+                    q.append(node.left)
+                if node.right:
+                    q.append(node.right)
+        return ans
+</pre><p class="cx">时间 O(n)（每节点进出队各一次）　·　空间 O(w)（队列最宽一层，最坏 O(n)）</p><div class="altblock"><p class="altlab">📘 解法二 · 官方 · DFS 根→右→左</p><p class="idea alt-idea">💡 按「根→右→左」DFS：每个深度第一个被访问到的节点就是该深度最右的节点——depth == len(ans) 即首访，按深度 0..max 收集。</p><pre class="code"># 解法二:力扣官方题解 方法二 DFS(根→右→左)
+class Solution:
+    def rightSideView(self, root):
+        ans = []                        # ans[d] = 深度 d 首访(最右)节点的值
+        def dfs(node, depth):           # 每深度第一个到达的就是最右
+            if not node:                # 递归出口: 空位直接返回
+                return
+            if depth == len(ans):       # 该深度第一次到达 = 最右节点
+                ans.append(node.val)
+            dfs(node.right, depth + 1)  # 先递归右子树
+            dfs(node.left, depth + 1)   # 再递归左子树
+        dfs(root, 0)                    # 从根、深度 0 出发
+        return ans
+</pre><p class="cx">时间 O(n)（每个节点访问一次）　·　空间 O(h)（递归栈，h 为树高；BFS 版是 O(w) 队列宽）</p></div><p class="lnk"><a href="pages/p044.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/binary-tree-right-side-view/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P045 · LC114</span> 二叉树展开为链表 <span class="df d2">中等</span></h3><p class="ap">解法: 逆前序：右→左→根 依次接上</p><p class="idea">💡 逆前序（右→左→根）回程接链：node.right = prev; node.left = None; prev = node——链从 6 一路长回头 1。</p><pre class="code">class Solution:
+    def flatten(self, root):
+        self.prev = None               # 已接好的链, 头在 prev
+        def go(node):                  # 逆前序: 右 -&gt; 左 -&gt; 根
+            if not node:               # 空位直接返回
+                return
+            go(node.right)             # 1) 先走最右边
+            go(node.left)              # 2) 再走左边
+            node.right = self.prev     # 3) 把接好的链接到自己右边
+            node.left = None           #    左指针清空
+            self.prev = node           # 4) 自己成为新链头
+        go(root)
+</pre><p class="cx">时间 O(n)（每节点访问、接链各一次）　·　空间 O(h)（递归栈，h 为树高）</p><p class="lnk"><a href="pages/p045.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/flatten-binary-tree-to-linked-list/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P046 · LC105</span> 从前序与中序遍历序列构造二叉树 <span class="df d2">中等</span></h3><p class="ap">解法: 前序定根，中序分左右</p><p class="idea">💡 前序第一个是根，中序里根的左边全是左子树、右边全是右子树——切一刀，左右两段递归，树就长出来了。</p><pre class="code">class Solution:
+    def buildTree(self, preorder, inorder):
+        def build(pre, ino):
+            if not ino:                    # 这段没数 -&gt; 空子树
+                return None
+            root = TreeNode(pre[0])        # 前序第一个 = 根
+            mid = ino.index(root.val)      # 根把中序切成两半
+            root.left = build(pre[1:mid+1], ino[:mid])     # 左半段
+            root.right = build(pre[mid+1:], ino[mid+1:])   # 右半段
+            return root
+        root = build(preorder, inorder)
+        out, q = [], [root]                # 以下只是层序化, 方便展示对拍
+        while q:
+            n = q.pop(0)
+            if n is None: out.append(None); continue
+            out.append(n.val); q.append(n.left); q.append(n.right)
+        while out and out[-1] is None: out.pop()
+        return out
+</pre><p class="cx">时间 O(n²)（切片版；下标 + 哈希可优化到 O(n)）　·　空间 O(n)（切片开销 + 递归栈 O(h)）</p><p class="lnk"><a href="pages/p046.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/construct-binary-tree-from-preorder-and-inorder-traversal/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P047 · LC437</span> 路径总和 III <span class="df d2">中等</span></h3><p class="ap">解法: 前缀和 + 回溯（哈希计数）</p><p class="idea">💡 像"和为 K 的子数组"在树上重演：cur 是前缀和，cnt 记每个前缀出现过几次，cnt[cur − target] 就是到此节点收口、和为 target 的路径条数；回溯时注销。</p><pre class="code">class Solution:
+    def pathSum(self, root, targetSum):
+        cnt = {0: 1}                  # 前缀和 -&gt; 出现次数(空前缀哨兵)
+        ans = 0
+        def go(node, cur):            # cur = 根一路走到 node 的和
+            nonlocal ans
+            if not node:
+                return
+            cur += node.val           # 走到 node, 更新前缀和
+            ans += cnt.get(cur - targetSum, 0)   # 能凑出 target 的老前缀
+            cnt[cur] = cnt.get(cur, 0) + 1       # 登记当前前缀
+            go(node.left, cur)        # 左子树里继续找
+            go(node.right, cur)       # 右子树里继续找
+            cnt[cur] -= 1             # 回溯: 注销前缀(只留当前路)
+        go(root, 0)
+        return ans
+</pre><p class="cx">时间 O(n)（每节点进出各一次，查表 O(1)）　·　空间 O(n)（哈希表 + 递归栈 O(h)）</p><div class="altblock"><p class="altlab">📘 解法二 · 官方 · 双重 DFS</p><p class="idea alt-idea">💡 暴力但直观：每个节点都当一次路径起点，从它向下 DFS 累加，cur 撞上 targetSum 就记一条——所有向下路径按"起点"分类，一条不漏。</p><pre class="code">class Solution:
+    def pathSum(self, root, targetSum):
+        ans = 0
+        def rootSum(node, cur):          # 以 node 为起点向下探, 路径和累加到 cur
+            nonlocal ans
+            cur += node.val              # 把 node 加进路径和
+            if cur == targetSum:         # 恰好凑出 → 脚下整条路都是合法路径
+                ans += 1
+            if node.left:                # 有左孩子就向左继续探
+                rootSum(node.left, cur)
+            if node.right:               # 有右孩子就向右继续探
+                rootSum(node.right, cur)
+        def dfs(node):                   # 外层: 枚举每个节点当一次路径起点
+            rootSum(node, 0)             # ① 以 node 为起点, 从 0 开始探
+            if node.left:                # ② 左子树里的节点也要当起点
+                dfs(node.left)
+            if node.right:               # ③ 右子树里的节点也要当起点
+                dfs(node.right)
+        if root:
+            dfs(root)
+        return ans
+</pre><p class="cx">时间 O(n²)（n 个起点，每个都要向下扫一遍自己的子树）　·　空间 O(h)（只有递归栈，无哈希表）</p></div><p class="lnk"><a href="pages/p047.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/path-sum-iii/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P048 · LC236</span> 二叉树的最近公共祖先 <span class="df d2">中等</span></h3><p class="ap">解法: 递归：左右各找，两边都有即为答案</p><p class="idea">💡 每棵子树汇报"找到几个目标"；第一个从左右凑齐 2 个的节点，就是 p、q 的最近公共祖先。</p><pre class="code">class Solution:
+    def lowestCommonAncestor(self, root, p, q):
+        self.ans = None
+        def dfs(node):                    # 返回: 这棵子树里找到几个目标
+            if not node:
+                return 0                  # 空位: 0 个
+            cnt = dfs(node.left) + dfs(node.right)   # 左右各找到几个
+            if node.val in (p, q):
+                cnt += 1                  # 自己也是一个目标
+            if cnt == 2 and self.ans is None:
+                self.ans = node.val       # 第一个凑齐 2 个的 = 最近公共祖先
+            return cnt
+        dfs(root)
+        return self.ans
+</pre><p class="cx">时间 O(n)（每个节点访问一次）　·　空间 O(h)（递归栈，h 为树高）</p><div class="altblock"><p class="altlab">📘 解法二 · 官方 · 父指针哈希</p><p class="idea alt-idea">💡 先花 O(n) 记下全树的父指针，再把 p 的祖先链装进哈希集合；q 沿父链上溯，第一个出现在集合里的节点就是 LCA——两条链找第一个交点。</p><pre class="code">class Solution:
+    def lowestCommonAncestor(self, root, p, q):
+        parent = {root: None}            # 子节点 -&gt; 父节点; 根没有父
+        def dfs(node):                   # 一次 DFS 把父指针记录全
+            if node.left:
+                parent[node.left] = node # 记下父指针
+                dfs(node.left)
+            if node.right:
+                parent[node.right] = node
+                dfs(node.right)
+        dfs(root)
+        pn = qn = None                   # 页面传的是值, 先定位节点
+        for nd in parent:
+            if nd.val == p: pn = nd
+            if nd.val == q: qn = nd
+        if not (pn and qn):              # 树里没有 p 或 q → 无祖先可谈
+            return None
+        anc = set()                      # p 的祖先链(含 p 自己)
+        while pn:
+            anc.add(pn.val)              # 祖先逐个放进集合
+            pn = parent[pn]              # 沿父链上溯一步
+        while qn.val not in anc:         # q 沿父链上溯, 逐站查集合
+            qn = parent[qn]              # 不在就往上走一步
+        return qn.val                    # 第一个撞进集合的 = 最近公共祖先
+</pre><p class="cx">时间 O(n)（一次 DFS 记父指针 + 两条链各上溯 O(h)）　·　空间 O(n)（父指针表 + 祖先集合）</p></div><p class="lnk"><a href="pages/p048.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/lowest-common-ancestor-of-a-binary-tree/" target="_blank">力扣原题 ↗</a></p></section><section class="card d3"><h3><span class="pn">P049 · LC124</span> 二叉树中的最大路径和 <span class="df d3">困难</span></h3><p class="ap">解法: 递归单边贡献，弯路在节点处更新</p><p class="idea">💡 每个节点给上面只带一条边：gain = max(左, 右) + 自己（负的砍成 0）；弯路 l+r+自己 只在当地结算进 ans。</p><pre class="code">class Solution:
+    def maxPathSum(self, root):
+        self.ans = float('-inf')
+        def gain(node):                       # 单边最大贡献(负的砍成 0)
+            if not node:
+                return 0
+            l = max(gain(node.left), 0)       # 左边贡献, 负的不要
+            r = max(gain(node.right), 0)      # 右边贡献, 负的不要
+            self.ans = max(self.ans, l + r + node.val)   # 弯路: 左+右+自己
+            return max(l, r) + node.val       # 给上面用的: 只能选一边
+        gain(root)
+        return self.ans
+</pre><p class="cx">时间 O(n)（每个节点访问一次）　·　空间 O(h)（递归栈，h 为树高）</p><p class="lnk"><a href="pages/p049.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/binary-tree-maximum-path-sum/" target="_blank">力扣原题 ↗</a></p></section><h2 id="cat-图论">🗺 图论</h2><section class="card d2"><h3><span class="pn">P050 · LC200</span> 岛屿数量 <span class="df d2">中等</span></h3><p class="ap">解法: DFS 淹岛：遇 1 就沉没整座岛</p><p class="idea">💡 扫到 1 就 ans+1 并把整座岛 DFS 淹成 0：每个格子要么被数一次，要么被淹一次，绝不重复。</p><pre class="code">class Solution:
+    def numIslands(self, grid):
+        m, n = len(grid), len(grid[0])
+        def sink(i, j):                  # 把 (i,j) 连着的陆地全淹成 0
+            if 0 &lt;= i &lt; m and 0 &lt;= j &lt; n and grid[i][j] == 1:
+                grid[i][j] = 0           # 淹掉这一格
+                sink(i+1, j)             # 向四个方向继续淹
+                sink(i-1, j)
+                sink(i, j+1)
+                sink(i, j-1)
+        ans = 0
+        for i in range(m):               # 逐格扫描
+            for j in range(n):
+                if grid[i][j] == 1:      # 踩到陆地 = 发现新岛
+                    ans += 1             # 岛数 +1
+                    sink(i, j)           # 整座岛淹掉, 防止重复计数
+        return ans
+</pre><p class="cx">时间 O(mn)（每格最多访问常数次）　·　空间 O(mn)（递归栈最坏情况）</p><div class="altblock"><p class="altlab">📘 解法二 · 官方 · 并查集</p><p class="idea alt-idea">💡 每格自成一个集合，相邻陆地就 union 合并；扫完后"根是自己"的陆地格每岛恰有一个——数代表格就是岛数。</p><pre class="code">class Solution:
+    def numIslands(self, grid):
+        m, n = len(grid), len(grid[0])
+        parent = list(range(m * n))      # 每格自成集合: 根先指向自己
+        def find(x):                     # 找根, 顺带路径压缩
+            while parent[x] != x:
+                parent[x] = parent[parent[x]]   # 压缩: 先挂到爷爷
+                x = parent[x]
+            return x
+        def union(a, b):                 # 合并两格所在的集合
+            ra, rb = find(a), find(b)
+            if ra != rb: parent[ra] = rb   # 根不同 → 老根认新根, 全族换旗
+        for i in range(m):               # 扫描网格, 只盯陆地
+            for j in range(n):
+                if grid[i][j] == 1:
+                    if i + 1 &lt; m and grid[i+1][j] == 1:   # 下方是陆地 → union
+                        union(i * n + j, (i + 1) * n + j)
+                    if j + 1 &lt; n and grid[i][j+1] == 1:   # 右方是陆地 → union
+                        union(i * n + j, i * n + j + 1)
+        return sum(1 for i in range(m) for j in range(n)
+                   if grid[i][j] == 1 and find(i * n + j) == i * n + j)
+</pre><p class="cx">时间 O(mn·α(mn))（α 是反阿克曼函数，均摊近乎 O(1)）　·　空间 O(mn)（parent 表）</p></div><p class="lnk"><a href="pages/p050.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/number-of-islands/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P051 · LC994</span> 腐烂的橘子 <span class="df d2">中等</span></h3><p class="ap">解法: 多源 BFS，按分钟扩散</p><p class="idea">💡 多源 BFS：所有烂橘子第 0 分钟一起入队，一层 = 一分钟；出循环后 fresh 还有剩就是 -1。</p><pre class="code">from collections import deque
+class Solution:
+    def orangesRotting(self, grid):
+        m, n = len(grid), len(grid[0])
+        q = deque()                      # 队列: 存烂橘子的坐标
+        fresh = 0                        # 新鲜橘子计数
+        for i in range(m):               # 第一遍: 烂橘子全部入队
+            for j in range(n):
+                if grid[i][j] == 2:
+                    q.append((i, j))
+                elif grid[i][j] == 1:
+                    fresh += 1
+        minute = 0
+        while q and fresh:               # 还有烂橘子且还有新鲜的才继续
+            minute += 1                  # 新的一分钟
+            for _ in range(len(q)):      # 本分钟: 队里所有烂橘子同时扩散
+                i, j = q.popleft()
+                for di, dj in ((1,0),(-1,0),(0,1),(0,-1)):
+                    ni, nj = i + di, j + dj
+                    if 0 &lt;= ni &lt; m and 0 &lt;= nj &lt; n and grid[ni][nj] == 1:
+                        grid[ni][nj] = 2  # 被传染
+                        fresh -= 1
+                        q.append((ni, nj))
+        return minute if fresh == 0 else -1
+</pre><p class="cx">时间 O(mn)（每格最多入队一次）　·　空间 O(mn)（队列）</p><div class="altblock"><p class="altlab">📘 解法二 · 官方 · 逐分钟模拟(不用队列)</p><p class="idea alt-idea">💡 不用队列：每分钟整格重扫一遍，四邻有上一轮烂橘子的新鲜橘子记入 now 名单，本轮扫完才统一变烂；某轮零新增即停，收尾 fresh>0 则 -1。</p><pre class="code"># 解法二:力扣官方题解 方法二 逐分钟模拟(不用队列)
+class Solution:
+    def orangesRotting(self, grid):
+        m, n = len(grid), len(grid[0])
+        fresh = sum(row.count(1) for row in grid)
+        minute = 0
+        while fresh:                         # 还有新鲜橘子 → 再模拟一分钟
+            minute += 1
+            now = []                         # 本轮将烂名单: 只记账, 暂不改格
+            for i in range(m):
+                for j in range(n):
+                    if grid[i][j] != 1:      # 只关心新鲜橘子
+                        continue
+                    for x, y in ((i+1,j),(i-1,j),(i,j+1),(i,j-1)):
+                        if 0 &lt;= x &lt; m and 0 &lt;= y &lt; n and grid[x][y] == 2:
+                            now.append((i, j))   # 四邻有上一轮的烂橘子
+                            break
+            if not now:                      # 本轮零新增 → 之后也烂不动了
+                break
+            for i, j in now:                 # 本轮扫描结束后, 统一腐烂!
+                grid[i][j] = 2
+                fresh -= 1
+        return minute if fresh == 0 else -1
+</pre><p class="cx">时间 O(mn·t)（t = 分钟数，每轮整格重扫一遍；BFS 版为 O(mn)）　·　空间 O(mn)（本轮名单 now）</p></div><p class="lnk"><a href="pages/p051.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/rotting-oranges/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P052 · LC207</span> 课程表 <span class="df d2">中等</span></h3><p class="ap">解法: 拓扑排序（Kahn 入度法）</p><p class="idea">💡 入度 = 还差几门先修课；入度 0 就上，上了就给后续课 −1；上不完必有环。</p><pre class="code">class Solution:
+    def canFinish(self, numCourses, prerequisites):
+        graph = [[] for _ in range(numCourses)]   # 邻接表: 修完 c 能解锁的课
+        indeg = [0] * numCourses                  # 入度: 还差几门先修课
+        for a, b in prerequisites:
+            graph[b].append(a)                    # 箭头 b → a
+            indeg[a] += 1                         # a 又多了一门先修
+        q = [c for c in range(numCourses) if indeg[c] == 0]  # 入度 0 的直接能上
+        done = 0
+        while q:
+            c = q.pop()                           # 取一门能上的课
+            done += 1                             # 修完它
+            for nxt in graph[c]:                  # 它解锁的课
+                indeg[nxt] -= 1                   # 少了一门先修
+                if indeg[nxt] == 0:               # 门槛全清 → 可以上了
+                    q.append(nxt)
+        return done == numCourses                 # 全上过 = 无环
+</pre><p class="cx">时间 O(V + E)（课数 + 先修对数）　·　空间 O(V + E)（邻接表 + 队列）</p><div class="altblock"><p class="altlab">📘 解法二 · 官方 · DFS 三色标记</p><p class="idea alt-idea">💡 DFS 三色判环：u 能修完 ⇔ 它的先修都能修完；递归撞上"搜索中"＝先修成环。</p><pre class="code">class Solution:
+    def canFinish(self, numCourses, prerequisites):
+        graph = [[] for _ in range(numCourses)]   # graph[a]: a 的先修清单
+        for a, b in prerequisites:
+            graph[a].append(b)                    # 箭头 a → b: 修 a 前先修完 b
+        color = [0] * numCourses                  # 0=未搜 1=搜索中 2=完成
+        def dfs(u):                               # 证明: u 能不能修完
+            color[u] = 1                          # 踩进 u → 标"搜索中"
+            for v in graph[u]:                    # 逐门检查 u 的先修
+                if color[v] == 1:                 # 撞上"搜索中" → 绕回自己: 有环!
+                    return False
+                if color[v] == 0 and not dfs(v):  # 只有未搜的先修才需要证明
+                    return False                  # 有先修失败 → u 也修不完
+            color[u] = 2                          # 先修全部证明完 → u 完成
+            return True
+        for u in range(numCourses):               # 从每门未搜的课出发证明
+            if color[u] == 0 and not dfs(u):
+                return False
+        return True
+</pre><p class="cx">时间 O(V + E)（每门课进出栈一次、每条边查一次）　·　空间 O(V + E)（邻接表 + 递归栈）</p></div><p class="lnk"><a href="pages/p052.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/course-schedule/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P053 · LC208</span> 实现 Trie (前缀树) <span class="df d2">中等</span></h3><p class="ap">解法: 字典树：逐字符挂节点</p><p class="idea">💡 查单词 = 沿树走到头，再看终点是不是词尾（end）；查前缀 = 走到头就行。公共前缀共享一条路径——这就是前缀树。</p><pre class="code">class Trie:
+    def __init__(self):
+        self.son, self.end = {}, False   # 儿子表: 字符→子节点 / 词尾标记
+    def insert(self, word):              # 逐字符沿树走, 缺就挂新节点
+        cur = self
+        for ch in word:
+            cur = cur.son.setdefault(ch, Trie())
+        cur.end = True                   # 走到头: 打上"词尾"记号
+    def search(self, word):              # 查完整单词
+        cur = self
+        for ch in word:
+            if ch not in cur.son: return False   # 走断了: 不存在
+            cur = cur.son[ch]
+        return cur.end                   # 恰好停在词尾才算数
+    def startsWith(self, prefix):        # 查前缀
+        cur = self
+        for ch in prefix:
+            if ch not in cur.son: return False
+            cur = cur.son[ch]
+        return True                      # 能走到头就是前缀
+
+class Solution:                          # 校验驱动: 模拟评测器按操作序列调用
+    def run(self, ops, args):
+        t, out = None, []
+        for op, arg in zip(ops, args):
+            if op == 'Trie': t = Trie(); out.append(None)
+            else: out.append(getattr(t, op)(arg[0]))
+        return out
+</pre><p class="cx">单次操作时间 O(L)（L = 词长）　·　空间 O(所有单词字符总数)（每个节点一层儿子表）</p><p class="lnk"><a href="pages/p053.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/implement-trie-prefix-tree/" target="_blank">力扣原题 ↗</a></p></section><h2 id="cat-回溯">🧭 回溯</h2><section class="card d2"><h3><span class="pn">P054 · LC46</span> 全排列 <span class="df d2">中等</span></h3><p class="ap">解法: used 标记 + 回溯</p><p class="idea">💡 每层从左到右试每个没用过的数：选上 → 递归 → 撤销。used 数组负责"别回头查重"，path 长满 n 个就是答案。</p><pre class="code">class Solution:
+    def permute(self, nums):
+        n = len(nums)
+        used = [False] * n            # used[i]: nums[i] 是否已进 path
+        path, ans = [], []
+
+        def dfs():                    # 本层职责: 给 path 挑下一个数
+            if len(path) == n:        # 凑满 n 个 → 一个完整排列
+                ans.append(path[:])   # 复制一份收进答案
+                return
+            for i in range(n):        # 每一层都从头试每个数
+                if used[i]:           # 已被 path 用着 → 跳过
+                    continue
+                used[i] = True        # 做选择: 标记 + 进 path
+                path.append(nums[i])
+                dfs()                 # 递归挑下一个
+                path.pop()            # 撤销选择(回溯)
+                used[i] = False
+
+        dfs()
+        return ans
+</pre><p class="cx">时间 O(n·n!)（n! 个排列，每个 O(n) 复制）　·　空间 O(n)（递归栈 + used，不计返回值）</p><p class="lnk"><a href="pages/p054.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/permutations/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P055 · LC78</span> 子集 <span class="df d2">中等</span></h3><p class="ap">解法: 每个元素选/不选，位置推进</p><p class="idea">💡 每个元素只有两种命运：选、不选。把 2^n 条"选/不选"路都走一遍，走到叶子的 path 就是一个子集——天然不重不漏。</p><pre class="code">class Solution:
+    def subsets(self, nums):
+        ans, path = [], []
+
+        def dfs(i):                   # 轮到决定 nums[i] 选不选
+            if i == len(nums):        # n 个元素全决定完
+                ans.append(path[:])   # 此刻的 path 就是一个子集
+                return
+            dfs(i + 1)                # 分支①: 不选 nums[i]
+            path.append(nums[i])      # 分支②: 选 nums[i]
+            dfs(i + 1)
+            path.pop()                # 撤销, 恢复现场
+
+        dfs(0)
+        return ans
+</pre><p class="cx">时间 O(n·2^n)（2^n 个子集，每个 O(n) 复制）　·　空间 O(n)（递归栈 + path，不计返回值）</p><p class="lnk"><a href="pages/p055.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/subsets/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P056 · LC17</span> 电话号码的字母组合 <span class="df d2">中等</span></h3><p class="ap">解法: 数字→字母映射 + 回溯</p><p class="idea">💡 逐位递归：第 i 位数字给几个字母就分几岔；每一位都填完，path 拼起来就是一个组合。组合总数 = 各位字母数的乘积。</p><pre class="code">class Solution:
+    def letterCombinations(self, digits):
+        if not digits: return []          # 空字符串: 一个组合都没有
+        phone = {'2':'abc', '3':'def', '4':'ghi', '5':'jkl',
+                 '6':'mno', '7':'pqrs', '8':'tuv', '9':'wxyz'}
+        ans, path = [], []
+
+        def dfs(i):                       # 正在为第 i 个数字选字母
+            if i == len(digits):          # 每个数字都配上了字母
+                ans.append(''.join(path)) # path 拼成一个组合
+                return
+            for ch in phone[digits[i]]:   # 依次试这个数字的每个字母
+                path.append(ch)           # 选它
+                dfs(i + 1)                # 去填下一个数字
+                path.pop()                # 撤销, 换下一个字母
+
+        dfs(0)
+        return ans
+</pre><p class="cx">时间 O(n·4^n)（最坏每位 4 个字母）　·　空间 O(n)（递归栈 + path，不计返回值）</p><div class="altblock"><p class="altlab">📘 解法二 · 官方 · BFS 队列</p><p class="idea alt-idea">💡 队列波浪推进：从空串出发，每来一个数字就把整层组合出队、各拼一个字母入队——队列永远等长，读完最后一位，队列即答案。</p><pre class="code">from collections import deque
+
+class Solution:
+    def letterCombinations(self, digits):
+        if not digits: return []          # 空串: 一个组合都没有
+        phone = {'2':'abc', '3':'def', '4':'ghi', '5':'jkl',
+                 '6':'mno', '7':'pqrs', '8':'tuv', '9':'wxyz'}
+        q = deque([''])                   # 队列从空串出发
+        for d in digits:                  # 每读一个数字, 队列长高一层
+            for _ in range(len(q)):       # 先定格: 只出队上一层的组合
+                cur = q.popleft()         # 取出一个等长的旧组合
+                for ch in phone[d]:       # 拼上本数字的每个字母
+                    q.append(cur + ch)    # 变长一格, 排到队尾
+        return list(q)                    # 队列里剩下的就是全部组合
+</pre><p class="cx">时间 O(n·4^n)（每个组合拼串 O(n)）　·　空间 O(4^n)（队列最宽时≈整层组合，峰值远大于回溯版的 O(n)）</p></div><p class="lnk"><a href="pages/p056.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/letter-combinations-of-a-phone-number/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P057 · LC39</span> 组合总和 <span class="df d2">中等</span></h3><p class="ap">解法: 可重复选取 + 剪枝回溯</p><p class="idea">💡 两个动作走天下：再选一次当前数（i 不动），或者跳过它（i+1）。left 减到 0 收答案，减到负数立刻剪枝。</p><pre class="code">class Solution:
+    def combinationSum(self, candidates, target):
+        ans, path = [], []
+
+        def dfs(i, left):              # 从 candidates[i] 开始挑, 还差 left
+            if left == 0:              # 一分不差 → 找到一组
+                ans.append(path[:])
+                return
+            if i == len(candidates) or left &lt; 0:   # 没数可挑 / 超了 → 剪枝
+                return
+            path.append(candidates[i]) # 选 candidates[i]
+            dfs(i, left - candidates[i])   # i 不动: 同一个数还能再选
+            path.pop()                 # 撤销
+            dfs(i + 1, left)           # 跳过它, 试下一个数
+
+        dfs(0, target)
+        return ans
+</pre><p class="cx">时间 最坏指数级 O(n^(T/M))（n=候选个数, T=target, M=最小候选值）　·　空间 O(T/M)（递归栈 + path）</p><p class="lnk"><a href="pages/p057.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/combination-sum/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P058 · LC22</span> 括号生成 <span class="df d2">中等</span></h3><p class="ap">解法: 回溯：左括号有余量就放，右括号多于左就能收</p><p class="idea">💡 回溯就是"每个位置都按规则试一遍，试完撤销"：left < n 就放 (，right < left 就放 )，凑满 2n 收答案——合法组合一个不漏。</p><pre class="code">class Solution:
+    def generateParenthesis(self, n):
+        ans, path = [], []
+
+        def dfs(left, right):        # 已放 left 个 '(' 和 right 个 ')'
+            if len(path) == 2 * n:   # 2n 个字符凑齐 → 这条路合法, 收答案
+                ans.append(''.join(path))
+                return
+            if left &lt; n:             # '(' 还有余量 → 可以放 '('
+                path.append('(')
+                dfs(left + 1, right)
+                path.pop()           # 撤销, 回到岔路口
+            if right &lt; left:         # ')' 不比 '(' 多 → 可以收口
+                path.append(')')
+                dfs(left, right + 1)
+                path.pop()           # 撤销, 回到岔路口
+
+        dfs(0, 0)
+        return ans
+</pre><p class="cx">时间 O(4^n / √n)（卡特兰数个合法串，每个 O(n) 拼接）　·　空间 O(n)（递归栈 + path，不计返回值）</p><div class="altblock"><p class="altlab">📘 解法二 · 官方 · 按长度 DP</p><p class="idea alt-idea">💡 dp[i] = Σ_p dp[p] × dp[i−1−p] 再包一层 (a)b：第一对括号把串切成"内 a 外 b"两段，分解唯一所以不重，枚举穷尽所以不漏。</p><pre class="code">class Solution:
+    def generateParenthesis(self, n):
+        dp = [[] for _ in range(n + 1)]     # dp[i]: i 对括号的所有组合
+        dp[0] = ['']                        # 地基: 0 对 = 空串
+        for i in range(1, n + 1):           # 从 1 对凑到 n 对
+            for p in range(i):              # 第一对括号里包 p 对
+                for a in dp[p]:             # 括号内的部分逐个试
+                    for b in dp[i - 1 - p]: # 括号后的部分逐个试
+                        dp[i].append('(' + a + ')' + b)
+        return dp[n]
+</pre><p class="cx">时间 O(4^n / √n)（卡特兰数个组合，每个 O(n) 拼装）　·　空间 O(4^n / √n)（dp 表存下全部答案）</p></div><p class="lnk"><a href="pages/p058.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/generate-parentheses/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P059 · LC79</span> 单词搜索 <span class="df d2">中等</span></h3><p class="ap">解法: 网格四方向回溯 + 现场标记</p><p class="idea">💡 走过的格子立刻盖章 #，四方向递归；返回前必须擦章恢复现场——让每次尝试都从"干净的棋盘"出发。</p><pre class="code">class Solution:
+    def exist(self, board, word):
+        m, n = len(board), len(board[0])
+        def dfs(i, j, k):
+            if k == len(word):          # 单词全部匹配完
+                return True
+            if i &lt; 0 or i &gt;= m or j &lt; 0 or j &gt;= n or board[i][j] != word[k]:
+                return False            # 出界或字符对不上
+            board[i][j] = '#'           # 现场标记: 盖章防重踩
+            ok = (dfs(i + 1, j, k + 1) or dfs(i - 1, j, k + 1) or
+                  dfs(i, j + 1, k + 1) or dfs(i, j - 1, k + 1))
+            board[i][j] = word[k]       # 回溯: 擦章恢复现场
+            return ok
+        for i in range(m):
+            for j in range(n):
+                if dfs(i, j, 0):        # 每个格子都试试当起点
+                    return True
+        return False
+</pre><p class="cx">时间 O(mn·3^L)（L=单词长，每步至多 3 个新方向）　·　空间 O(L)（递归栈）</p><p class="lnk"><a href="pages/p059.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/word-search/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P060 · LC131</span> 分割回文串 <span class="df d2">中等</span></h3><p class="ap">解法: 枚举切割点 + 回文判断回溯</p><p class="idea">💡 每层只决定"下一刀切到哪"：枚举 end → isPal 双指针验货 → 切下、递归、撤销。start 走到 len(s) 就收一份答案。</p><pre class="code">class Solution:
+    def partition(self, s):
+        ans, path = [], []
+        def isPal(lo, hi):              # 双指针: s[lo..hi] 是回文吗
+            while lo &lt; hi:
+                if s[lo] != s[hi]:
+                    return False
+                lo += 1
+                hi -= 1
+            return True
+        def dfs(start):                 # 还没切的部分从 start 开始
+            if start == len(s):         # 切到头, 收集一份
+                ans.append(path[:])
+                return
+            for end in range(start, len(s)):   # 枚举这一段切到哪
+                if isPal(start, end):          # 是回文才要
+                    path.append(s[start:end + 1])
+                    dfs(end + 1)               # 接着切后面
+                    path.pop()                 # 撤销
+        dfs(0)
+        return ans
+</pre><p class="cx">时间 O(n·2ⁿ)（最坏：每个前缀都是回文）　·　空间 O(n)（递归栈 + path，不计返回值）</p><div class="altblock"><p class="altlab">📘 解法二 · 官方 · 回文预处理表</p><p class="idea alt-idea">💡 先交 O(n²) 的"表钱"把所有子串是否回文一次算清，回溯验货从双指针 O(n) 变成查表 O(1)——空间换时间，适合同一串反复查询。</p><pre class="code">class Solution:
+    def partition(self, s):
+        n = len(s)
+        isPal = [[False] * n for _ in range(n)]   # isPal[i][j]: s[i..j] 是回文吗
+        for i in range(n - 1, -1, -1):            # i 倒着算: 内层区间先就绪
+            for j in range(i, n):
+                isPal[i][j] = s[i] == s[j] and (j - i &lt; 2 or isPal[i + 1][j - 1])
+        ans, path = [], []
+        def dfs(start):                   # 回溯骨架与主解法一致
+            if start == n:
+                ans.append(path[:])
+                return
+            for end in range(start, n):   # 枚举这一段切到哪
+                if isPal[start][end]:     # O(1) 查表, 不再双指针
+                    path.append(s[start:end + 1])
+                    dfs(end + 1)
+                    path.pop()
+        dfs(0)
+        return ans
+</pre><p class="cx">时间 O(n² + n·2ⁿ)（建表 O(n²) + 回溯 O(n·2ⁿ)）　·　空间 O(n²)（isPal 整张表；回溯栈另计 O(n)）</p></div><p class="lnk"><a href="pages/p060.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/palindrome-partitioning/" target="_blank">力扣原题 ↗</a></p></section><section class="card d3"><h3><span class="pn">P061 · LC51</span> N 皇后 <span class="df d3">困难</span></h3><p class="ap">解法: 逐行放置 + 列/对角线集合剪枝</p><p class="idea">💡 逐行放皇后（行冲突被结构消灭），列和对角线用三个集合记账：同一条主对角线 r−c 是定值、副对角线 r+c 是定值——O(1) 就知道一格安不安全。</p><pre class="code">class Solution:
+    def solveNQueens(self, n):
+        ans = []
+        grid = [['.'] * n for _ in range(n)]
+        col, d1, d2 = set(), set(), set()   # 列 / 主对角线(r-c) / 副对角线(r+c)
+        def dfs(r):                  # 逐行放: 本行试每一列
+            if r == n:               # n 行都放好 → 找到一个解
+                ans.append([''.join(row) for row in grid])
+                return
+            for c in range(n):
+                if c in col or (r - c) in d1 or (r + c) in d2:
+                    continue         # 被攻击 → 跳过
+                col.add(c); d1.add(r - c); d2.add(r + c)
+                grid[r][c] = 'Q'     # 放置
+                dfs(r + 1)           # 下一行
+                grid[r][c] = '.'     # 撤销
+                col.discard(c); d1.discard(r - c); d2.discard(r + c)
+        dfs(0)
+        return ans
+</pre><p class="cx">时间 O(n!) 量级（三集合剪枝）　·　空间 O(n)（集合 + 递归栈，棋盘 O(n²)）</p><p class="lnk"><a href="pages/p061.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/n-queens/" target="_blank">力扣原题 ↗</a></p></section><h2 id="cat-二分查找">🔍 二分查找</h2><section class="card d1"><h3><span class="pn">P062 · LC35</span> 搜索插入位置 <span class="df d1">简单</span></h3><p class="ap">解法: 左闭右闭二分，找不到就插 left</p><p class="idea">💡 左闭右闭 + while left<=right + 缩区间必用 mid±1；循环结束时 left 左边全 < target、右边全 ≥ target——所以 left 就是插入点。</p><pre class="code">class Solution:
+    def searchInsert(self, nums, target):
+        left, right = 0, len(nums) - 1
+        while left &lt;= right:            # 区间 [left,right] 还有格子
+            mid = (left + right) // 2
+            if nums[mid] == target:     # 一步命中
+                return mid
+            if nums[mid] &lt; target:      # 中点太小 → 去右半
+                left = mid + 1
+            else:                       # 中点太大 → 去左半
+                right = mid - 1
+        return left                     # 没找到: left 就是插入位置
+</pre><p class="cx">时间 O(log n)　·　空间 O(1)</p><p class="lnk"><a href="pages/p062.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/search-insert-position/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P063 · LC74</span> 搜索二维矩阵 <span class="df d2">中等</span></h3><p class="ap">解法: 拉直成一维数组二分</p><p class="idea">💡 行末 < 下一行行首 ⇒ 拉直即有序：把 m×n 矩阵当长度 m·n 的有序数组二分，mid//n 是行、mid%n 是列。</p><pre class="code">class Solution:
+    def searchMatrix(self, matrix, target):
+        m, n = len(matrix), len(matrix[0])
+        left, right = 0, m * n - 1      # 拉直后的一维下标
+        while left &lt;= right:
+            mid = (left + right) // 2
+            val = matrix[mid // n][mid % n]   # 一维 → 行列
+            if val == target:
+                return True
+            if val &lt; target:            # 中点太小 → 去右半
+                left = mid + 1
+            else:                       # 中点太大 → 去左半
+                right = mid - 1
+        return False
+</pre><p class="cx">时间 O(log(mn))　·　空间 O(1)</p><div class="altblock"><p class="altlab">📘 解法二 · 官方 · 两次二分</p><p class="idea alt-idea">💡 两次二分各管一维：先在首列二分锁定「最后一个行首 ≤ target 的行」，再在这行里二分找 target——O(log m) + O(log n)。</p><pre class="code">class Solution:
+    def searchMatrix(self, matrix, target):
+        m, n = len(matrix), len(matrix[0])
+        top, bottom = 0, m - 1
+        while top &lt;= bottom:            # 第一次二分: 首列里挑行
+            mid = (top + bottom) // 2
+            if matrix[mid][0] &lt;= target:
+                top = mid + 1           # mid 行有资格, 更下面可能也有
+            else:
+                bottom = mid - 1        # mid 行整行超标, 下面连坐
+        r = max(bottom, 0)              # 最后一个 行首 ≤ target 的行
+        lo, hi = 0, n - 1
+        while lo &lt;= hi:                 # 第二次二分: 第 r 行里挑格
+            mid = (lo + hi) // 2
+            if matrix[r][mid] == target:
+                return True
+            if matrix[r][mid] &lt; target:
+                lo = mid + 1
+            else:
+                hi = mid - 1
+        return False
+</pre><p class="cx">时间 O(log m + log n)（两次独立二分）　·　空间 O(1)</p></div><p class="lnk"><a href="pages/p063.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/search-a-2d-matrix/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P064 · LC34</span> 在排序数组中查找元素的第一个和最后一个位置 <span class="df d2">中等</span></h3><p class="ap">解法: 两次二分：找左边界 + 右边界</p><p class="idea">💡 把两个边界翻译成同一个问题「第一个 ≥ x 的下标」：第一轮 x = target，第二轮 x = target + 1 再退一格——一套二分用两次。</p><pre class="code">class Solution:
+    def searchRange(self, nums, target):
+        def firstGE(tgt):                # 第一个 &gt;= tgt 的下标(没有则 n)
+            l, r = 0, len(nums)          # 左闭右开区间 [l, r)
+            while l &lt; r:
+                mid = (l + r) // 2
+                if nums[mid] &gt;= tgt:     # 够大: mid 可能就是边界
+                    r = mid              # 保留 mid, 继续向左压
+                else:                    # 太小: 边界必在 mid 右侧
+                    l = mid + 1
+            return l
+        n = len(nums)
+        left = firstGE(target)           # ① 第一轮: 找左边界
+        if left == n or nums[left] != target:
+            return [-1, -1]              # 数组里没有 target
+        right = firstGE(target + 1) - 1  # ② 第二轮: 找 &gt;= target+1 再退一格
+        return [left, right]
+</pre><p class="cx">时间 O(log n)（两轮二分）　·　空间 O(1)</p><p class="lnk"><a href="pages/p064.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/find-first-and-last-position-of-element-in-sorted-array/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P065 · LC33</span> 搜索旋转排序数组 <span class="df d2">中等</span></h3><p class="ap">解法: 判断哪半有序，再决定去哪边</p><p class="idea">💡 无序的旋转数组里，mid 切开的两半<b>必有一半完全有序</b>：先认出有序半，再看 target 萪不落在它的范围内——落里去那边，不落去另一半。</p><pre class="code">class Solution:
+    def search(self, nums, target):
+        l, r = 0, len(nums) - 1          # 闭区间 [l, r]
+        while l &lt;= r:
+            mid = (l + r) // 2
+            if nums[mid] == target:      # 正中目标
+                return mid
+            if nums[l] &lt;= nums[mid]:     # 左半 [l..mid] 有序
+                if nums[l] &lt;= target &lt; nums[mid]:
+                    r = mid - 1          # target 落在有序的左半
+                else:
+                    l = mid + 1          # 不在左半, 只能去右半
+            else:                        # 右半 [mid..r] 有序
+                if nums[mid] &lt; target &lt;= nums[r]:
+                    l = mid + 1          # target 落在有序的右半
+                else:
+                    r = mid - 1          # 不在右半, 只能去左半
+        return -1
+</pre><p class="cx">时间 O(log n)　·　空间 O(1)</p><p class="lnk"><a href="pages/p065.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/search-in-rotated-sorted-array/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P066 · LC153</span> 寻找旋转排序数组中的最小值 <span class="df d2">中等</span></h3><p class="ap">解法: mid 与右端点比较</p><p class="idea">💡 拿 mid 和右端 nums[r] 比：mid 更小 ⇒ mid 右边没断点，最小在含 mid 的左半（r = mid）；mid 更大 ⇒ 断崖就在 mid 右边，最小在 mid+1 之后（l = mid + 1）。</p><pre class="code">class Solution:
+    def findMin(self, nums):
+        l, r = 0, len(nums) - 1          # 闭区间 [l, r]
+        while l &lt; r:                     # 还剩不止一个候选
+            mid = (l + r) // 2           # 中点(偏左)
+            if nums[mid] &lt; nums[r]:      # mid..r 无断点 → 最小在左半(含 mid)
+                r = mid                  # 保留 mid, 向左压
+            else:                        # mid 比 nums[r] 大 → 断崖在 mid 右侧
+                l = mid + 1              # mid 连自己一起出局
+        return nums[l]                   # 收缩到只剩一个, 它就是最小
+</pre><p class="cx">时间 O(log n)　·　空间 O(1)</p><p class="lnk"><a href="pages/p066.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/find-minimum-in-rotated-sorted-array/" target="_blank">力扣原题 ↗</a></p></section><section class="card d3"><h3><span class="pn">P067 · LC4</span> 寻找两个正序数组的中位数 <span class="df d3">困难</span></h3><p class="ap">解法: 第 k 小：每次淘汰 k/2 个</p><p class="idea">💡 找第 k 小不必合并：两边各看第 k/2 个，较小的那一批前 k/2 个绝不可能是第 k 名——整队淘汰，k 每轮砍半，log 轮见分晓。</p><pre class="code">class Solution:
+    def findMedianSortedArrays(self, nums1, nums2):
+        def kth(a, b, k):                 # 合并后第 k 小(k 从 1 起)
+            if len(a) &gt; len(b):           # 让 a 恒为较短的那个
+                return kth(b, a, k)
+            if not a:                     # a 空了: 答案就是 b 的第 k 个
+                return b[k - 1]
+            if k == 1:                    # 两边都非空: 小者即第 1 小
+                return min(a[0], b[0])
+            i = min(k // 2, len(a))       # a 派第 i 个应战
+            j = min(k // 2, len(b))       # b 派第 j 个应战
+            if a[i - 1] &lt;= b[j - 1]:      # a 的第 i 个不大于 b 的第 j 个
+                return kth(a[i:], b, k - i)   # a 前 i 个挤不进前 k 名, 淘汰
+            return kth(a, b[j:], k - j)       # 否则淘汰 b 的前 j 个
+        total = len(nums1) + len(nums2)
+        if total % 2:                     # 奇数: 中位数 = 正中那一个
+            return kth(nums1, nums2, total // 2 + 1)
+        return (kth(nums1, nums2, total // 2) +      # 偶数: 中间两个取平均
+                kth(nums1, nums2, total // 2 + 1)) / 2
+</pre><p class="cx">时间 O(log(m+n))　·　空间 O(log(m+n))（递归栈）</p><p class="lnk"><a href="pages/p067.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/median-of-two-sorted-arrays/" target="_blank">力扣原题 ↗</a></p></section><h2 id="cat-栈">🥞 栈</h2><section class="card d1"><h3><span class="pn">P068 · LC20</span> 有效的括号 <span class="df d1">简单</span></h3><p class="ap">解法: 左括号进栈，右括号找对象</p><p class="idea">💡 左括号进栈等待，右括号必须和"最近那个没配对的左括号"（栈顶）配对——后进先出，正是栈的本职工作。</p><pre class="code">class Solution:
+    def isValid(self, s):
+        pair = {')': '(', ']': '[', '}': '{'}    # 右括号 → 它的另一半
+        stack = []                               # 还在等配对的左括号
+        for c in s:
+            if c in '([{':                       # 左括号: 进栈排队
+                stack.append(c)
+            elif stack and stack[-1] == pair[c]: # 右括号: 栈顶是另一半?
+                stack.pop()                      # 配对成功, 出栈
+            else:                                # 栈空 / 对不上
+                return False
+        return len(stack) == 0                   # 有剩 = 没闭合完
+</pre><p class="cx">时间 O(n)　·　空间 O(n)（最坏全是左括号）</p><p class="lnk"><a href="pages/p068.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/valid-parentheses/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P069 · LC155</span> 最小栈 <span class="df d2">中等</span></h3><p class="ap">解法: 辅助栈同步记录当前最小</p><p class="idea">💡 主栈管进出，辅助栈管"历届冠军"：只有不比当前最小大的值才有资格进辅助栈；弹掉最小值时两个栈一起弹——getMin 永远只是读一下栈顶。</p><pre class="code">class MinStack:
+    def __init__(self):
+        self.st = []                 # 主栈: 老老实实存每个值
+        self.mi = []                 # 辅助栈: 栈顶永远是当前最小
+    def push(self, x):
+        self.st.append(x)            # 主栈照常进
+        if not self.mi or x &lt;= self.mi[-1]:
+            self.mi.append(x)        # 不比最小大, 辅助栈也进
+    def pop(self):
+        x = self.st.pop()            # 主栈弹谁
+        if x == self.mi[-1]:
+            self.mi.pop()            # 弹的正是最小值, 辅助栈跟着弹
+    def top(self):
+        return self.st[-1]
+    def getMin(self):
+        return self.mi[-1]           # O(1) 读栈顶即是答案
+
+class Solution:                      # 校验驱动: 模拟评测器按序调用
+    def run(self, ops, args):
+        s, out = None, []
+        for op, arg in zip(ops, args):
+            if op == 'MinStack': s = MinStack(); out.append(None)
+            elif op == 'push': s.push(arg[0]); out.append(None)
+            elif op == 'pop': s.pop(); out.append(None)
+            else: out.append(getattr(s, op)())
+        return out
+</pre><p class="cx">单次操作时间 O(1)　·　空间 O(n)（最坏时辅助栈与主栈等高）</p><p class="lnk"><a href="pages/p069.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/min-stack/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P070 · LC394</span> 字符串解码 <span class="df d2">中等</span></h3><p class="ap">解法: 双栈：数字栈 + 字符串栈</p><p class="idea">💡 遇到 [ 就把"次数"和"旧串"分别压进两个栈、清零从头攒；遇到 ] 就弹栈：旧串 + 新串×k。嵌套多深都不怕——栈天生就是管嵌套的。</p><pre class="code">class Solution:
+    def decodeString(self, s):
+        num, cur = 0, ''              # num: 正在攒的次数 / cur: 当前串
+        nums, strs = [], []           # 数字栈 / 字符串栈
+        for ch in s:
+            if ch.isdigit():
+                num = num * 10 + int(ch)   # 多位数: 1 -&gt; 12
+            elif ch == '[':
+                nums.append(num)           # 次数进数字栈
+                strs.append(cur)           # [ 前的旧串进字符串栈
+                num, cur = 0, ''           # 清零, 从头攒 [ 里的新串
+            elif ch == ']':
+                k = nums.pop()             # 弹出重复次数
+                prev = strs.pop()          # 弹出 [ 前的旧串
+                cur = prev + cur * k       # 旧串接上 k 遍新串
+            else:
+                cur += ch                  # 普通字母直接接上
+        return cur
+</pre><p class="cx">时间 O(M + n)（M = 输出串长）　·　空间 O(M)（两个栈 + 当前串）</p><p class="lnk"><a href="pages/p070.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/decode-string/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P071 · LC739</span> 每日温度 <span class="df d2">中等</span></h3><p class="ap">解法: 单调栈存下标，等更热的来收割</p><p class="idea">💡 单调栈存"还在等更热天"的下标：更热的天一来，就把栈里所有比它冷的天一次结清（ans[j] = i − j），然后自己进栈继续等。每个下标进栈一次、出栈一次，总共 O(n)。</p><pre class="code">class Solution:
+    def dailyTemperatures(self, temperatures):
+        n = len(temperatures)
+        ans = [0] * n                # 默认 0: 后面没有更热的天
+        st = []                      # 单调栈: 存"还没等到更热天"的下标
+        for i in range(n):
+            while st and temperatures[i] &gt; temperatures[st[-1]]:
+                j = st.pop()         # 栈顶那天等到了答案
+                ans[j] = i - j       # 隔了几天
+            st.append(i)             # 自己也进栈接着等
+        return ans
+</pre><p class="cx">时间 O(n)（每个下标至多进栈/出栈各一次）　·　空间 O(n)（栈最坏存满递减序列）</p><p class="lnk"><a href="pages/p071.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/daily-temperatures/" target="_blank">力扣原题 ↗</a></p></section><section class="card d3"><h3><span class="pn">P072 · LC84</span> 柱状图中最大的矩形 <span class="df d3">困难</span></h3><p class="ap">解法: 单调递增栈 + 哨兵收尾</p><p class="idea">💡 单调递增栈 + 哨兵：柱子只比栈顶高就进栈排队；一来根更矮的，栈顶的左右边界就齐了——高 = 它自己，宽 = i − 新栈顶 − 1，弹一根结一笔。哨兵 0 保证最后一根也不漏。</p><pre class="code">class Solution:
+    def largestRectangleArea(self, heights):
+        h = heights + [0]             # 哨兵: 末尾垫个 0, 逼栈里全部结算
+        st, best = [], 0              # 单调递增栈: 存下标
+        for i, x in enumerate(h):
+            while st and h[st[-1]] &gt;= x:
+                ht = h[st.pop()]      # 栈顶右边界到了, 出栈结算
+                left = st[-1] if st else -1   # 左边界 = 弹完后的新栈顶
+                best = max(best, ht * (i - left - 1))  # 宽 × 高
+            st.append(i)              # 自己进栈
+        return best
+</pre><p class="cx">时间 O(n)（每根柱子至多进栈/出栈各一次）　·　空间 O(n)（栈）</p><p class="lnk"><a href="pages/p072.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/largest-rectangle-in-histogram/" target="_blank">力扣原题 ↗</a></p></section><h2 id="cat-堆">⛰ 堆</h2><section class="card d2"><h3><span class="pn">P073 · LC215</span> 数组中的第K个最大元素 <span class="df d2">中等</span></h3><p class="ap">解法: 快速选择（partition 缩小范围）</p><p class="idea">💡 第 k 大 = 升序下标 n − k。每趟 partition 让 pivot 归位：p == k 直接收工；p < k 只进右段，p > k 只进左段——每趟平均砍一半，平均 O(n)。</p><pre class="code">class Solution:
+    def findKthLargest(self, nums, k):
+        k = len(nums) - k             # 第 k 大 = 升序下标 n-k
+        lo, hi = 0, len(nums) - 1
+        while True:
+            p = self.partition(nums, lo, hi)   # 分一趟, pivot 归位到 p
+            if p == k:
+                return nums[p]        # 正好落在目标下标
+            elif p &lt; k:
+                lo = p + 1            # 答案在右段
+            else:
+                hi = p - 1            # 答案在左段
+    def partition(self, a, lo, hi):
+        pivot = a[hi]                 # 拿末位当基准
+        i = lo                        # i: 下一个"小于 pivot"的坑位
+        for j in range(lo, hi):
+            if a[j] &lt; pivot:          # 比 pivot 小 -&gt; 换到左边
+                a[i], a[j] = a[j], a[i]
+                i += 1
+        a[i], a[hi] = a[hi], a[i]     # pivot 归位
+        return i
+</pre><p class="cx">平均时间 O(n)（每趟期望砍半）　·　最坏 O(n²)　·　空间 O(1)（原地 partition，只递归/循环一段）</p><div class="altblock"><p class="altlab">📘 解法二 · 官方 · 大小为 k 的小顶堆</p><p class="idea alt-idea">💡 只装 k 个元素的小顶堆：堆里始终是当前最大的 k 个，堆顶 = 第 k 大的门槛；扫完，堆顶就是答案。</p><pre class="code">import heapq                          # 官方解法本色: 直接用现成的小顶堆
+
+class Solution:
+    def findKthLargest(self, nums, k):
+        heap = []                           # 小顶堆: 只装"当前最大的 k 个"
+        for x in nums:                      # 逐个过数组
+            if len(heap) &lt; k:               # 堆未满 → 先装满
+                heapq.heappush(heap, x)
+            elif x &gt; heap[0]:               # 比堆顶(门槛)大 → 有资格进前 k
+                heapq.heapreplace(heap, x)  # 踢掉堆顶, 自己顶上
+        return heap[0]                      # 堆里最小的 = 第 k 大
+</pre><p class="cx">时间 O(n log k)（每个元素至多一进一出堆，各 O(log k)）　·　空间 O(k)（堆）</p></div><p class="lnk"><a href="pages/p073.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/kth-largest-element-in-an-array/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P074 · LC347</span> 前 K 个高频元素 <span class="df d2">中等</span></h3><p class="ap">解法: 哈希计数 + 桶排序</p><p class="idea">💡 先数后装桶：桶的下标就是出现次数，天然有序——从最高的桶往低处收 k 个，比堆排序还省事，整体 O(n)。</p><pre class="code">class Solution:
+    def topKFrequent(self, nums, k):
+        cnt = {}                                   # ① 数字 -&gt; 出现次数
+        for x in nums:
+            cnt[x] = cnt.get(x, 0) + 1
+        buckets = [[] for _ in range(len(nums) + 1)]   # ② 桶: 下标 = 出现次数
+        for x, c in cnt.items():                   # 每个数丢进自己频率的桶
+            buckets[c].append(x)
+        ans = []
+        for c in range(len(buckets) - 1, 0, -1):   # ③ 频率从高到低扫桶
+            for x in buckets[c]:
+                if len(ans) &lt; k:                   # 还没收满 k 个
+                    ans.append(x)                  # 才收进答案
+        return ans                                 # 从高到低, 收满为止
+</pre><p class="cx">时间 O(n)（数一遍 + 装桶 + 扫桶）　·　空间 O(n)（哈希表 + 桶）</p><p class="lnk"><a href="pages/p074.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/top-k-frequent-elements/" target="_blank">力扣原题 ↗</a></p></section><section class="card d3"><h3><span class="pn">P075 · LC295</span> 数据流的中位数 <span class="df d3">困难</span></h3><p class="ap">解法: 对顶堆：大顶堆 + 小顶堆</p><p class="idea">💡 两堆对顶分天下：lo 管小的一半、hi 管大的一半，随时保证 |lo|−|hi| ≤ 1——中位数要么是 lo 顶，要么是两顶平均，一眼可取。</p><pre class="code">import heapq
+
+class MedianFinder:
+    def __init__(self):
+        self.lo = []                 # 大顶堆(存相反数): 较小的一半
+        self.hi = []                 # 小顶堆: 较大的一半
+    def addNum(self, num):
+        heapq.heappush(self.lo, -num)                  # ① 先无脑丢进 lo
+        heapq.heappush(self.hi, -heapq.heappop(self.lo))   # ② lo 最大的让给 hi
+        if len(self.hi) &gt; len(self.lo):                # ③ hi 多了一个
+            heapq.heappush(self.lo, -heapq.heappop(self.hi))   # 还一个给 lo
+    def findMedian(self):
+        if len(self.lo) &gt; len(self.hi):                # 奇数个: lo 多一个
+            return -self.lo[0]                         # lo 顶就是中位数
+        return (-self.lo[0] + self.hi[0]) / 2          # 偶数个: 两堆顶平均
+
+class Solution:                      # 校验驱动: 模拟评测器按序调用
+    def run(self, ops, args):
+        mf, out = None, []
+        for op, arg in zip(ops, args):
+            if op == 'MedianFinder': mf = MedianFinder(); out.append(None)
+            elif op == 'addNum': mf.addNum(arg[0]); out.append(None)
+            else: out.append(mf.findMedian())
+        return out
+</pre><p class="cx">addNum 时间 O(log n)　·　findMedian 时间 O(1)　·　空间 O(n)（两个堆分摊所有数）</p><div class="altblock"><p class="altlab">📘 解法二 · 官方 · 有序数组 + 二分插入</p><p class="idea alt-idea">💡 让数组始终保持有序：addNum 二分定插入点再挪位插入，findMedian 直接读下标 ⌊n/2⌋——好想好写，软肋是 insert 挪位 O(n)。</p><pre class="code">class MedianFinder:              # 解法二:力扣官方题解 方法一(有序数组 + 二分插入)
+    def __init__(self):
+        self.arr = []            # 有序数组: 从小到大
+    def addNum(self, num):
+        lo, hi = 0, len(self.arr)    # 手写二分: 找第一个 &gt;= num 的插入点
+        while lo &lt; hi:
+            mid = (lo + hi) // 2
+            if self.arr[mid] &lt; num:
+                lo = mid + 1
+            else: hi = mid
+        self.arr.insert(lo, num)     # 插入点后面整体右移, 仍有序
+    def findMedian(self):
+        n = len(self.arr); mid = n // 2
+        if n % 2: return self.arr[mid]       # 奇数个: 正中间那格
+        return (self.arr[mid - 1] + self.arr[mid]) / 2
+
+class Solution:                  # 校验驱动: 模拟评测器按 ops 序列逐条调用
+    def run(self, ops, args):
+        mf, out = None, []
+        for op, arg in zip(ops, args):
+            if op == 'MedianFinder': mf = MedianFinder(); out.append(None)
+            elif op == 'addNum': mf.addNum(arg[0]); out.append(None)
+            else: out.append(mf.findMedian())
+        return out
+</pre><p class="cx">addNum 时间 O(log n) 二分 + O(n) 挪位　·　findMedian 时间 O(1)　·　空间 O(n)</p></div><p class="lnk"><a href="pages/p075.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/find-median-from-data-stream/" target="_blank">力扣原题 ↗</a></p></section><h2 id="cat-贪心算法">💰 贪心算法</h2><section class="card d1"><h3><span class="pn">P076 · LC121</span> 买卖股票的最佳时机 <span class="df d1">简单</span></h3><p class="ap">解法: 一次遍历：记最低价，算最大差</p><p class="idea">💡 只记历史最低价：每天问一句"今天卖能赚多少"（price − minPrice），再顺手更新最低价——一趟扫完，最大利润自然浮出来。</p><pre class="code">class Solution:
+    def maxProfit(self, prices):
+        minPrice = prices[0]                   # 到今天为止的最低价
+        ans = 0                                # 目前能赚的最多利润
+        for price in prices:                   # 一天一天往前走
+            ans = max(ans, price - minPrice)   # 假如今天卖, 能赚多少
+            minPrice = min(minPrice, price)    # 顺手记录历史最低价
+        return ans
+</pre><p class="cx">时间 O(n)（一次遍历）　·　空间 O(1)（只记 minPrice 和 ans 两个变量）</p><p class="lnk"><a href="pages/p076.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/best-time-to-buy-and-sell-stock/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P077 · LC55</span> 跳跃游戏 <span class="df d2">中等</span></h3><p class="ap">解法: 维护最远可达 far</p><p class="idea">💡 贪心只记一个最远可达 far：每扫过一格就把 far 往远处推（max(far, i+nums[i])）；哪天 i 越过了 far，中间必有跳不过去的沟——直接判负。</p><pre class="code">class Solution:
+    def canJump(self, nums):
+        far = 0                        # 目前最远能跳到哪格
+        for i, step in enumerate(nums):
+            if i &gt; far:                # 这格够不着 → 被卡死
+                return False
+            far = max(far, i + step)   # 站上这格, 把最远可达往外推
+        return True                    # 扫完没卡死 → 终点必可达
+</pre><p class="cx">时间 O(n)（每格只看一次）　·　空间 O(1)（只记一个 far）</p><p class="lnk"><a href="pages/p077.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/jump-game/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P078 · LC45</span> 跳跃游戏 II <span class="df d2">中等</span></h3><p class="ap">解法: 层序贪心：当前层尽头/下一层尽头</p><p class="idea">💡 把跳跃当 BFS 分层：farthest 记下一层最远，扫到 cur_end 就 jumps+1 并把 cur_end 推到 farthest——层数即最少跳数，一趟 O(n)。</p><pre class="code">class Solution:
+    def jump(self, nums):
+        jumps = 0                 # 已经跳了几步
+        cur_end = 0               # 当前层的最右边界
+        farthest = 0              # 扫描中发现的下一层最远
+        for i in range(len(nums) - 1):     # 最后一格不用扫
+            farthest = max(farthest, i + nums[i])   # 谁更远?
+            if i == cur_end:      # 走到当前层尽头
+                jumps += 1        # 被迫再跳一步
+                cur_end = farthest  # 边界推进到下一层
+        return jumps
+</pre><p class="cx">时间 O(n)（每格看一次）　·　空间 O(1)（只有三个变量）</p><p class="lnk"><a href="pages/p078.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/jump-game-ii/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P079 · LC763</span> 划分字母区间 <span class="df d2">中等</span></h3><p class="ap">解法: 记每个字母最后出现位置，扩展窗口</p><p class="idea">💡 先一趟记下每个字母最后出现在哪；第二遍每个字母都在给窗口续命（end 取 max），i 一走到 end，说明没人再要求延长——咔嚓切一段。</p><pre class="code">class Solution:
+    def partitionLabels(self, s):
+        last = {}                     # 字母 -&gt; 最后出现的下标
+        for i, ch in enumerate(s):    # 第 1 趟: 建表
+            last[ch] = i
+        parts = []                    # 每段的长度
+        start, end = 0, 0             # 当前段的窗口
+        for i, ch in enumerate(s):    # 第 2 趟: 一边扫一边扩窗
+            end = max(end, last[ch])  # 必须罩住 ch 最后出现
+            if i == end:              # 走到窗口尽头 -&gt; 切!
+                parts.append(end - start + 1)
+                start = end + 1
+        return parts
+</pre><p class="cx">时间 O(n)（两趟扫描）　·　空间 O(|Σ|)（last 表最多 26 项）</p><p class="lnk"><a href="pages/p079.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/partition-labels/" target="_blank">力扣原题 ↗</a></p></section><h2 id="cat-动态规划">📈 动态规划</h2><section class="card d1"><h3><span class="pn">P080 · LC70</span> 爬楼梯 <span class="df d1">简单</span></h3><p class="ap">解法: 滚动变量：f(n)=f(n-1)+f(n-2)</p><p class="idea">💡 最后一步只有两种来路：从 i−1 迈 1 步、从 i−2 跨 2 步 → f(i) = f(i−1) + f(i−2)。只留 a、b 两个滚动变量，空间 O(1)。</p><pre class="code">class Solution:
+    def climbStairs(self, n):
+        if n &lt;= 2:                 # 前 2 阶: 答案就是 n
+            return n
+        a, b = 1, 2                # f(1)=1, f(2)=2
+        for i in range(3, n + 1):  # 从第 3 阶递推到第 n 阶
+            c = a + b              # f(i) = f(i-1) + f(i-2)
+            a = b                  # 窗口右移: a &lt;- f(i-1)
+            b = c                  # b &lt;- f(i)
+        return b                   # f(n)
+</pre><p class="cx">时间 O(n)（一循环到顶）　·　空间 O(1)（滚动变量 a、b、c）</p><p class="lnk"><a href="pages/p080.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/climbing-stairs/" target="_blank">力扣原题 ↗</a></p></section><section class="card d1"><h3><span class="pn">P081 · LC118</span> 杨辉三角 <span class="df d1">简单</span></h3><p class="ap">解法: 逐行构造，两端为 1</p><p class="idea">💡 逐行 DP：第 r 行只有 r+1 个数，两端恒为 1，中间 row[j] = 上一行相邻两数之和——每个数只依赖上一行，从上往下滚一遍即可。</p><pre class="code">class Solution:
+    def generate(self, numRows):
+        tri = []                       # 整个三角
+        for r in range(numRows):       # 一行一行造
+            row = [1] * (r + 1)        # 新行先全是 1
+            for j in range(1, r):      # 中间格: 相邻两数之和
+                row[j] = tri[r-1][j-1] + tri[r-1][j]
+            tri.append(row)            # 这一行完工, 挂上三角
+        return tri
+</pre><p class="cx">时间 O(numRows²)（格子总数）　·　空间 O(1)（不计返回的三角本身）</p><p class="lnk"><a href="pages/p081.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/pascals-triangle/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P082 · LC198</span> 打家劫舍 <span class="df d2">中等</span></h3><p class="ap">解法: 滚动 dp：偷或不偷相邻两家</p><p class="idea">💡 每家二选一：不偷继承 prev1，偷则 prev2 + num，取大滚向前——f(i) 只依赖前两个 f，两个滚动变量走完全程，O(n) 时间 O(1) 空间。</p><pre class="code">class Solution:
+    def rob(self, nums):
+        prev2 = 0                  # f(i-2): 前前家为止的最优
+        prev1 = 0                  # f(i-1): 上一家为止的最优
+        for num in nums:           # 轮到这家, 做决策
+            cur = max(prev1, prev2 + num)   # 不偷 or 偷, 取大
+            prev2 = prev1          # 窗口右滚
+            prev1 = cur
+        return prev1               # 最后一家为止的最优
+</pre><p class="cx">时间 O(n)（每家决策一次）　·　空间 O(1)（滚动变量 prev2、prev1）</p><p class="lnk"><a href="pages/p082.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/house-robber/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P083 · LC279</span> 完全平方数 <span class="df d2">中等</span></h3><p class="ap">解法: 完全背包：f(i)=min(f(i-j²))+1</p><p class="idea">💡 f[i] = min(f[i−j²]) + 1：想凑出 i，先把某块平方数 j² 拿走当"最后一块"，剩下 i−j² 用它自己的最优解，再加这一块。从小往大填表，每格都站在已算好的格子上。</p><pre class="code">class Solution:
+    def numSquares(self, n):
+        f = [0] + [float('inf')] * n   # f[i]: 凑出 i 最少要几个平方数
+        for i in range(1, n + 1):      # 从小到大, 依次凑出 1..n
+            j = 1
+            while j * j &lt;= i:          # 枚举不超过 i 的平方数 j*j
+                f[i] = min(f[i], f[i - j*j] + 1)   # 拆出 j*j, 剩下 i-j*j 的最优解+1
+                j += 1
+        return f[n]
+</pre><p class="cx">时间 O(n·√n)　·　空间 O(n)（f 表）</p><p class="lnk"><a href="pages/p083.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/perfect-squares/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P084 · LC322</span> 零钱兑换 <span class="df d2">中等</span></h3><p class="ap">解法: 完全背包求最少硬币数</p><p class="idea">💡 f[x] = min(f[x−c]) + 1：把每种硬币轮流当"最后一枚"，剩下的钱用最优解，再加这一枚。全表从 ∞ 起步，谁也救不回来的格子最后返回 −1。</p><pre class="code">class Solution:
+    def coinChange(self, coins, amount):
+        f = [0] + [float('inf')] * amount   # f[x]: 凑出 x 最少要几枚硬币
+        for x in range(1, amount + 1):      # 从 1 元一路凑到 amount 元
+            for c in coins:                 # 每种硬币都试当"最后一枚"
+                if c &lt;= x and f[x - c] + 1 &lt; f[x]:
+                    f[x] = f[x - c] + 1     # 用这枚收尾更省
+        return f[amount] if f[amount] &lt; float('inf') else -1
+</pre><p class="cx">时间 O(amount × 硬币种数)　·　空间 O(amount)（f 表）</p><div class="altblock"><p class="altlab">📘 解法二 · 官方 · 记忆化搜索</p><p class="idea alt-idea">💡 dp(x) = min(dp(x−c)) + 1，自顶向下要答案、算完就记进 memo 表——和自底向上填表是同一个递推的两个方向。</p><pre class="code">class Solution:
+    def coinChange(self, coins, amount):
+        memo = [None] * (amount + 1)     # memo[x]: 凑 x 最少几枚; None=还没算过
+        memo[0] = 0                      # 地基: 0 元用 0 枚
+
+        def dp(x):                       # 自顶向下: 先要大问题的答案
+            if x &lt; 0:                    # 硬币塞爆了 → 此路不通
+                return -1
+            if memo[x] is not None:      # 查表命中 → 直接返回, 不重算!
+                return memo[x]
+            best = amount + 1            # 哨兵: 比任何答案都大
+            for c in coins:              # 每种硬币轮流当"最后一枚"
+                sub = dp(x - c)          # 递归问: 剩下 x−c 元最少几枚
+                if sub != -1 and sub + 1 &lt; best:
+                    best = sub + 1
+            memo[x] = -1 if best &gt; amount else best   # 算完写表, 下次秒回
+            return memo[x]
+
+        return dp(amount)
+</pre><p class="cx">时间 O(amount × 硬币种数)（每个金额至多真算一次）　·　空间 O(amount)（memo 表 + 递归栈）</p></div><p class="lnk"><a href="pages/p084.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/coin-change/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P085 · LC139</span> 单词拆分 <span class="df d2">中等</span></h3><p class="ap">解法: dp[i] 前缀可拆分 + 词集合</p><p class="idea">💡 dp[i] = 存在词典词 w，使得 dp[i−len(w)] 为真且 s 末尾正好是 w：枚举"最后一个词"收尾，把大前缀化成小前缀。</p><pre class="code">class Solution:
+    def wordBreak(self, s, wordDict):
+        n = len(s)
+        dp = [False] * (n + 1)              # dp[i]: 前 i 个字符能否拆成词典词
+        dp[0] = True                        # 空串天然可拆, 递推的支点
+        for i in range(1, n + 1):           # 依次判断前缀 s[:i]
+            for w in wordDict:              # 枚举"最后一个词"的候选
+                if i &gt;= len(w) and dp[i - len(w)] and s[i - len(w):i] == w:
+                    dp[i] = True            # w 能收尾, 且剩下的前缀也可拆
+        return dp[n]
+</pre><p class="cx">时间 O(n × 词典词数 × 词长)　·　空间 O(n)（dp 表）</p><p class="lnk"><a href="pages/p085.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/word-break/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P086 · LC300</span> 最长递增子序列 <span class="df d2">中等</span></h3><p class="ap">解法: O(n²) DP：以 i 结尾的最长上升</p><p class="idea">💡 dp[i] = 1 + max(dp[j])：只在"j 在 i 左边且 nums[j] < nums[i]"的 j 里挑最长的接上来；谁也不接就是 1。答案 = max(dp)，不一定是最后一个。</p><pre class="code">class Solution:
+    def lengthOfLIS(self, nums):
+        n = len(nums)
+        dp = [1] * n                    # dp[i]: 以 nums[i] 结尾的 LIS 长度
+        for i in range(1, n):           # 逐个确定"以 i 结尾"的答案
+            for j in range(i):          # j: i 左边的接驳点候选
+                if nums[j] &lt; nums[i]:   # nums[i] 能接在 nums[j] 后面
+                    dp[i] = max(dp[i], dp[j] + 1)
+        return max(dp)                  # LIS 可能停在任何位置, 取全表最大
+</pre><p class="cx">时间 O(n²)　·　空间 O(n)（dp 表）</p><div class="altblock"><p class="altlab">📘 解法二 · 官方 · 贪心 + 二分</p><p class="idea alt-idea">💡 tails[k] 永远记"长度 k+1 的递增子序列的最小结尾"：每个 x 二分找第一个 ≥ x 的位置——找到就替换（同长度结尾更小，潜力只增不减），比谁都大就追加（LIS 变长）。答案 = len(tails)。</p><pre class="code">class Solution:
+    def lengthOfLIS(self, nums):
+        tails = []                      # tails[k]: 长度 k+1 的递增子序列的最小结尾
+        for x in nums:                  # 逐个接待新数
+            lo, hi = 0, len(tails) - 1  # 二分区间 [lo, hi]
+            while lo &lt;= hi:             # 找第一个 &gt;= x 的位置
+                mid = (lo + hi) // 2
+                if tails[mid] &lt; x:      # 中点结尾比 x 小 → 第一名在右半
+                    lo = mid + 1
+                else:                   # tails[mid] &gt;= x → 中点是候选, 缩左半
+                    hi = mid - 1
+            if lo == len(tails):        # x 比所有结尾都大
+                tails.append(x)         # 追加: 最长长度 +1
+            else:                       # lo 就是第一个 &gt;= x 的位置
+                tails[lo] = x           # 替换: 同长度结尾压得更小
+        return len(tails)               # tails 长度 = LIS 长度
+</pre><p class="cx">时间 O(n log n)（每个数一次二分）　·　空间 O(n)（tails 数组）</p></div><p class="lnk"><a href="pages/p086.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/longest-increasing-subsequence/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P087 · LC152</span> 乘积最大子数组 <span class="df d2">中等</span></h3><p class="ap">解法: 同时维护最大积和最小积</p><p class="idea">💡 最大积可能来自"之前的最大积"，也可能来自"之前的最小积"（乘上负数翻盘）——所以 curMax、curMin 成对维护，遇负数先互换：curMax = max(x, curMax·x)，curMin = min(x, curMin·x)。</p><pre class="code">class Solution:
+    def maxProduct(self, nums):
+        curMax = curMin = ans = nums[0]   # 以当前元素结尾的最大/最小积 &amp; 全局答案
+        for x in nums[1:]:                # 逐个把 x 接到子数组末尾
+            if x &lt; 0:                     # 乘负数: 大变小, 小变大
+                curMax, curMin = curMin, curMax   # 先互换, 负负得正有救
+            curMax = max(x, curMax * x)   # 另起炉灶 or 接着乘, 取大者
+            curMin = min(x, curMin * x)   # 同理维护最惨的积
+            ans = max(ans, curMax)        # 答案一定在某个结尾处取到
+        return ans
+</pre><p class="cx">时间 O(n)　·　空间 O(1)（三个变量；演示中另画了历史表）</p><p class="lnk"><a href="pages/p087.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/maximum-product-subarray/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P088 · LC416</span> 分割等和子集 <span class="df d2">中等</span></h3><p class="ap">解法: 0-1 背包：能否凑出 sum/2</p><p class="idea">💡 target = 总和一半就是背包容量：dp[j] = dp[j] 或 dp[j−x]，j 从大到小倒序更新——倒序保证每个数只用一次。</p><pre class="code">class Solution:
+    def canPartition(self, nums):
+        total = sum(nums)
+        if total % 2 == 1:                # 总和是奇数, 平分不了
+            return False
+        target = total // 2               # 目标: 凑出总和的一半
+        dp = [False] * (target + 1)       # dp[j]: 能否从 nums 凑出和 j
+        dp[0] = True                      # 什么都不选, 先凑出 0
+        for x in nums:                    # 逐个考虑每个数
+            for j in range(target, x - 1, -1):   # j 倒着扫, 防止 x 重复用
+                if dp[j - x]:             # 凑出 j-x 的方案有了吗?
+                    dp[j] = True          # 有: 加上 x 就凑出 j
+            if dp[target]:                # 凑出 target 就提前收工
+                return True
+        return dp[target]
+</pre><p class="cx">时间 O(n × target)　·　空间 O(target)（一维滚动 dp 表）</p><div class="altblock"><p class="altlab">📘 解法二 · 教科书 · 二维 DP 表</p><p class="idea alt-idea">💡 dp[i][j] = dp[i−1][j]（不选 x）或 dp[i−1][j−x]（选 x）——每格只看上一行、逐格填完整张表；一维倒序就是它的滚动压缩。</p><pre class="code">class Solution:
+    def canPartition(self, nums):
+        total = sum(nums)
+        if total % 2 == 1:              # 总和是奇数, 平分不了
+            return False
+        target = total // 2
+        n = len(nums)
+        dp = [[False] * (target + 1) for _ in range(n + 1)]   # dp[i][j]: 前 i 个数能否凑出 j
+        for i in range(n + 1):
+            dp[i][0] = True             # 地基: 什么都不选, 和 0 总能凑出
+        for i in range(1, n + 1):       # 逐行引入第 i 个数
+            for j in range(1, target + 1):
+                dp[i][j] = dp[i - 1][j]     # 不选 nums[i-1]: 正上方直接抄
+                if j &gt;= nums[i - 1] and dp[i - 1][j - nums[i - 1]]:
+                    dp[i][j] = True         # 选 nums[i-1]: 左上能凑 j-x 就能凑 j
+        return dp[n][target]
+</pre><p class="cx">时间 O(n × target)　·　空间 O(n × target)（整张二维表；一维版是它的滚动压缩）</p></div><p class="lnk"><a href="pages/p088.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/partition-equal-subset-sum/" target="_blank">力扣原题 ↗</a></p></section><section class="card d3"><h3><span class="pn">P089 · LC32</span> 最长有效括号 <span class="df d3">困难</span></h3><p class="ap">解法: dp：以 i 结尾的最长有效长度</p><p class="idea">💡 dp[i] 只在 s[i] 为 ) 时可能非 0：j = i − dp[i−1] − 1 跳过前面整段有效串去找 (，配上就 dp[i] = dp[i−1] + 2 + dp[j−1]，答案取全表最大。</p><pre class="code">class Solution:
+    def longestValidParentheses(self, s):
+        n = len(s)
+        dp = [0] * n                  # dp[i]: 以 s[i] 结尾的最长有效长度
+        best = 0
+        for i in range(1, n):         # 逐个位置看"以它结尾"能多长
+            if s[i] == ')':           # 有效段一定以 ')' 收尾
+                j = i - dp[i - 1] - 1   # 跳过 dp[i-1] 那段, 找配对的 '('
+                if j &gt;= 0 and s[j] == '(':
+                    dp[i] = dp[i - 1] + 2   # 中间整段 + 这一对
+                    if j &gt;= 1:
+                        dp[i] += dp[j - 1]  # '(' 左边还挂着一段? 拼上
+                if dp[i] &gt; best:
+                    best = dp[i]      # 记录全局最长
+        return best
+</pre><p class="cx">时间 O(n)　·　空间 O(n)（dp 表）</p><p class="lnk"><a href="pages/p089.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/longest-valid-parentheses/" target="_blank">力扣原题 ↗</a></p></section><h2 id="cat-多维动态规划">🧮 多维动态规划</h2><section class="card d2"><h3><span class="pn">P090 · LC62</span> 不同路径 <span class="df d2">中等</span></h3><p class="ap">解法: 网格 DP：上+左 之和</p><p class="idea">💡 dp[r][c] = dp[r−1][c] + dp[r][c−1]：最后一步要么从上来、要么从左来；第一行第一列都只有 1 种（一路直走）。</p><pre class="code">class Solution:
+    def uniquePaths(self, m, n):
+        dp = [[0] * n for _ in range(m)]   # dp[r][c]: 到 (r,c) 的走法数
+        for c in range(n):                 # 第一行: 只能一路向右
+            dp[0][c] = 1
+        for r in range(m):                 # 第一列: 只能一路向下
+            dp[r][0] = 1
+        for r in range(1, m):              # 逐行往下填
+            for c in range(1, n):          # 行内逐列往右填
+                dp[r][c] = dp[r - 1][c] + dp[r][c - 1]   # 上面来的 + 左边来的
+        return dp[m - 1][n - 1]
+</pre><p class="cx">时间 O(m × n)　·　空间 O(m × n)（dp 表，可滚动压缩到 O(n)）</p><p class="lnk"><a href="pages/p090.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/unique-paths/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P091 · LC64</span> 最小路径和 <span class="df d2">中等</span></h3><p class="ap">解法: 网格 DP：上/左 取小</p><p class="idea">💡 dp[r][c] = min(dp[r−1][c], dp[r][c−1]) + grid[r][c]：前半程先便宜到上格或左格，再付这一格的过路费。</p><pre class="code">class Solution:
+    def minPathSum(self, grid):
+        m, n = len(grid), len(grid[0])
+        dp = [[0] * n for _ in range(m)]    # dp[r][c]: 到 (r,c) 的最小路径和
+        dp[0][0] = grid[0][0]               # 起点的最小和 = 自己的值
+        for c in range(1, n):               # 第一行: 只能从左边来
+            dp[0][c] = dp[0][c - 1] + grid[0][c]
+        for r in range(1, m):               # 第一列: 只能从上面来
+            dp[r][0] = dp[r - 1][0] + grid[r][0]
+        for r in range(1, m):               # 其余格子: 上/左取小的
+            for c in range(1, n):
+                dp[r][c] = min(dp[r - 1][c], dp[r][c - 1]) + grid[r][c]
+        return dp[m - 1][n - 1]
+</pre><p class="cx">时间 O(m × n)　·　空间 O(m × n)（dp 表，可原地压缩）</p><p class="lnk"><a href="pages/p091.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/minimum-path-sum/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P092 · LC1143</span> 最长公共子序列 <span class="df d2">中等</span></h3><p class="ap">解法: 二维 DP：相同取左上+1，否则取大</p><p class="idea">💡 字母相同：dp[i][j] = dp[i−1][j−1] + 1；不同：dp[i][j] = max(dp[i−1][j], dp[i][j−1])。第 0 行/列是空串，全 0。</p><pre class="code">class Solution:
+    def longestCommonSubsequence(self, text1, text2):
+        m, n = len(text1), len(text2)
+        dp = [[0] * (n + 1) for _ in range(m + 1)]   # dp[i][j]: 两串前缀的 LCS 长度
+        for i in range(1, m + 1):          # 逐行: 引入 text1 的第 i 个字母
+            for j in range(1, n + 1):      # 逐列: 引入 text2 的第 j 个字母
+                if text1[i - 1] == text2[j - 1]:     # 两个新字母相同
+                    dp[i][j] = dp[i - 1][j - 1] + 1  # 接在左上角答案后面
+                else:                      # 不同
+                    dp[i][j] = max(dp[i - 1][j], dp[i][j - 1])   # 继承上/左较优者
+        return dp[m][n]
+</pre><p class="cx">时间 O(m × n)　·　空间 O(m × n)（dp 表）</p><p class="lnk"><a href="pages/p092.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/longest-common-subsequence/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P093 · LC72</span> 编辑距离 <span class="df d2">中等</span></h3><p class="ap">解法: 二维 DP：增/删/改 取最小</p><p class="idea">💡 dp[i][j] = word1 前 i 个 → word2 前 j 个的最少步数：字符相同抄左上；否则 min(左上=改, 上=删, 左=增) + 1。</p><pre class="code">class Solution:
+    def minDistance(self, word1, word2):
+        m, n = len(word1), len(word2)
+        dp = [[0] * (n + 1) for _ in range(m + 1)]
+        for i in range(m + 1):      # 第 0 列: 删光
+            dp[i][0] = i
+        for j in range(n + 1):      # 第 0 行: 插入
+            dp[0][j] = j
+        for i in range(1, m + 1):
+            for j in range(1, n + 1):
+                if word1[i-1] == word2[j-1]:
+                    dp[i][j] = dp[i-1][j-1]  # 白拿左上
+                else:               # 增删改取最小
+                    dp[i][j] = 1 + min(
+                        dp[i-1][j],     # 删
+                        dp[i][j-1],     # 增
+                        dp[i-1][j-1])   # 改
+        return dp[m][n]
+</pre><p class="cx">时间 O(m·n)　·　空间 O(m·n)（整张 DP 表）</p><p class="lnk"><a href="pages/p093.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/edit-distance/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P094 · LC5</span> 最长回文子串 <span class="df d2">中等</span></h3><p class="ap">解法: 中心扩展：奇偶两种中心</p><p class="idea">💡 枚举每个中心（奇 + 偶两种），L、R 向两边扩到不能扩为止，用 r−l−1 量长度，破纪录就记下 —— O(n²) 但代码最短、最不容易写错。</p><pre class="code">class Solution:
+    def longestPalindrome(self, s):
+        n = len(s)
+        best = ''
+        for c in range(n):          # 每个位置当一次中心
+            for l, r in [(c, c), (c, c+1)]: # 奇/偶中心
+                while l &gt;= 0 and r &lt; n and s[l]==s[r]:
+                    l -= 1          # 两侧相等, 左针左移
+                    r += 1          # 右针右移
+                if r - l - 1 &gt; len(best): # 更长的回文
+                    best = s[l + 1:r]   # 记下新答案
+        return best
+</pre><p class="cx">时间 O(n²)　·　空间 O(1)（只记最佳区间）</p><div class="altblock"><p class="altlab">📘 解法二 · 官方 · 区间 DP</p><p class="idea alt-idea">💡 dp[i][j] = 两端相等 且（长度 ≤3 或 里层 dp[i+1][j−1] 回文）——按长度从小到大填表，短串铺路、长串查表，边填边记最长。</p><pre class="code">class Solution:
+    def longestPalindrome(self, s):
+        n = len(s)
+        if n &lt; 2:                  # 空串/单字符本身就是答案
+            return s
+        dp = [[False] * n for _ in range(n)]   # dp[i][j]: s[i..j] 是否回文
+        for i in range(n):         # 地基: 长度 1 全是回文
+            dp[i][i] = True
+        max_len, begin = 1, 0      # 最佳保底: 任意单字符
+        for L in range(2, n + 1):  # 按子串长度从小到大
+            for i in range(n - L + 1):   # 该长度下枚举左端点
+                j = i + L - 1        # 右端点由 L 和 i 定死
+                if s[i] != s[j]:     # 两端不等
+                    dp[i][j] = False # 必不是回文
+                else:                # 两端相等
+                    dp[i][j] = j - i &lt; 3 or dp[i + 1][j - 1]   # 长≤3 直接成立, 否则查里层
+                if dp[i][j] and j - i + 1 &gt; max_len:   # 破纪录才换(等长不换)
+                    max_len, begin = j - i + 1, i
+        return s[begin:begin + max_len]
+</pre><p class="cx">时间 O(n²)（表上每格 O(1)）　·　空间 O(n²)（整张 dp 表）</p></div><p class="lnk"><a href="pages/p094.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/longest-palindromic-substring/" target="_blank">力扣原题 ↗</a></p></section><h2 id="cat-技巧">🎩 技巧</h2><section class="card d1"><h3><span class="pn">P095 · LC136</span> 只出现一次的数字 <span class="df d1">简单</span></h3><p class="ap">解法: 异或：成对抵消</p><p class="idea">💡 异或三性质：a^a=0、a^0=a、可交换结合 → 全部数异或一遍，成对的全消成 0，最后剩下的就是只出现一次的那个。</p><pre class="code">class Solution:
+    def singleNumber(self, nums):
+        # 异或三性质: a^a=0, a^0=a, 可交换结合
+        acc = 0             # 累积器从 0 起步(a^0=a)
+        for i in range(len(nums)):
+            x = nums[i]             # 逐个取出数字
+            acc = acc ^ x           # 成对的数位位相消
+        return acc                  # 剩下的就是答案
+</pre><p class="cx">时间 O(n)　·　空间 O(1)（一个累积器）</p><p class="lnk"><a href="pages/p095.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/single-number/" target="_blank">力扣原题 ↗</a></p></section><section class="card d1"><h3><span class="pn">P096 · LC169</span> 多数元素 <span class="df d1">简单</span></h3><p class="ap">解法: Boyer-Moore 投票</p><p class="idea">💡 摩尔投票：cnt==0 就换人，x==cand 加一票否则减一票——多数元素的票数比所有其他人加起来还多，抵消到最后手里有票的只能是它。</p><pre class="code">class Solution:
+    def majorityElement(self, nums):
+        cand = 0        # 候选人
+        cnt = 0         # 他的净票数
+        for x in nums:
+            if cnt == 0:        # 清零 → 换人
+                cand = x
+            if x == cand:       # 自己人: +1
+                cnt += 1
+            else:               # 对立面: −1
+                cnt -= 1
+        return cand
+</pre><p class="cx">时间 O(n)　·　空间 O(1)（两个变量）</p><p class="lnk"><a href="pages/p096.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/majority-element/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P097 · LC75</span> 颜色分类 <span class="df d2">中等</span></h3><p class="ap">解法: 荷兰国旗：三指针一次扫描</p><p class="idea">💡 遇 0 换 low 双前进，遇 2 换 high 只退 high（cur 留下重看换来的数），遇 1 直接走——三根指针一趟把 0/1/2 归位。</p><pre class="code">class Solution:
+    def sortColors(self, nums):
+        low, cur, high = 0, 0, len(nums) - 1
+        while cur &lt;= high:
+            if nums[cur] == 0:          # 0 → 归左岸
+                nums[low], nums[cur] = nums[cur], nums[low]
+                low += 1
+                cur += 1
+            elif nums[cur] == 2:        # 2 → 归右岸
+                nums[cur], nums[high] = nums[high], nums[cur]
+                high -= 1         # cur 不动! 还要再看
+            else:                       # 1: 直接前进
+                cur += 1
+</pre><p class="cx">时间 O(n)（每个位置至多重看一次）　·　空间 O(1)</p><p class="lnk"><a href="pages/p097.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/sort-colors/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P098 · LC31</span> 下一个排列 <span class="df d2">中等</span></h3><p class="ap">解法: 找降序后缀 → 交换 → 反转尾巴</p><p class="idea">💡 下一个排列：右找上坡脚 i → 右找第一个比 nums[i] 大的 j 交换 → 把 i 身后的降序尾巴反转成最小。</p><pre class="code">class Solution:
+    def nextPermutation(self, nums):
+        n = len(nums)
+        i = n - 2
+        while i &gt;= 0 and nums[i] &gt;= nums[i + 1]:  # 1) 从右找第一个"上坡"
+            i -= 1
+        if i &gt;= 0:                                # 找到上坡脚 nums[i]
+            j = n - 1
+            while nums[j] &lt;= nums[i]:             # 2) 从右找第一个比它大的
+                j -= 1
+            nums[i], nums[j] = nums[j], nums[i]   #    交换, 只涨一点点
+        l, r = i + 1, n - 1                       # 3) 后缀反转: 最大变最小
+        while l &lt; r:
+            nums[l], nums[r] = nums[r], nums[l]
+            l += 1; r -= 1
+</pre><p class="cx">时间 O(n)（最多扫三遍）　·　空间 O(1)（原地交换，不开新数组）</p><p class="lnk"><a href="pages/p098.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/next-permutation/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P099 · LC287</span> 寻找重复数 <span class="df d2">中等</span></h3><p class="ap">解法: 下标当指针 → Floyd 判圈找入口</p><p class="idea">💡 把 i → nums[i] 当"下一站"：重复数 = 环入口。快慢指针圈内相遇后，一个回 0 同速走，再相遇即入口。</p><pre class="code">class Solution:
+    def findDuplicate(self, nums):
+        slow = fast = 0              # 都从下标 0 出发
+        while True:                  # 快的每次跳两步
+            slow = nums[slow]        # 慢的走一步
+            fast = nums[nums[fast]]  # 快的走两步
+            if slow == fast:         # 在圈里相遇
+                break
+        slow = 0                     # 慢的送回起点
+        while slow != fast:          # 两个同速前进
+            slow = nums[slow]
+            fast = nums[fast]
+        return slow                  # 再相遇点 = 圈入口 = 重复数
+</pre><p class="cx">时间 O(n)（慢针最多走一圈）　·　空间 O(1)（不排序、不建表、不改数组）</p><div class="altblock"><p class="altlab">📘 解法二 · 官方 · 二分答案 + 计数</p><p class="idea alt-idea">💡 在值域 [1, n] 上二分答案：cnt(≤mid) > mid ⇔ 重复数 ≤ mid（鸽笼原理两个方向都成立），每数一遍数组就把区间砍半，缩到 lo == hi 即重复数。</p><pre class="code">class Solution:
+    def findDuplicate(self, nums):
+        lo, hi = 1, len(nums) - 1     # 在值域 1 ~ n 上二分(n = len-1), 不是下标!
+        while lo &lt; hi:
+            mid = (lo + hi) // 2      # 猜一个中点
+            cnt = 0
+            for v in nums:            # 数一遍: 有多少个数 &lt;= mid
+                if v &lt;= mid:
+                    cnt += 1
+            if cnt &gt; mid:             # 鸽笼: cnt 个数挤 mid 种值必重
+                hi = mid              # 重复数在 [lo, mid]
+            else:                     # cnt &lt;= mid: 左半住得下, 不必重
+                lo = mid + 1          # 重复数在 [mid+1, hi]
+        return lo                     # 区间缩成一点 = 重复数
+</pre><p class="cx">时间 O(n log n)（每轮 O(n) 计数，共 O(log n) 轮）　·　空间 O(1)（只读数组）</p></div><p class="lnk"><a href="pages/p099.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/find-the-duplicate-number/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P100 · LC289</span> 生命游戏 <span class="df d2">中等</span></h3><p class="ap">解法: 原位标记：二进制次位存下一代</p><p class="idea">💡 原地更新：用二进制第 2 位当草稿记下一代（1→3 活着、0→2 复活），数邻居 &amp;1 只看旧状态，最后全体 &gt;&gt;=1 转正。</p><pre class="code">class Solution:
+    def gameOfLife(self, board):
+        m, n = len(board), len(board[0])
+        for r in range(m):                     # 第一遍: 数邻居、打标记
+            for c in range(n):
+                live = 0                       # 8 邻居里的活细胞数
+                for dr in (-1, 0, 1):
+                    for dc in (-1, 0, 1):
+                        if dr == 0 and dc == 0:
+                            continue           # 跳过自己
+                        if 0 &lt;= r + dr &lt; m and 0 &lt;= c + dc &lt; n:
+                            live += board[r + dr][c + dc] &amp; 1   # &amp; 1: 只看旧状态
+                if board[r][c] &amp; 1:            # 自己现在是活的
+                    if live == 2 or live == 3: # 活到下代: 邻居 2 或 3 个
+                        board[r][c] |= 2       # 二号位打"下代活"标记
+                elif live == 3:                # 自己是死的
+                    board[r][c] |= 2           # 恰好 3 个活邻居 → 复活
+        for r in range(m):                     # 第二遍: 草稿转正
+            for c in range(n):
+                board[r][c] &gt;&gt;= 1              # 右移一位, 新状态落位
+</pre><p class="cx">时间 O(m·n)（每格数 8 个邻居）　·　空间 O(1)（高位当草稿，原地标记）</p><div class="altblock"><p class="altlab">📘 解法二 · 官方 · 复制新板模拟</p><p class="idea alt-idea">💡 复制一块新棋盘当只读底片：数邻居只看底片、下一代写进新板——物理隔离天然保住"同时更新"，代价是多 O(m·n) 空间。</p><pre class="code">class Solution:
+    def gameOfLife(self, board):
+        m, n = len(board), len(board[0])
+        nxt = [row[:] for row in board]   # 复制一块新棋盘: 旧状态只读
+        for r in range(m):                # 逐格扫描
+            for c in range(n):
+                live = 0                  # 8 邻居里的活细胞数
+                for dr in (-1, 0, 1):
+                    for dc in (-1, 0, 1):
+                        if dr == 0 and dc == 0:
+                            continue      # 跳过自己
+                        if 0 &lt;= r + dr &lt; m and 0 &lt;= c + dc &lt; n:
+                            live += nxt[r + dr][c + dc]   # 只读底片, 永不污染
+                if nxt[r][c] == 1 and live in (2, 3):
+                    board[r][c] = 1       # 活着且邻居 2/3 个 → 存活
+                elif nxt[r][c] == 0 and live == 3:
+                    board[r][c] = 1       # 死细胞恰好 3 个活邻居 → 复活
+                else:
+                    board[r][c] = 0       # 其余一律死
+</pre><p class="cx">时间 O(m·n)（每格数 8 个邻居）　·　空间 O(m·n)（整块复制的新板）</p></div><p class="lnk"><a href="pages/p100.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/game-of-life/" target="_blank">力扣原题 ↗</a></p></section>
+</main>
+</body>
+</html>

@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P069 · 最小栈 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/progress.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 69, num: 155, title: '最小栈', diff: '中等', cat: '栈',
+  method: 'run',
+  pyCheck: false,
+
+  lede: '题目：设计一个栈——<b>push / pop / top</b> 照常，唯独 <b>getMin</b> 要在 O(1) 内拿到<b>当前栈里的最小值</b>。' +
+        '诀窍是再养一个<span class="var o">辅助栈 mi</span>：它的栈顶永远记着"当前最小"。' +
+        '评测器按 ops / args 逐条调用（代码最下方的驱动就是干这个的），输出 [null, …, -3, …] 逐条对齐。' +
+        '动画里左边的<span class="var r">主栈</span>老实存值，右边的<span class="var o">辅助栈</span>只记"历届最小"',
+
+  roles: [
+    {c:'blue',   code:'st', text:'主栈：老老实实存每个值'},
+    {c:'green',  code:'mi', text:'辅助栈：栈顶永远是当前最小'},
+    {c:'orange', code:'x',  text:'正在进栈 / 出栈的值'}
+  ],
+
+  codeTitle: '跟着高亮读代码——<code>if</code> 行变<span style="color:var(--green)">绿</span>＝这个值有资格进辅助栈（或弹出的是最小值），变<span style="color:var(--red)">红</span>＝没资格 / 不用管。最下面的 class Solution 是校验驱动：模拟评测器按 ops 序列逐条调用（LeetCode 上答案类名是 MinStack）。',
+
+  legend: [
+    {c:'blue',   text:'主栈 st'},
+    {c:'green',  text:'辅助栈 mi（栈顶 = 最小）'},
+    {c:'orange', text:'刚动的元素'}
+  ],
+
+  idea: '主栈管进出，辅助栈管"历届冠军"：只有不比当前最小大的值才有资格进辅助栈；弹掉最小值时两个栈一起弹——getMin 永远只是读一下栈顶。',
+
+  qa: [
+    {q:'为什么 x 比当前最小大就不进辅助栈？',
+     a:'因为它想当最小值的那天根本等不来：比它小的那个值压在它<b>下面</b>，栈又只能从顶上弹——小的不走，轮不到它。既然永远不会被 getMin 问到，就不用记，省空间。'},
+    {q:'为什么条件是 x ≤ 栈顶（带等号）？',
+     a:'栈里有多个相等的最小值时（比如压了两个 1），如果第二个 1 不进辅助栈，弹掉<b>一个</b> 1 后辅助栈顶的 1 还在，数值上恰好不错。但若把等号去掉、又遇到"先弹大数再弹最小"的顺序就会错位。带上等号后"一个最小值对应辅助栈一条记录"，pop 怎么弹都不会对不上，最稳妥。'},
+    {q:'getMin 为什么能 O(1)？',
+     a:'辅助栈的栈顶<b>任何时刻</b>都是"当前栈里的最小值"——这是它的不变式。push 时新冠军会压上来，pop 时旧冠军会被弹走，不变式始终成立，所以答案永远伸手就是，不用扫一遍栈。'},
+    {q:'最坏空间多大？',
+     a:'输入一路递减（如 5,4,3,2,1）时每个值都是"新冠军"，辅助栈和主栈一样高，空间 O(n)。一路递增则辅助栈只有 1 个元素。'}
+  ],
+
+  complexity: '单次操作时间 O(1)　·　空间 O(n)（最坏时辅助栈与主栈等高）',
+
+  form: [
+    {key:'ops',  label:'ops',  type:'strlist', def:['MinStack','push','push','push','getMin','pop','top','getMin']},
+    {key:'args', label:'args', type:'json', def:[[],[-2],[0],[-3],[],[],[],[]]}
+  ],
+  presets: [
+    {label:'官方用例 [-2,0,-3]', values:{ops:['MinStack','push','push','push','getMin','pop','top','getMin'], args:[[],[-2],[0],[-3],[],[],[],[]]}},
+    {label:'重复最小值 [2,1,1,3]', values:{ops:['MinStack','push','push','push','push','getMin','pop','getMin','pop','getMin'], args:[[],[2],[1],[1],[3],[],[],[],[],[]]}},
+    {label:'递减序列 9,5,1', values:{ops:['MinStack','push','push','push','getMin','top','pop','getMin'], args:[[],[9],[5],[1],[],[],[],[]]}},
+    {label:'单进单出（边界）', values:{ops:['MinStack','push','top','getMin','pop'], args:[[],[5],[],[],[]]}}
+  ],
+
+  code: `class MinStack:
+    def __init__(self):
+        self.st = []                 # 主栈: 老老实实存每个值
+        self.mi = []                 # 辅助栈: 栈顶永远是当前最小
+    def push(self, x):
+        self.st.append(x)            # 主栈照常进
+        if not self.mi or x <= self.mi[-1]:
+            self.mi.append(x)        # 不比最小大, 辅助栈也进
+    def pop(self):
+        x = self.st.pop()            # 主栈弹谁
+        if x == self.mi[-1]:
+            self.mi.pop()            # 弹的正是最小值, 辅助栈跟着弹
+    def top(self):
+        return self.st[-1]
+    def getMin(self):
+        return self.mi[-1]           # O(1) 读栈顶即是答案
+
+class Solution:                      # 校验驱动: 模拟评测器按序调用
+    def run(self, ops, args):
+        s, out = None, []
+        for op, arg in zip(ops, args):
+            if op == 'MinStack': s = MinStack(); out.append(None)
+            elif op == 'push': s.push(arg[0]); out.append(None)
+            elif op == 'pop': s.pop(); out.append(None)
+            else: out.append(getattr(s, op)())
+        return out
+`,
+
+  sol(input){
+    const arg0 = a => Array.isArray(a) ? (a.length ? a[0] : null) : a;
+    let st = [], mi = [];
+    const out = [];
+    (input.ops || []).forEach((op, i) => {
+      if(op === 'MinStack'){ st = []; mi = []; out.push(null); return; }
+      if(!st.length && op !== 'push') return;   // 空栈查询/弹出: 题目保证不会出现, 兜底跳过
+      const x = Number(arg0((input.args || [])[i]));
+      if(op === 'push'){
+        st.push(x);
+        if(!mi.length || x <= mi[mi.length - 1]) mi.push(x);
+        out.push(null);
+      } else if(op === 'pop'){
+        const v = st.pop();
+        if(v === mi[mi.length - 1]) mi.pop();
+        out.push(null);
+      } else if(op === 'top'){
+        out.push(st[st.length - 1]);
+      } else if(op === 'getMin'){
+        out.push(mi[mi.length - 1]);
+      } else {
+        out.push(null);
+      }
+    });
+    return out;
+  },
+  expected: [null, null, null, null, -3, null, 0, -2],
+
+  quiz: [
+    {q:'push 一个比当前最小值大的数,为什么辅助栈敢直接不收它?',
+     options:['因为它太小了,不值得记录','它永远等不到当最小:比它小的值压在它正下方,栈只能从顶上弹——小的不出局,轮不到它','因为主栈已经存了,辅助栈是冗余的,能省则省'],
+     answer:1,
+     explain:'辅助栈只回答一个问题:"当前最小是多少"。这个 x 想成为最小值,前提是比它小的那个值先离开;而那个值压在 x 的正下方,栈从顶上弹——小的不走,x 根本露不出头。getMin 永远不会问到它,不记不影响任何答案,空间就这么省了下来(一路递增输入时辅助栈只有 1 个元素)。',
+     jumpTo:5},
+    {q:'依次执行 push(3)、push(5)、push(2)、getMin、pop、top、getMin,三个有返回值的位置依次输出?',
+     options:['2、5、3','2、2、3','3、5、2'],
+     answer:0,
+     explain:'推演:push 3 → 辅助栈 [3];push 5 → 5 > 3,不收;push 2 → 2 ≤ 3,收,辅助栈 [3,2]。getMin 读顶 = 2;pop 弹掉主栈顶 2(正是当前最小),辅助栈跟着弹回 [3];top 读主栈顶 = 5;最后的 getMin = 3。弹出最小值后,辅助栈顶自动回落到"剩下的里面的最小"——不变式在自动续命,这就是 getMin 敢 O(1) 的底气。',
+     jumpTo:22},
+    {q:'若把入辅助栈的条件 x ≤ 栈顶 改成 x < 栈顶(去掉等号),压入 2、1、1 后 pop 一次,再 getMin 会返回什么?',
+     options:['1——仍然正确,等号可有可无','2——第二个 1 没进辅助栈,pop 却把仅有的那条 1 的记录弹了,而主栈里其实还剩一个 1','报错——辅助栈已经空了'],
+     answer:1,
+     explain:'去掉等号后,第二个 1(1 < 1 不成立)进不了辅助栈,辅助栈只有一条 1 的记录。pop 弹掉主栈顶的 1 时,代码发现弹的值 == 辅助栈顶,把这条记录也弹了——可主栈里还剩一个 1!getMin 从此答 2,错了。带等号就是"每个最小值(含并列)各配一条记录",pop 怎么弹账都对得上。重复最小值预设专门演示这件事。',
+     jumpTo:6},
+  ],
+
+  steps(input){
+    const F = [];
+    const ops = (input.ops || []).map(s => String(s).trim());
+    const rawArgs = input.args || [];
+    const arg0 = a => Array.isArray(a) ? (a.length ? a[0] : null) : a;
+
+    const st = [];    // 主栈 items {key, val}
+    const mi = [];    // 辅助栈 items（与主栈共用同一 item 引用）
+    const out = [];   // 已产出的返回值
+    let seq = 0, created = false;
+
+    /* ---- 快照绘制：o 里全是 F.push 那一刻定死的值（铁律 5） ---- */
+    const draw = (o) => (v) => {
+      v.stack('S', o.st, {label:'主栈 <code>st</code>　·　老实存每个值',
+        states:o.sst || {}, topTag:o.st.length ? '栈顶' : null});
+      v.stack('M', o.mi, {label:'辅助栈 <code>mi</code>　·　栈顶 = 当前最小',
+        states:o.mst || {}, topTag:o.mi.length ? '栈顶' : null});
+      v.vars('vars', {操作:o.op, out:o.outStr}, {label:'当前状态', hl:o.hlv || []});
+      if(o.res !== undefined) v.result(o.res, {label:'输出（与 LeetCode 一致）'});
+    };
+    const snap = (extra) => Object.assign({
+      st:st.slice(), mi:mi.slice(),
+      sst:{}, mst:{},
+      op:'—', outStr:JSON.stringify(out), hlv:[]
+    }, extra);
+
+    F.push({hl:[18,19,20], tag:'开始', cls:'t-grey',
+      msg:'目标：push / pop 照常，<b>getMin 也要 O(1)</b>。用时把栈扫一遍是 O(n)，不行——诀窍是<b>再养一个辅助栈 mi</b>：左栏主栈 st 老实存每个值，右栏 mi 只记"历届最小"，并守住一条不变式：<b>mi 的栈顶任何时刻都等于当前栈里的最小值</b>。不变式不破，getMin 就永远只是读个栈顶。评测器按 ops 列表逐条调用（下方驱动循环已高亮），out 逐条记录返回值、和 LeetCode 对齐。',
+      do: draw(snap())});
+
+    ops.forEach((op, oi) => {
+      const n = oi + 1;
+      const x = Number(arg0(rawArgs[oi]));
+      const xTxt = isNaN(x) ? '?' : String(x);
+      const opLabel = op === 'push' ? 'push(' + xTxt + ')' : op + '()';
+
+      if(op !== 'MinStack' && !created){
+        F.push({hl:[22], no:22, tag:'还没建栈', cls:'t-red',
+          msg:'第 ' + n + ' 条操作 <b>' + LCesc(op) + '</b>：还没执行过 MinStack()，栈对象不存在，这条只能跳过。正常用例不会走到这，纯兜底保护。',
+          do: draw(snap({op:opLabel}))});
+        return;
+      }
+
+      if(op === 'MinStack'){
+        st.length = 0; mi.length = 0; created = true;
+        out.push(null);
+        F.push({hl:[21,22,1,2,3,4], tag:'创建 MinStack', cls:'t-blue',
+          msg:'第 ' + n + ' 条操作 <b>MinStack()</b>：造一个空对象——主栈 st、辅助栈 mi 同时清空（左右两栏此刻都空）。构造函数没有返回值，out 记 null——LeetCode 输出里打头的那个 null 就是它。',
+          do: draw(snap({op:opLabel, hlv:['out']}))});
+        return;
+      }
+
+      if(op === 'push'){
+        const item = {key:'v' + (++seq), val:x};
+        out.push(null);
+        F.push({hl:[21,23,5], tag:'调用 push', cls:'t-blue',
+          msg:'第 ' + n + ' 条操作 <b>push(' + xTxt + ')</b>：塞 ' + xTxt + ' 进栈。push 没有返回值，out 记 null。push 要办两件事：<b>主栈无条件收</b>，辅助栈有条件收（只收"有资格当最小"的值）——先办第一件。',
+          do: draw(snap({op:opLabel, hlv:['out']}))});
+
+        st.push(item);
+        F.push({hl:[6], tag:'主栈进', cls:'t-ink',
+          msg:'<code>st.append(' + xTxt + ')</code>：' + xTxt + ' 压进主栈当新栈顶（左栏亮格）。主栈的职责只有"记进出顺序"，它根本不管谁最小——找最小的活全外包给右边的辅助栈。',
+          do: draw(snap({op:opLabel, sst:{[item.key]:'just'}}))});
+
+        const miTop = mi.length ? mi[mi.length - 1].val : null;
+        const enter = !mi.length || x <= miTop;
+        F.push({hl:[7], ok: enter ? 7 : undefined, no: enter ? undefined : 7,
+          tag:'问辅助栈', cls: enter ? 't-green' : 't-red',
+          msg: enter
+            ? (mi.length
+                ? '辅助栈顶是 <b>' + miTop + '</b>（当前最小），' + xTxt + ' ≤ ' + miTop + ' → x 有资格当新最小。≤ <b>带等号</b>很关键：并列最小也要收，"一个最小值配一条辅助栈记录"，将来 pop 才对得上账（重复最小值预设专门演示）→ <b>辅助栈也收</b>。'
+                : '辅助栈还空着 → 7 行 if 的第一个条件成立：' + xTxt + ' 是第一个进栈的值，自然就是当前最小 → <b>辅助栈收</b>。从这一刻起不变式生效：mi 栈顶 = 当前最小。')
+            : '辅助栈顶是 <b>' + miTop + '</b>（当前最小），' + xTxt + ' > ' + miTop + ' → 7 行不成立，<b>辅助栈不动</b>。敢不记它？' + xTxt + ' 就压在 ' + miTop + ' 的正上方——栈只能从顶上弹，等 ' + miTop + ' 出局那天它早被弹走了，活着的一天永远轮不到当最小，记它纯属浪费。',
+          do: draw(snap({op:opLabel, sst:{[item.key]:'active'}, mst: mi.length ? {[mi[mi.length - 1].key]:'in'} : {}}))});
+
+        if(enter){
+          mi.push(item);
+          F.push({hl:[8], tag:'辅助栈进', cls:'t-orange',
+            msg:'<code>mi.append(' + xTxt + ')</code>：' + xTxt + ' 压进辅助栈当新栈顶（右栏亮格）——<b>getMin 从现在起一眼就是 ' + xTxt + '</b>。新冠军（或并列冠军）记录在案，不变式刷新完成。',
+            do: draw(snap({op:opLabel, sst:{[item.key]:'in'}, mst:{[item.key]:'just'}}))});
+        }
+        return;
+      }
+
+      if(op === 'pop'){
+        out.push(null);
+        F.push({hl:[21,24,9], tag:'调用 pop', cls:'t-blue',
+          msg:'第 ' + n + ' 条操作 <b>pop()</b>：主栈弹栈顶，没有返回值，out 记 null。pop 唯一的悬念：弹走的若正好是"历届冠军"，辅助栈里它的记录必须同步销毁——否则 getMin 会报出一个已经不在栈里的数。',
+          do: draw(snap({op:opLabel, hlv:['out']}))});
+
+        const it = st.pop();
+        F.push({hl:[10], tag:'主栈出栈', cls:'t-ink',
+          msg:'<code>x = st.pop()</code>：主栈弹出 <b>' + it.val + '</b>（左栏少一格）。它是不是当前最小？不用翻栈，和辅助栈顶对一下就知道。',
+          do: draw(snap({op:opLabel, mst: mi.length ? {[mi[mi.length - 1].key]:'in'} : {}}))});
+
+        const miTop = mi.length ? mi[mi.length - 1].val : null;
+        const same = mi.length && it.val === miTop;
+        F.push({hl:[11], ok: same ? 11 : undefined, no: same ? undefined : 11,
+          tag:'对最小值', cls: same ? 't-green' : 't-red',
+          msg: same
+            ? '弹出的 <b>' + it.val + '</b> 正是辅助栈顶的 ' + miTop + '（当前最小）→ 11 行成立，<b>辅助栈必须跟着弹</b>。不弹会怎样？' + it.val + ' 已经不在主栈里了，mi 栈顶却还咬着它，getMin 就会报出一个栈里根本不存在的数——不变式当场破产。'
+            : '弹出的 <b>' + it.val + '</b> ≠ 辅助栈顶 ' + miTop + ' → 11 行不成立，<b>辅助栈不动</b>。弹走的不是冠军，历届记录一条都不用动，mi 栈顶仍忠实等于主栈当前最小。',
+          do: draw(snap({op:opLabel, mst: mi.length ? {[mi[mi.length - 1].key]:'active'} : {}}))});
+
+        if(same){
+          const old = mi.pop();
+          F.push({hl:[12], tag:'辅助栈出栈', cls:'t-orange',
+            msg:'<code>mi.pop()</code>：辅助栈顶 ' + old.val + ' 出栈' +
+                (mi.length ? '，新栈顶 <b>' + mi[mi.length - 1].val + '</b> 自动顶上——mi 从底到顶一路递减，每格都是"它进栈那个时刻"的最小，所以新栈顶恰好就是主栈剩下的最小值。' : '，辅助栈空了（主栈也空了）——两个栈同步清零，下次 push 重新开始记。'),
+            do: draw(snap({op:opLabel, mst: mi.length ? {[mi[mi.length - 1].key]:'just'} : {}}))});
+        }
+        return;
+      }
+
+      if(op === 'top'){
+        const v = st.length ? st[st.length - 1].val : null;
+        out.push(v);
+        F.push({hl:[21,25], tag:'调用 top', cls:'t-blue',
+          msg:'第 ' + n + ' 条操作 <b>top()</b>：看一眼栈顶但不弹出。注意 top 走的是<b>主栈</b>——最上面的值和"最小值"是两码事，别和 getMin 混了。',
+          do: draw(snap({op:opLabel, sst: st.length ? {[st[st.length - 1].key]:'active'} : {}}))});
+        F.push({hl:[13,14], ok:14, tag:'读主栈顶', cls:'t-green',
+          msg:'主栈栈顶是 <b>' + v + '</b> → top 返回 ' + v + '，out 记 ' + v + '。辅助栈全程围观、一步没动——push / pop / top 都以主栈为准，只有 getMin 才去右栏取数。',
+          do: draw(snap({op:opLabel, sst: st.length ? {[st[st.length - 1].key]:'just'} : {}, hlv:['out']}))});
+        return;
+      }
+
+      // getMin（其余操作一律按取值读）
+      const v = mi.length ? mi[mi.length - 1].val : null;
+      out.push(v);
+      F.push({hl:[21,25], tag:'调用 ' + LCesc(op), cls:'t-blue',
+        msg:'第 ' + n + ' 条操作 <b>' + LCesc(op) + '()</b>：要当前最小值。暴力法得把主栈翻个底朝天（O(n)），这里一步都不用翻——答案早就写在辅助栈栈顶候着。',
+        do: draw(snap({op:opLabel, mst: mi.length ? {[mi[mi.length - 1].key]:'active'} : {}}))});
+      F.push({hl:[15,16], ok:16, tag:'读辅助栈顶', cls:'t-green',
+        msg:'辅助栈顶是 <b>' + v + '</b> → getMin 返回 ' + v + '，out 记 ' + v + '，O(1) 完成。这就是辅助栈存在的全部意义：push / pop 时顺手维护"历届冠军"名单，换来查询时<b>伸手就拿</b>。',
+        do: draw(snap({op:opLabel, mst: mi.length ? {[mi[mi.length - 1].key]:'just'} : {}, hlv:['out']}))});
+    });
+
+    F.push({hl:[26], tag:'全部操作完成', cls:'t-dark',
+      msg:'操作序列跑完，输出 <b>' + LCesc(JSON.stringify(out)) + '</b>，与 LeetCode 期望逐条一致 🎉 复盘辅助栈：还留在里面的就是"历届冠军"名单（从底到顶一路递减），栈顶正是全场最小。每个值至多进、出辅助栈各一次，所有操作都是 O(1)；最坏（一路递减）辅助栈和主栈等高，空间 O(n)。',
+      do: draw(snap({op:'完成 ✓', res:out.slice(), hlv:['out']}))});
+
+    return F;
+  }
+});
+</script>
+</body>
+</html>

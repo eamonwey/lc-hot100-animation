@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P039 · 二叉树的直径 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/progress.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 39, num: 543, title: '二叉树的直径', diff: '简单', cat: '二叉树',
+  method: 'diameterOfBinaryTree',
+
+  lede: '题目：任意两个节点之间，<b>最长路径</b>有几条边（路径可以不经过根）。' +
+        '套路和"最大深度"几乎一样：递归 <span class="var r">depth</span> 往下要<b>高度</b>，' +
+        '但每个节点拿到左右高度后，顺便试一条 <span class="var i">左高 + 右高</span> 的"弯路"' +
+        '（从左下角爬到自己、再下到右下角），用 <span class="var o">ans</span> 记下全局最大。' +
+        '最后一步会高亮整条直径路径。',
+
+  roles: [
+    {c:'orange', code:'active', text:'当前正在算高度的节点'},
+    {c:'blue',   code:'in',     text:'递归路径上的祖先'},
+    {c:'green',  code:'done',   text:'高度已算好（头顶标 数字）'},
+    {c:'violet', code:'target', text:'当前最优直径经过的节点'}
+  ],
+
+  codeTitle: '跟着高亮读代码——第 9 行是灵魂：高度是给上层用的，<b>直径是在每个节点处顺便更新的</b>；ans 变值的那一步，树上会闪出紫色路径。',
+
+  idea: '递归要的是高度，顺手赚的是直径：过每个点的最长路 = 左高 + 右高，全局取 max。',
+
+  qa: [
+    {q:'直径为什么不用"经过根"？',
+     a:'最长路径可能拐弯在任何节点上。比如 [1,2] 的直径是 1→2 这 1 条边，只经过根；但换成一边很高的歪树，最长路整条都窝在左边，根本不碰根。所以要在<b>每个节点</b>处都试一次"左高+右高"。'},
+    {q:'depth 返回的"高度"和直径有什么关系？',
+     a:'高度是"从我这往下最深几层"，是给上一层拼答案用的原材料；直径是"穿过我的左右两段之和"。一个负责向上汇报，一个负责在本地记账，一趟递归两件事全办了。'},
+    {q:'为什么答案数的是"边"不是"节点数"？',
+     a:'高度按节点数算（空位 0，单节点 1），而左高 + 右高恰好把重复计算的自己抵掉，剩下的正是路径的<b>边数</b>。LeetCode 543 要的就是边数，直接返回 ans 即可。'},
+    {q:'复杂度呢？',
+     a:'每个节点进出栈各一次，时间 O(n)；空间是递归栈深 O(h)，最坏一条链时 O(n)。'}
+  ],
+
+  complexity: '时间 O(n)（每个节点访问一次）　·　空间 O(h)（递归栈，h 为树高）',
+
+  form: [
+    {key:'root', label:'root', type:'tree', def:[1,2,3,4,5]}
+  ],
+  presets: [
+    {label:'[1,2,3,4,5]', values:{root:[1,2,3,4,5]}},
+    {label:'满二叉树 [1,2,3,4,5,6,7]', values:{root:[1,2,3,4,5,6,7]}},
+    {label:'链状 [1,2,3,4]', values:{root:[1,2,3,4]}},
+    {label:'单节点 [1]', values:{root:[1]}}
+  ],
+
+  code: `class Solution:
+    def diameterOfBinaryTree(self, root):
+        self.ans = 0                     # 全局最长直径(边数)
+        def depth(node):                 # 返回 node 的高度(按节点数)
+            if not node:                 # 递归出口: 空位
+                return 0
+            l = depth(node.left)         # 左子树高度
+            r = depth(node.right)        # 右子树高度
+            self.ans = max(self.ans, l + r)   # 过当前节点的弯路, 试试能不能刷新
+            return max(l, r) + 1         # 向上汇报: 高度 = 较高一侧 + 自己
+        depth(root)
+        return self.ans
+`,
+
+  sol(input){
+    const T = Viz.parseTree(input.root || []);
+    const byKey = {}; T.nodes.forEach(n => byKey[n.key] = n);
+    let ans = 0;
+    function d(k){
+      if(k == null) return 0;
+      const l = d(byKey[k].left), r = d(byKey[k].right);
+      ans = Math.max(ans, l + r);
+      return Math.max(l, r) + 1;
+    }
+    if(T.root != null) d(T.root);
+    return ans;
+  },
+  expected: 3,
+
+  quiz: [
+    {q:'只在根节点试一次「左高 + 右高」,能算出直径吗?',
+     options:['能,最长路径两端分别在左右子树里,必然经过根','不能——最长路可能整条窝在一侧子树里、拐弯在任意节点上,所以必须每个节点都就地试一次弯路','不能,得对每一对节点各跑一遍最短路'],
+     answer:1,
+     explain:'直径可以不经过根:一边很高的歪树里,最长路整条都在那边。反例:链状树 [1,2,3,4] 直径是 3 条边(4→3→2→1),只在根试 l+r 只会得到 1。所以递归在返回高度的同时,每个节点都顺手 max(ans, 左高+右高) 记一笔——全局最长路不管拐在哪都会被逮住。',
+     jumpTo:11},
+    {q:'把输入换成满二叉树 [1,2,3,4,5,6,7],直径是多少条边?',
+     options:['2','3','4'],
+     answer:2,
+     explain:'四个叶子高度都是 1;节点 2 处试出 1+1=2,节点 3 处也是 2,ans=2;根 1 处左高 2 + 右高 2 = 4 → ans 刷新为 4,路径 4→2→1→3→6。注意树高是 3,但直径不是"深度"能直接换算的——它等于某个拐点上"最深左腿 + 最深右腿"的和,这里拐点恰好在根。',
+     jumpTo:35},
+    {q:'为什么向上汇报高度用 max(l, r) + 1(只走一条腿),而更新 ans 却敢用 l + r(左右通吃)?',
+     options:['两者随便混用,结果一样','因为 l + r 可能算出负数,要先取 max 保护','返回值是给上一层拼"一条向下的腿"用的——上一层只能沿一条腿走;左右通吃的弯路已经在本地记进 ans,不能重复上报'],
+     answer:2,
+     explain:'递归函数有两份账:对上层,它是原材料——上层往下走到我这里只能选一条腿继续走,所以只交较高的一条腿 +1;对自己,它是记账凭证——从左子树最深爬上来再下到右子树最深的弯路已经完整走过一次,当场记进 ans。两笔账各管各的,一趟递归全办完,时间 O(n)。',
+     jumpTo:23},
+  ],
+
+  steps(input){
+    const F = [];
+    const T = Viz.parseTree(input.root || []);
+    const t = Viz.treeLayout(input.root || []);
+    const byKey = {}; T.nodes.forEach(n => byKey[n.key] = n);
+    const parent = {};
+    T.nodes.forEach(n => {
+      if(n.left != null) parent[n.left] = n.key;
+      if(n.right != null) parent[n.right] = n.key;
+    });
+    const doneH = new Map();        // key -> 已算出的高度
+    let ans = 0;
+    let bestNodes = [];             // 当前最优直径路径上的节点 key（从左端到右端）
+    let bestEdges = [];             // 对应的 '父-子' 边 key
+    let callSeq = 0;
+
+    const nm = k => k == null ? '空' : '节点' + LCesc(String(byKey[k].val));
+    const sv = k => k == null ? '空' : String(byKey[k].val);
+    const snapDone = () => Array.from(doneH.keys());
+    const snapTags = () => { const o = {}; doneH.forEach((h, k) => o[k] = {text:'高=' + h, cls:'mg'}); return o; };
+    const chainUp = (from, to) => { const a = []; let k = from; while(k != null && k !== to){ a.push(k); k = parent[k]; } a.push(to); return a; };
+    const bestText = () => bestNodes.length
+      ? '当前最优直径 <b>' + ans + '</b> 条边：' + bestNodes.map(x => LCesc(String(byKey[x].val))).join(' → ')
+      : null;
+    const snapEdges = () => { const o = {}; bestEdges.forEach(e => { o[e] = 'e-done'; }); return o; };
+    const pathTxt = () => bestNodes.map(x => LCesc(String(byKey[x].val))).join(' → ');
+
+    /* ★ 快照原则：done/tags/path/ans/best 全部在 push 时求值定死, do() 只读快照 o */
+    const draw = o => (v) => {
+      const states = {};
+      (o.done || []).forEach(k => { states[k] = 'done'; });
+      (o.path || []).forEach(k => { if(states[k] == null) states[k] = 'in'; });
+      (o.best || []).forEach(k => { states[k] = 'target'; });
+      if(o.cur != null) states[o.cur] = 'active';
+      v.tree('T', t, {label:'二叉树　·　绿标 = 该节点高度', states, tags: o.tags || {}, edgeStates: o.edgeStates || {}});
+      const stack = o.stack || [];
+      v.stack('S', stack, {
+        label:'递归调用栈　·　越往下越新',
+        states: stack.length ? {[stack[stack.length - 1].key]:'active'} : {},
+        topTag:'栈顶'
+      });
+      if(o.vars) v.vars('vars', o.vars, {label:'当前函数的变量', hl:o.hlVars || []});
+      if(o.bestText) v.text('best', o.bestText, {html:true});
+      if(o.result != null) v.result(o.result, {label:'二叉树的直径（边数）'});
+    };
+
+    function visit(k, frames, path){
+      const id = 'c' + (++callSeq);
+      const stack = frames.concat([{key:id, val:'depth(' + sv(k) + ')'}]);
+      if(k == null){
+        F.push({hl:[5,6], ok:5, tag:'递归出口', cls:'t-grey',
+          msg:'调用 <code>depth(空)</code>：递归摸到了空位 → <b>return 0</b>。这是整个递归的地基：叶子往下再问一层必然落在这里，没有这个 0，叶子的 <code>max(l, r) + 1</code> 就没材料可算。栈顶这帧随即弹走。',
+          do: draw({stack, path})});
+        return {h:0, leaf:null};
+      }
+      F.push({hl:[5], no:5, tag:'进入函数', cls:'t-blue',
+        msg:'调用 <b>depth(' + nm(k) + ')</b>：节点存在，头顶变橙、栈顶压入新帧。按合同它要向上汇报高度，而高度 = 较高一侧 + 1——两侧还都不知道，只能先问孩子：第一步递归算左子树。此刻它是栈顶，要等左右两个子调用都交卷才能轮到它。',
+        do: draw({stack, cur:k, path: path.concat(k), done: snapDone(), tags: snapTags()})});
+
+      const l = visit(byKey[k].left, stack, path.concat(k));
+      F.push({hl:[7], tag:'左边返回', cls:'t-green',
+        msg: byKey[k].left != null
+          ? '左子树递归返回高度 <b>l = ' + l.h + '</b>——从' + nm(k) + '往下探到左子树最深处（' + nm(l.leaf) + '）的那条腿有 ' + l.h + ' 个节点。变量面板里 l 落定、r 还是 …。接着递归问右子树。'
+          : '左孩子是空 → 递归出口直接还回 <b>l = 0</b>：这一侧没有节点可走，弯路里它将贡献 0 条边。变量面板 l 落定为 0，接着递归问右子树。',
+        do: draw({stack, cur:k, path: path.concat(k), done: snapDone(), tags: snapTags(),
+                  vars:{node: nm(k), l: l.h, r: '…', ans: ans}, hlVars:['l']})});
+
+      const r = visit(byKey[k].right, stack, path.concat(k));
+      F.push({hl:[8], tag:'右边返回', cls:'t-green',
+        msg: byKey[k].right != null
+          ? '右子树递归返回高度 <b>r = ' + r.h + '</b>（最深处落到' + nm(r.leaf) + '）。左右两侧到齐——' + nm(k) + ' 手里现在有拼"弯路"的全部材料。'
+          : '右孩子是空 → <b>r = 0</b>。左右两侧到齐——哪怕一边是 0，"弯路"公式照样适用，只是那一侧贡献 0 条边。',
+        do: draw({stack, cur:k, path: path.concat(k), done: snapDone(), tags: snapTags(),
+                  vars:{node: nm(k), l: l.h, r: r.h, ans: ans}, hlVars:['r']})});
+
+      const cand = l.h + r.h;
+      const upd = cand > ans;
+      if(upd){
+        ans = cand;
+        const lp = l.h > 0 ? chainUp(l.leaf, k) : [k];
+        const rp = r.h > 0 ? chainUp(r.leaf, k) : [k];
+        bestNodes = lp.concat(rp.reverse().slice(1));
+        bestEdges = [];
+        for(let i = 0; i + 1 < bestNodes.length; i++){
+          const x = bestNodes[i], y = bestNodes[i + 1];
+          bestEdges.push(parent[y] === x ? (x + '-' + y) : (y + '-' + x));
+        }
+      }
+      F.push({hl:[9], tag: upd ? '刷新直径' : '直径不变', cls: upd ? 't-orange' : 't-grey',
+        msg:'在' + nm(k) + '头顶试弯路：左边下探 ' + l.h + ' 条边 + 右边下探 ' + r.h + ' 条边 = <b>' + cand + '</b> 条边' +
+            (upd
+              ? '，超过了当前 ans → <b>ans 刷新为 ' + ans + '</b>！紫色闪出的就是这条完整路径：' + pathTxt() + '。妙处在于：每个节点都会被这样"弯一次"，全局最长路不管拐在哪都能被逮住。'
+              : '，没超过当前 ans = ' + ans + '，不更新。踩坑提醒：不是只有根节点才能"弯"——若只在根试一次，最长路拐弯在半路时就会漏掉，所以必须每个节点都试。'),
+        do: draw({stack, cur:k, path: path.concat(k), done: snapDone(), tags: snapTags(),
+                  vars:{node: nm(k), l: l.h, r: r.h, ans: ans}, hlVars:['ans'],
+                  best: upd ? bestNodes.slice() : [], edgeStates: upd ? snapEdges() : {},
+                  bestText: bestText()})});
+
+      const ret = Math.max(l.h, r.h) + 1;
+      const leafOf = l.h >= r.h ? (l.h > 0 ? l.leaf : k) : (r.h > 0 ? r.leaf : k);
+      doneH.set(k, ret);
+      F.push({hl:[10], tag:'返回高度', cls:'t-dark',
+        msg:'汇报时间：<code>depth(' + nm(k) + ') = max(' + l.h + ', ' + r.h + ') + 1 = ' + ret + '</code>。向上汇报只取<b>较高的一侧</b>再加自己——上一层往下走时只能沿一条腿走，不能左右通吃（左右通吃是弯路，已经在本地记进 ans 了）。头顶标上 高=' + ret + '、标绿出栈，把高度交给上一层当原材料。',
+        do: draw({stack: frames, path, done: snapDone(), tags: snapTags(), bestText: bestText()})});
+      return {h: ret, leaf: leafOf};
+    }
+
+    F.push({hl:[1,2,3], tag:'读题', cls:'t-grey',
+      msg:'直径 = 任意两个节点之间<b>最长路径的边数</b>——注意可以不经过根：最长路可能拐弯在任何节点上，一边很高的歪树里最长路整条窝在一边。策略：递归照常往下求<b>高度</b>，但每个节点拿到左右高度后，顺手试一条"左高 + 右高"的弯路——从左子树最深处爬到自己、再下到右子树最深处——全局最大记在 <code>ans</code> 里。',
+      do: draw({stack: []})});
+    F.push({hl:[4,5,6], tag:'depth 契约', cls:'t-grey',
+      msg:'<code>depth(node)</code> 的"合同"：返回以 node 为根的<b>高度</b>（按节点数）——空位 0、叶子 1、每往下一层 +1。上层拿到左右两个高度才能拼路径。一个妙的巧合：孩子的高度按节点数算，数值上恰好等于"从当前节点下探到那边最深处的<b>边数</b>"，所以左右高度一相加就是穿过当前节点的路径边数——这正是第 9 行敢直接拿 <code>l + r</code> 更新 ans 的原因。',
+      do: draw({stack: []})});
+    F.push({hl:[11], tag:'开始递归', cls:'t-blue',
+      msg:'<code>depth(root)</code> 启动。注意 <code>ans</code> 声明在函数外层：递归的任何一层都能读写它——这正是本题的关键设计，"向上的汇报"（高度）与"本地的记账"（直径）各走各的，一趟递归两件事全办了。此刻树上还没有任何节点标绿。',
+      do: draw({stack: []})});
+
+    if(T.root != null) visit(T.root, [], []);
+
+    F.push({hl:[12], tag:'递归结束', cls:'t-dark',
+      msg: T.root == null
+        ? '🎉 空树没有任何节点和路径，<code>depth(root)</code> 一步都不会走，直径就是 <b>0</b>。'
+        : '🎉 整棵树算完，<b>ans = ' + ans + '</b> —— 最长路径 ' + pathTxt() + '，正好 ' + ans + ' 条边。复盘：一次递归同时干了三件事——问孩子要高度、在本地试弯路更新 ans、向上汇报单侧高度；每个节点进出栈各一次，时间 O(n)，空间 O(h)。',
+      do: draw({stack: [], done: snapDone(), tags: snapTags(), best: bestNodes.slice(),
+                edgeStates: snapEdges(), bestText: bestText(), result: ans})});
+
+    return F;
+  }
+});
+</script>
+</body>
+</html>

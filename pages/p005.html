@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P005 · 盛最多水的容器 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/progress.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 5, num: 11, title: '盛最多水的容器', diff: '中等', cat: '双指针',
+  method: 'maxArea',
+
+  lede: '题目：每个数是一根竖板的高度，任选两根板和 x 轴围成一个容器，<b>最多能装多少水</b>？' +
+        '水量 = <b>矮板高度 × 两板距离</b>（水高了会从矮板漫出去）。' +
+        '动画里 <span class="var r">l</span>、<span class="var i">r</span> 从最两端出发向中间夹逼，半透明色块就是当前容器的水面——' +
+        '<b>每一轮算完水量，就挪走矮的那根板</b>。',
+
+  roles: [
+    {c:'blue',   code:'l',    text:'左指针：左边的板'},
+    {c:'orange', code:'r',    text:'右指针：右边的板'},
+    {c:'blue',   code:'fill', text:'半透明块 = 当前水面（高 = 矮板）'},
+    {c:'green',  code:'best', text:'刷新纪录的那次'}
+  ],
+
+  codeTitle: '跟着高亮读代码——<code>if height[l] &lt; height[r]</code> 变<span style="color:var(--green)">绿</span>＝左边矮、挪左边；变红＝右边不比左边高、挪右边。',
+
+  legend: [
+    {c:'blue', text:'l 左板'},
+    {c:'orange', text:'r 右板'},
+    {swatch:'rgba(51,85,200,.18)', text:'当前水面 = 矮板高 × 宽'},
+    {swatch:'rgba(30,122,78,.28)', text:'绿色水面 = 刚刷新纪录'}
+  ],
+
+  idea: '水由短板封顶：留住高板、挪走矮板，才可能遇到更高的搭档——每次牺牲一点宽度换高度的可能，一趟 O(n) 夹逼出答案。',
+
+  qa: [
+    {q:'为什么敢直接挪走矮的那一侧？不会错过答案吗？',
+     a:'此刻宽 w、矮板 h，水量 h×w。如果<b>留着矮板</b>去挪高板，宽度变小、水面还被同一个 h 封顶——水量只会更小，这些组合全都可以不试。所以矮板的所有“更窄组合”当场整排淘汰；挪走矮板才可能碰到比 h 更高的新板。'},
+    {q:'为什么从最两端开始？',
+     a:'水量 = 矮板 × 宽。开局宽度已经拉到最大，之后每一步都在牺牲宽度，所以唯一的指望是“高度更高”。两端夹逼每步只淘汰“注定更差”的组合，答案一定在剩下的候选里，一格不漏。'},
+    {q:'两根板一样高时挪哪个？',
+     a:'都行——水面由 min 决定，两根并列短板，挪走任何一根都不亏。代码里走 else 分支挪右板。'},
+    {q:'复杂度？',
+     a:'每轮 l、r 必有一根向中间挪，最多 n−1 轮：<b>时间 O(n)</b>。只存 l、r、best 几个变量，空间 O(1)。暴力两两试是 O(n²)。'}
+  ],
+
+  complexity: '时间 O(n)（每轮挪一根板，最多 n−1 轮）　·　空间 O(1)',
+
+  form: [
+    {key:'height', label:'height', type:'arr', def:[1,8,6,2,5,4,8,3,7]}
+  ],
+  presets: [
+    {label:'[1,8,6,2,5,4,8,3,7]', values:{height:[1,8,6,2,5,4,8,3,7]}},
+    {label:'[1,1]（最短输入）', values:{height:[1,1]}},
+    {label:'[4,3,2,1,4]（两端高中间洼）', values:{height:[4,3,2,1,4]}},
+    {label:'[1,2,1]（小例子）', values:{height:[1,2,1]}}
+  ],
+
+  code: `class Solution:
+    def maxArea(self, height):
+        l, r = 0, len(height) - 1       # 左右两根板, 从最两端出发
+        best = 0                        # 目前最大的装水量
+        while l < r:                    # 两板没碰头, 就继续试
+            area = min(height[l], height[r]) * (r - l)  # 水量 = 矮板高 × 宽
+            best = max(best, area)      # 刷新纪录
+            if height[l] < height[r]:   # 左板更矮?
+                l += 1                  # 挪走矮的左板, 保留高板
+            else:
+                r -= 1                  # 右板不比左板高, 挪走右板
+        return best
+`,
+
+  sol(input){
+    const h = input.height || [];
+    let l = 0, r = h.length - 1, best = 0;
+    while(l < r){
+      const area = Math.min(h[l], h[r]) * (r - l);
+      best = Math.max(best, area);
+      if(h[l] < h[r]) l++;
+      else r--;
+    }
+    return best;
+  },
+  expected: 49,
+
+  quiz: [
+    {q:'水量公式为什么是 min(h[l], h[r]) × (r − l),而不是把两根板的高度加起来或取平均?',
+     options:['水一高过短板就从矮板顶上漫出去了,水面被短板死死封顶;宽就是两板的距离','两根板都能盛水,高度相加才公平','取平均相当于两边各分一半水'],
+     answer:0,
+     explain:'容器能装到多高,取决于矮的那根板——高板再高,水漫过短板顶就白搭,所以高取 min;宽取两板下标差 (r−l)。这一条也决定了后面的策略:谁矮谁封顶,谁就值得被挪走换新人,「挪短板」全部逻辑都从这里长出来。',
+     jumpTo:3},
+    {q:'开局 l=0(h=1)、r=8(h=7),面积 = min(1,7)×8 = 8。下一步为什么挪走左板 h=1,而不是右板 h=7?',
+     options:['左板在数组更靠左,先处理左边','留着 h=1 去挪右板:宽度变小、水面仍被 1 封顶,这些组合注定更差;挪矮板才可能换到更高的搭档','右板 h=7 更高更占地方,先挪它给左边腾位置'],
+     answer:1,
+     explain:'若保留矮板挪高板,新宽度必是 7,水面还是被 h=1 封顶——新面积 ≤ 1×7 < 8,注定更差,矮板参与的所有更窄组合当场整排淘汰。反过来挪走矮板,牺牲一点宽度,换来「搭档可能更高」的机会。口诀:每轮算完水量就挪矮的那根。',
+     jumpTo:5},
+    {q:'height = [2,3,4,5,6,7,8] 单调递增,用这个算法算出的最大水量是多少?',
+     options:['12','15','16','21'],
+     answer:2,
+     explain:'逐轮算:l=0,r=6:min(2,8)×6=12,挪 l;l=1,r=6:min(3,8)×5=15,挪 l;l=2,r=6:min(4,8)×4=16,刷新纪录,挪 l;之后 min(5,8)×3=15、min(6,8)×2=12、min(7,8)×1=7 都没超过。答案是 16。单调数组也一样适用「挪短板」,不会漏掉最优组合。',
+     jumpTo:34},
+  ],
+
+  steps(input){
+    const F = [];
+    const h = input.height || [];
+    let l = 0, r = h.length - 1, best = 0;
+    let bestL = 0, bestR = h.length - 1;
+
+    /* ★ 快照：marks / states / fill 都在 F.push 那一刻用当时的 l、r 算死 */
+    const mk = (l0, r0) => {
+      const m = [];
+      if(l0 >= 0 && l0 < h.length) m.push({name:'l', idx:l0, cls:'mr', text:'▲ l'});
+      if(r0 >= 0 && r0 < h.length) m.push({name:'r', idx:r0, cls:'mi', text:'▲ r'});
+      return m;
+    };
+    const stAt = (l0, r0, moved) => {
+      const st = {};
+      if(l0 >= 0 && l0 < h.length) st[l0] = moved === 'l' ? 'peek' : 'active';
+      if(r0 >= 0 && r0 < h.length) st[r0] = moved === 'r' ? 'peek' : 'active';
+      return st;
+    };
+
+    const draw = (o) => (v) => {
+      v.bars('H', h, {label:'柱状图 <code>height</code>　·　柱高 = 板高', chartH:150,
+        states:o.states || {}, markers:o.marks || [], fill:o.fill});
+      if(o.vars) v.vars('vars', o.vars, {label:'变量', hl:o.hlV});
+      if(o.result != null) v.result(o.result, {label:'最大水量'});
+    };
+
+    F.push({hl:[1,2,3,4], tag:'初始化', cls:'t-grey',
+      msg:'l、r 从最两端出发（▲ 名牌钉在最左最右两根板上）：开局就把<b>宽度</b>这个优势拉满，之后每挪一步宽度只会变小。策略一句话：每轮算一次水量、更新纪录，然后<b>挪走矮的那根板</b>。为什么敢挪：水会从矮板漫出去，水量由短板封顶——留着矮板，它参与的所有更窄组合全都注定更差，趁早换人才有机会遇到更高的搭档。',
+      do: draw({states:stAt(l, r), marks:mk(l, r),
+                vars:{l:l, r:r, 'h[l]':h[l], 'h[r]':h[r], area:'—', best:best}})});
+
+    while(l < r){
+      F.push({hl:[5], ok:5, tag:'while 检查', cls:'t-blue',
+        msg:'<code>l = ' + l + '，r = ' + r + '</code>，两板还没碰头（当前宽度 ' + (r - l) + '，<code>h[l] = ' + h[l] + '</code>、<code>h[r] = ' + h[r] + '</code>）→ 继续这一轮：算水量 → 记录 → 挪短板。为什么条件是 <code>&lt;</code> 而不是 ≤？一根板围不成容器；两针一碰头，该试的组合也全试完了。',
+        do: draw({states:stAt(l, r), marks:mk(l, r),
+                  vars:{l:l, r:r, 'h[l]':h[l], 'h[r]':h[r], area:'—', best:best}})});
+
+      const area = Math.min(h[l], h[r]) * (r - l);
+      F.push({hl:[6], tag:'算水量', cls:'t-blue',
+        msg:'算水量：<code>min(h[l], h[r]) × (r − l) = min(' + h[l] + ', ' + h[r] + ') × ' + (r - l) + ' = <b>' + area + '</b></code>，画面上两板之间的半透明色块就是这层水面。为什么取 min？水高过短板就漫出去了——这根 ' +
+            (h[l] <= h[r] ? '左板 h[l] = ' + h[l] : '右板 h[r] = ' + h[r]) + ' 是短板，水面被它死死封顶，另一根板再高也白搭。',
+        do: draw({states:stAt(l, r), marks:mk(l, r),
+                  fill:{from:l, to:r, h:Math.min(h[l], h[r])},
+                  vars:{l:l, r:r, 'h[l]':h[l], 'h[r]':h[r], area:area, best:best}, hlV:['area']})});
+
+      const oldBest = best;
+      const fresh = area > oldBest;
+      if(fresh){ best = area; bestL = l; bestR = r; }
+      if(fresh){
+        F.push({hl:[7], tag:'刷新纪录', cls:'t-green',
+          msg:'<code>area = ' + area + ' &gt; 旧纪录 ' + oldBest + '</code> → <b>best 刷新为 ' + area + '</b>（水面变绿：l=' + l + '、r=' + r + ' 这一对暂时是全局最优）。best 只增不减：它记的是"到目前为止见过的最大水量"，新组合想上位只能比它大——最终答案一定就是某一轮的 area，一个不漏。',
+          do: draw({states:stAt(l, r), marks:mk(l, r),
+                    fill:{from:l, to:r, h:Math.min(h[l], h[r]), color:'rgba(30,122,78,.28)'},
+                    vars:{l:l, r:r, 'h[l]':h[l], 'h[r]':h[r], area:area, best:best}, hlV:['best']})});
+      } else {
+        F.push({hl:[7], tag:'记录', cls:'t-grey',
+          msg:'<code>area = ' + area + '</code>，没超过纪录 <code>best = ' + best + '</code>，纪录保持不变。这对组合白试了吗？没有——夹逼保证所有"可能最优"的组合都会被算到，max 逐对过目、不动声色，最后留下的就是全局最大。',
+          do: draw({states:stAt(l, r), marks:mk(l, r),
+                    fill:{from:l, to:r, h:Math.min(h[l], h[r])},
+                    vars:{l:l, r:r, 'h[l]':h[l], 'h[r]':h[r], area:area, best:best}})});
+      }
+
+      if(h[l] < h[r]){
+        F.push({hl:[8,9], ok:8, tag:'挪左板', cls:'t-orange',
+          msg:'左板 <code>h[l] = ' + h[l] + '</code> 比右板 <code>' + h[r] + '</code> 矮，水面由它封顶。反着想：若<b>留着矮板去挪高板</b>，宽度变小、水面还是被同一个 ' + h[l] + ' 封顶（搭档再高也没用），水量必然小于刚才的 ' + area + '——这一整排组合当场淘汰。所以放心挪走 l（l 右移一格），去给矮板找个更高的接班人。',
+          do: draw({states:stAt(l + 1, r, 'l'), marks:mk(l + 1, r),
+                    vars:{l:l + 1, r:r, 'h[l]':h[l + 1], 'h[r]':h[r], best:best}})});
+        l++;
+      } else {
+        F.push({hl:[10,11], ok:11, tag:'挪右板', cls:'t-orange',
+          msg:'右板 <code>h[r] = ' + h[r] + '</code> 不比左板 <code>' + h[l] + '</code> 高：短板在右边（相等时两边都是短板）。同理：留它，往后的组合只在更窄的宽度上被同一个 ' + h[r] + ' 封顶，只会更差——挪走 r（r 左移一格），去右边找更高的板。两根一样高时挪谁都不亏，代码固定走 else 挪右板。',
+          do: draw({states:stAt(l, r - 1, 'r'), marks:mk(l, r - 1),
+                    vars:{l:l, r:r - 1, 'h[l]':h[l], 'h[r]':h[r - 1], best:best}})});
+        r--;
+      }
+    }
+
+    F.push({hl:[5], no:5, tag:'while 结束', cls:'t-red',
+      msg:'<code>l = r = ' + l + '</code>，两板相遇 → 循环收工。复盘正确性：每轮淘汰的都是"短板 × 更窄宽度"这种注定更差的组合，而含最优解的那一对从未被拆散——所以 best 一定已经记下了全局最大水量 ' + best + '。',
+      do: draw({states:stAt(l, r), marks:mk(l, r),
+                vars:{l:l, r:r, best:best}})});
+
+    F.push({hl:[12], tag:'返回', cls:'t-dark',
+      msg:'🎉 最大水量 <b>best = ' + best + '</b>，由 <code>l=' + bestL + '</code>、<code>r=' + bestR + '</code> 两根板创造：<code>min(' + h[bestL] + ', ' + h[bestR] + ') × ' + (bestR - bestL) + ' = ' + best + '</code>（绿色水面就是它）。对比暴力两两试的 O(n²)：夹逼每轮只挪一根板、最多 n−1 轮就试完所有值得试的组合，O(n) 时间、O(1) 空间收工。',
+      do: draw({states:stAt(bestL, bestR), marks:mk(bestL, bestR),
+                fill:{from:bestL, to:bestR, h:Math.min(h[bestL], h[bestR]), color:'rgba(30,122,78,.28)'},
+                vars:{best:best}, result:best})});
+    return F;
+  }
+});
+</script>
+</body>
+</html>

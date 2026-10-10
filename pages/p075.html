@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P075 · 数据流的中位数 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/progress.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 75, num: 295, title: '数据流的中位数', diff: '困难', cat: '堆',
+  method: 'run',
+  pyCheck: false,
+
+  lede: '题目：数字一个一个流进来，<b>随时</b>要能报出当前所有数的中位数（排序后中间那个；偶数个取中间两个的平均）。' +
+        '全排序太慢，诀窍是养一对<b>对顶堆</b>：<span class="var r">lo</span> 是大顶堆，装较小的一半；<span class="var o">hi</span> 是小顶堆，装较大的一半。' +
+        '评测器按 ops / args 逐条调用（代码最下方的驱动就是干这个的）。动画里两个堆都竖着画：堆顶就是最上面那格。',
+
+  roles: [
+    {c:'blue',   code:'lo', text:'大顶堆：较小的一半, 顶=这一半里最大'},
+    {c:'orange', code:'hi', text:'小顶堆：较大的一半, 顶=这一半里最小'},
+    {c:'green',  code:'中位数', text:'奇数个 → lo 顶；偶数个 → 两顶平均'},
+    {c:'violet', code:'搬家', text:'addNum 后挪一个数, 保持两堆平衡'}
+  ],
+
+  codeTitle: '跟着高亮读代码——<code>if</code> 行变<span style="color:var(--green)">绿</span>＝hi 比 lo 多要搬一个回去 / 奇数个直接读 lo 顶，变<span style="color:var(--red)">红</span>＝不用搬 / 偶数个取平均。lo 里实际存的是相反数（负数技巧把小顶堆用成大顶堆），画面显示真值。最下面的 class Solution 是校验驱动：模拟评测器按 ops 序列逐条调用（LeetCode 上答案类名是 MedianFinder）。',
+
+  legend: [
+    {c:'blue', text:'lo 较小的一半'},
+    {c:'orange', text:'hi 较大的一半'},
+    {c:'violet', text:'刚搬家的数'},
+    {c:'green', text:'中位数来源'}
+  ],
+
+  idea: '两堆对顶分天下：lo 管小的一半、hi 管大的一半，随时保证 |lo|−|hi| ≤ 1——中位数要么是 lo 顶，要么是两顶平均，一眼可取。',
+
+  qa: [
+    {q:'为什么 addNum 要"先塞 lo、再让给 hi、可能再搬回来"这么绕？',
+     a:'一步到位很难判断新数该进哪半边；这套流水线<b>不用判断</b>：先无脑进 lo，再把 lo 里最大的交给 hi（保证 lo 里没有越界的数），最后若 hi 多了就还一个最小的给 lo。三步之后不变式自动成立：lo 的数全 ≤ hi 的数，且 |lo|−|hi| ∈ {0, 1}。'},
+    {q:'lo 里为什么要存相反数？',
+     a:'Python 的 heapq 只有<b>小顶堆</b>。把数取负再放进去，"最小"就变成了"原值的最大"——小顶堆秒变大顶堆。取堆顶时再负回来（-self.lo[0]）就是较小一半里的最大值。'},
+    {q:'中位数为什么只在堆顶？',
+     a:'中位数 = 排序后正中间。两堆把排序切成两段：lo 从大到小、hi 从小到大，接缝处正好是中间——lo 顶是第 ⌊n/2⌋ 小，hi 顶是第 ⌈n/2⌉+1 小。所以奇数个读 lo 顶，偶数个取两顶平均，全程 O(1)。'}
+  ],
+
+  complexity: 'addNum 时间 O(log n)　·　findMedian 时间 O(1)　·　空间 O(n)（两个堆分摊所有数）',
+
+  form: [
+    {key:'ops',  label:'ops',  type:'strlist', def:['MedianFinder','addNum','addNum','findMedian','addNum','findMedian']},
+    {key:'args', label:'args', type:'json', def:[[],[1],[2],[],[3],[]]}
+  ],
+  presets: [
+    {label:'官方用例 [1,2,3]', values:{ops:['MedianFinder','addNum','addNum','findMedian','addNum','findMedian'], args:[[],[1],[2],[],[3],[]]}},
+    {label:'奇数个 [5,3,8,6,9] 末尾查', values:{ops:['MedianFinder','addNum','addNum','addNum','addNum','addNum','findMedian'], args:[[],[5],[3],[8],[6],[9],[]]}},
+    {label:'重复值 [2,2,2,2] 中途查', values:{ops:['MedianFinder','addNum','addNum','findMedian','addNum','addNum','findMedian'], args:[[],[2],[2],[],[2],[2],[]]}},
+    {label:'单个数就查（边界）', values:{ops:['MedianFinder','addNum','findMedian'], args:[[],[42],[]]}}
+  ],
+
+  code: `import heapq
+
+class MedianFinder:
+    def __init__(self):
+        self.lo = []                 # 大顶堆(存相反数): 较小的一半
+        self.hi = []                 # 小顶堆: 较大的一半
+    def addNum(self, num):
+        heapq.heappush(self.lo, -num)                  # ① 先无脑丢进 lo
+        heapq.heappush(self.hi, -heapq.heappop(self.lo))   # ② lo 最大的让给 hi
+        if len(self.hi) > len(self.lo):                # ③ hi 多了一个
+            heapq.heappush(self.lo, -heapq.heappop(self.hi))   # 还一个给 lo
+    def findMedian(self):
+        if len(self.lo) > len(self.hi):                # 奇数个: lo 多一个
+            return -self.lo[0]                         # lo 顶就是中位数
+        return (-self.lo[0] + self.hi[0]) / 2          # 偶数个: 两堆顶平均
+
+class Solution:                      # 校验驱动: 模拟评测器按序调用
+    def run(self, ops, args):
+        mf, out = None, []
+        for op, arg in zip(ops, args):
+            if op == 'MedianFinder': mf = MedianFinder(); out.append(None)
+            elif op == 'addNum': mf.addNum(arg[0]); out.append(None)
+            else: out.append(mf.findMedian())
+        return out
+`,
+
+  sol(input){
+    const arg0 = a => Array.isArray(a) ? (a.length ? a[0] : null) : a;
+    const push = (h, x) => {
+      h.push(x);
+      let i = h.length - 1;
+      while(i > 0){
+        const p = (i - 1) >> 1;
+        if(h[p] <= h[i]) break;
+        const t = h[p]; h[p] = h[i]; h[i] = t; i = p;
+      }
+    };
+    const pop = h => {
+      const top = h[0], last = h.pop();
+      if(h.length){
+        h[0] = last;
+        let i = 0;
+        for(;;){
+          const l = 2 * i + 1, r = l + 1;
+          let m = i;
+          if(l < h.length && h[l] < h[m]) m = l;
+          if(r < h.length && h[r] < h[m]) m = r;
+          if(m === i) break;
+          const t = h[m]; h[m] = h[i]; h[i] = t; i = m;
+        }
+      }
+      return top;
+    };
+    let lo = [], hi = [];      // lo 存相反数 = 大顶堆; hi 是小顶堆
+    const out = [];
+    (input.ops || []).forEach((op, i) => {
+      if(op === 'MedianFinder'){ lo = []; hi = []; out.push(null); return; }
+      if(op === 'addNum'){
+        const num = Number(arg0((input.args || [])[i]));
+        push(lo, -num);
+        push(hi, -pop(lo));
+        if(hi.length > lo.length) push(lo, -pop(hi));
+        out.push(null);
+      } else if(op === 'findMedian'){
+        if(!lo.length){ out.push(null); return; }
+        out.push(lo.length > hi.length ? -lo[0] : (-lo[0] + hi[0]) / 2);
+      } else {
+        out.push(null);
+      }
+    });
+    return out;
+  },
+  expected: [null, null, null, 1.5, null, 2],
+
+  quiz: [
+    {q:'addNum 为什么不直接判断"num 比堆顶大就进 hi、小就进 lo",非要走"①丢进 lo → ②让给 hi → ③必要时搬回来"三步?',
+     options:['因为直接判断没法写代码','因为直接判断很容易漏边界:若 num 比两边堆顶都大(或都小),一步放错就破坏"lo 全 ≤ hi";三步流水线不用判断,走完不变式自动恢复','因为堆不支持直接判断,只能先弹出再塞回'],
+     answer:1,
+     explain:'直接判断要同时考虑 num 与 lo 顶、hi 顶、两堆大小共好几种情形,漏一条就破坏铁律。流水线的高明处:①无脑进 lo 当候补;②lo 交出自己最大的——不管 num 多大,这一步保证 lo 里没有越过中界的数,铁律①(lo 全 ≤ hi)自动成立;③hi 多了就还一个最小的回去,铁律②(|lo|−|hi| ≤ 1)自动成立。判断逻辑被"搬家"动作替掉了,想错都难。',
+     jumpTo:4},
+    {q:'依次 addNum(5)、addNum(1)、addNum(4)、findMedian、addNum(2)、findMedian,两次 findMedian 依次输出?',
+     options:['4 和 3','2.5 和 3','4.5 和 3'],
+     answer:0,
+     explain:'推演:5 进来 → lo={5};1 进来 → lo={1}, hi={5};4 进来 → 先 lo={1,4},让 4 给 hi 得 lo={1}, hi={4,5} → hi 多一个,③把 4 搬回来 → lo={1,4}, hi={5}。共 3 个数(奇数)→ 读 lo 顶 = 4。addNum(2) 后 → lo={1,2}, hi={4,5},共 4 个(偶数)→ (2+4)/2 = 3。选 2.5 的是漏了③"还一个给 lo",拿没搬完的 lo={1}、hi={4,5} 去平均;选 4.5 的是拿 hi 里两个数在平均——中位数只在两个堆顶上。',
+     jumpTo:22},
+    {q:'解法二(有序数组 + 二分插入)里,二分找插入点只要 O(log n),为什么 addNum 整体仍是 O(n)?',
+     options:['因为二分每次要多比几次,累积起来就是 O(n)','因为 insert 要把插入点后面的元素整体右移一格,最坏挪 O(n) 个——二分省下的比较时间全赔在挪位上','因为数组要经常扩容,扩容是 O(n)'],
+     answer:1,
+     explain:'有序数组版的两步是"二分定位 + insert 挪位"。二分定位确实只要 O(log n),但 Python 的 list.insert(以及手写挪位)要把插入点后面的元素一个个后移,最坏 O(n)——数据流按顺序涌入、总往头部插时最惨。n 个数流进来总代价 O(n²);对顶堆 addNum 全程只有 O(log n) 的堆操作,findMedian 两边都是 O(1)。这就是"易读版"要给对顶堆让位的原因。',
+     jumpTo:23},
+  ],
+
+  steps(input){
+    const F = [];
+    const ops = (input.ops || []).map(s => String(s).trim());
+    const rawArgs = input.args || [];
+    const arg0 = a => Array.isArray(a) ? (a.length ? a[0] : null) : a;
+    const fmt = x => Number.isInteger(x) ? x.toFixed(1) : String(x);
+
+    let lo = [], hi = [];        // 元素对象 {key, val, id}（val 存真值）
+    const out = [];
+    let seq = 0, created = false;
+
+    /* 显示顺序快照: lo 升序 → 最后(顶)是最大; hi 降序 → 最后(顶)是最小 */
+    const loView = () => lo.slice().sort((a, b) => (a.val - b.val) || (a.id - b.id))
+                          .map(it => ({key:it.key, val:it.val}));
+    const hiView = () => hi.slice().sort((a, b) => (b.val - a.val) || (b.id - a.id))
+                          .map(it => ({key:it.key, val:it.val}));
+    const loTop = () => lo.length ? lo.slice().sort((a, b) => (b.val - a.val) || (b.id - a.id))[0] : null;
+    const hiTop = () => hi.length ? hi.slice().sort((a, b) => (a.val - b.val) || (a.id - b.id))[0] : null;
+    const outTxt = () => JSON.stringify(out);
+
+    const draw = (o) => (v) => {
+      v.stack('LO', o.lo, {label:'大顶堆 lo　·　较小的一半（存相反数，画面显示真值）',
+        states:o.loSt || {}, topTag:o.lo.length ? '堆顶 = 一半里最大' : null});
+      v.stack('HI', o.hi, {label:'小顶堆 hi　·　较大的一半',
+        states:o.hiSt || {}, topTag:o.hi.length ? '堆顶 = 一半里最小' : null});
+      v.vars('vars', o.vars, {label:'当前状态', hl:o.hlv || []});
+      if(o.res !== undefined) v.result(o.res, {label:'中位数'});
+    };
+    const snap = (extra) => Object.assign({
+      lo:loView(), hi:hiView(), loSt:{}, hiSt:{},
+      vars:{'len(lo)':lo.length, 'len(hi)':hi.length, out:outTxt()}, hlv:[]
+    }, extra);
+
+    F.push({hl:[1,3,4,5,6,17,18,19], tag:'开始', cls:'t-grey',
+      msg:'数字不断流入，随时可能被问中位数；每次全排序要 O(n log n)，太亏。方案是<b>对顶堆</b>：lo 是大顶堆、装<b>较小的一半</b>，hi 是小顶堆、装<b>较大的一半</b>，全程守住两条铁律——① lo 里的数全部 ≤ hi 里的数（接缝对齐）；② lo 至多比 hi 多 1 个（中间票归 lo）。做到这两条，中位数就永远待在两个堆顶上，O(1) 可取。评测器按 ops 列表逐条调用（下方驱动循环已高亮），out 逐条记录返回值。',
+      do: draw(snap())});
+
+    ops.forEach((op, oi) => {
+      const nOp = oi + 1;
+      const opLabel = op === 'MedianFinder' ? 'MedianFinder()'
+        : op === 'findMedian' ? 'findMedian()' : 'addNum(' + String(arg0(rawArgs[oi])) + ')';
+
+      if(op !== 'MedianFinder' && !created){
+        out.push(null);
+          F.push({hl:[22], no:22, tag:'还没建堆', cls:'t-red',
+            msg:'第 ' + nOp + ' 条操作 <b>' + LCesc(opLabel) + '</b>：还没执行 MedianFinder()，对象压根不存在，这条只能跳过，out 记 null。先构造再使用，评测器也按这个约定对拍。',
+          do: draw(snap({vars:{out:outTxt()}, hlv:['out']}))});
+        return;
+      }
+
+      if(op === 'MedianFinder'){
+        lo = []; hi = []; created = true;
+        out.push(null);
+        F.push({hl:[20,21,4,5,6], tag:'创建 MedianFinder', cls:'t-blue',
+          msg:'第 ' + nOp + ' 条操作 <b>MedianFinder()</b>：新建一个空对象——lo、hi 两个堆此刻都空着（画面两栏各 0 格）。构造无返回值，out 记 null。接下来每来一个数，都会走"① 丢进 lo → ② 让给 hi → ③ 必要时搬回来"的三步流水线。',
+          do: draw(snap({hlv:['out']}))});
+        return;
+      }
+
+      if(op === 'addNum'){
+        const num = Number(arg0(rawArgs[oi]));
+        out.push(null);
+        F.push({hl:[20,22,7], tag:'调用 addNum', cls:'t-blue',
+          msg:'第 ' + nOp + ' 条操作 <b>addNum(' + num + ')</b>：新数 ' + num + ' 来报到（当前 lo ' + lo.length + ' 个、hi ' + hi.length + ' 个）。关键：<b>不用判断</b>它该进哪一半——直接判断很容易漏（它可能比两边堆顶都大或都小），改用三步流水线：先无脑进 lo，再让 lo 交出最大的，最后 hi 多了就还一个。流水线走完，两条铁律自动恢复。out 先记 null（addNum 无返回值）。',
+          do: draw(snap({vars:{num:num, 'len(lo)':lo.length, 'len(hi)':hi.length, out:outTxt()}, hlv:['out']}))});
+
+        const it = {key:'v' + (++seq), val:num, id:seq};
+        lo.push(it);
+        F.push({hl:[8], tag:'① 丢进 lo', cls:'t-ink',
+          msg:'<code>heappush(lo, -' + num + ')</code>：' + num + ' <b>先无脑丢进 lo</b>（画面新进场那格被高亮）。代码里存的是相反数 −' + num + '——Python 的 heapq 只有<b>小顶堆</b>，取负后"最小的"就变"原值最大的"，小顶堆秒变大顶堆；画面显示的是真值。为什么敢无脑放？lo 只是候补席：就算放错半边，下一步②自会把 lo 里最大的交出去纠正。现在 lo ' + lo.length + ' 个、hi ' + hi.length + ' 个。',
+          do: draw(snap({lo:loView(), loSt:{[it.key]:'just'},
+                         vars:{num:num, 'len(lo)':lo.length, 'len(hi)':hi.length}}))});
+
+        const moved = lo.slice().sort((a, b) => (b.val - a.val) || (b.id - a.id))[0];
+        lo = lo.filter(t => t !== moved);
+        hi.push(moved);
+        F.push({hl:[9], tag:'② 让给 hi', cls:'t-orange',
+          msg:'lo 的堆顶是 <b>' + moved.val + '</b>——较小一半里最大的那个（画面高亮），把它让给 hi。这一步保证 lo 里<b>没有任何数越过中界</b>：让完之后 lo 的数全 ≤ hi 的数，铁律①自动成立，两半的"接缝"永远对齐。这正是"先塞 lo 再让"的妙处——让出去的恰是 lo 的最大值，天然就是两半的分界，完全不用看 num 是大是小。',
+          do: draw(snap({lo:loView(), hi:hiView(), hiSt:{[moved.key]:'just'},
+                         vars:{num:num, '搬家':moved.val, 'len(lo)':lo.length, 'len(hi)':hi.length}}))});
+
+        const need = hi.length > lo.length;
+        F.push({hl:[10], ok:need ? 10 : undefined, no:need ? undefined : 10, tag:'查平衡', cls:need ? 't-green' : 't-red',
+          msg:need
+            ? '搬完看平衡：hi 有 ' + hi.length + ' 个、lo 只有 ' + lo.length + ' 个 → <b>hi 多了一个</b>（铁律②被打破）。约定"中间票"归 lo——总数为奇数时，多出的那一个只有待在 lo 顶上才好当中位数，所以下一步从 hi 还一个回去。'
+            : '搬完看平衡：hi ' + hi.length + ' 个、lo ' + lo.length + ' 个 → 两边平衡（lo ≥ hi），铁律②没破 → <b>不用搬</b>，addNum 收工。此刻 lo 顶仍握着较小一半的最大值，中位数随时可取。',
+          do: draw(snap({lo:loView(), hi:hiView(),
+                         hiSt:{[hiTop() ? hiTop().key : '__none']:'active'},
+                         vars:{num:num, 'len(lo)':lo.length, 'len(hi)':hi.length}}))});
+
+        if(need){
+          const back = hi.slice().sort((a, b) => (a.val - b.val) || (a.id - b.id))[0];
+          hi = hi.filter(t => t !== back);
+          lo.push(back);
+          F.push({hl:[11], tag:'③ 还一个给 lo', cls:'t-violet',
+            msg:'hi 的堆顶 <b>' + back.val + '</b>——较大一半里<b>最小</b>的那个（画面高亮）搬回 lo。为什么还它？它是两半分界上最小的数，搬过去正好坐上 lo 顶当"接缝"。现在 lo ' + lo.length + ' 个、hi ' + hi.length +
+                ' 个 → 两条铁律全部恢复：lo 的数全 ≤ hi 的数、lo 至多比 hi 多 1 个，lo 顶随时可以当中位数。',
+            do: draw(snap({lo:loView(), hi:hiView(), loSt:{[back.key]:'just'},
+                           vars:{num:num, 'len(lo)':lo.length, 'len(hi)':hi.length}}))});
+        }
+        return;
+      }
+
+      /* findMedian */
+      const lt = loTop(), ht = hiTop();
+      const odd = lo.length > hi.length;
+      F.push({hl:[20,23,12], tag:'调用 findMedian', cls:'t-blue',
+        msg:'第 ' + nOp + ' 条操作 <b>findMedian()</b>：眼下共 ' + (lo.length + hi.length) + ' 个数（lo ' + lo.length + ' + hi ' + hi.length + '）。不用排序也不用扫——两堆早已把数据切成两半，接缝处就是排序后的正中间，答案<b>只可能藏在两个堆顶</b>（画面高亮的那 1~2 格）。',
+        do: draw(snap({lo:loView(), hi:hiView(),
+                       loSt: lt ? {[lt.key]:'pivot'} : {}, hiSt: ht ? {[ht.key]:'pivot'} : {},
+                       vars:{'len(lo)':lo.length, 'len(hi)':hi.length}}))});
+
+      F.push({hl:[13], ok:odd ? 13 : undefined, no:odd ? undefined : 13, tag:'奇还是偶', cls:odd ? 't-green' : 't-red',
+        msg:odd
+          ? 'lo ' + lo.length + ' 个 &gt; hi ' + hi.length + ' 个 → 总数 ' + (lo.length + hi.length) + ' 是<b>奇数</b>。按约定，多出的"中间票"归 lo——lo 多出的那一个（就是 lo 顶）正是正中间的数，直接读它。'
+          : 'lo ' + lo.length + ' 个 = hi ' + hi.length + ' 个 → 总数 ' + (lo.length + hi.length) + ' 是<b>偶数</b>，没有唯一"中间那格"，中位数 = 排序后中间两个数的平均——恰好就是两个堆顶。',
+        do: draw(snap({lo:loView(), hi:hiView(),
+                       loSt: lt ? {[lt.key]:'pivot'} : {}, hiSt: ht ? {[ht.key]:'pivot'} : {},
+                       vars:{'len(lo)':lo.length, 'len(hi)':hi.length}}))});
+
+      let med;
+      if(odd){
+        med = lt.val;
+        out.push(med);
+        F.push({hl:[14], ok:14, tag:'读 lo 顶', cls:'t-green',
+          msg:'lo 顶 = <b>' + fmt(med) + '</b>（较小一半的最大值，画面高亮）→ <b>return ' + fmt(med) + '</b>，out 记 ' + fmt(med) + '。对比全排序的 O(n log n)：这里只读了一个堆顶，O(1) 一步到位——对顶堆的价值全在这。',
+          do: draw(snap({lo:loView(), hi:hiView(), loSt:{[lt.key]:'just'},
+                         vars:{中位数:fmt(med), out:outTxt()}, hlv:['out', '中位数'], res:fmt(med)}))});
+      } else {
+        med = (lt.val + ht.val) / 2;
+        out.push(med);
+        F.push({hl:[15], ok:15, tag:'两顶平均', cls:'t-green',
+          msg:'lo 顶 ' + fmt(lt.val) + '（较小半最大）和 hi 顶 ' + fmt(ht.val) + '（较大半最小）恰好是排序后<b>正中间的两个数</b> → (' + fmt(lt.val) + ' + ' + fmt(ht.val) + ') / 2 = <b>' + fmt(med) +
+              '</b>，out 记 ' + fmt(med) + '。同样 O(1)：只碰两个堆顶。',
+          do: draw(snap({lo:loView(), hi:hiView(), loSt:{[lt.key]:'just'}, hiSt:{[ht.key]:'just'},
+                         vars:{中位数:fmt(med), out:outTxt()}, hlv:['out', '中位数'], res:fmt(med)}))});
+      }
+    });
+
+    F.push({hl:[24], tag:'全部操作完成', cls:'t-dark',
+      msg:'操作序列跑完，输出 <b>' + LCesc(outTxt()) + '</b>，和 LeetCode 期望一致。复盘：每次 addNum 至多 3 次堆操作（O(log n)），每次 findMedian 只读堆顶（O(1)）——中位数永远守在 lo/hi 的接缝上，这就是对顶堆的全部秘密。',
+      do: draw(snap({lo:loView(), hi:hiView(), res:out.slice(), hlv:['out']}))});
+
+    return F;
+  },
+
+  /* ========= 解法二：力扣官方题解 方法一 · 有序数组 + 二分插入（校验驱动） ========= */
+  alt: {
+    label: '官方 · 有序数组 + 二分插入',
+    method: 'run',
+    pyCheck: false,
+
+    lede: '题目不变：数字一个一个流进来，<b>随时</b>要能报中位数。对顶堆是 O(log n) 的最优解，' +
+          '官方题解还给了最朴素的<b>有序数组</b>版：让数组始终从小到大，' +
+          '<span class="var o">addNum</span> 用<b>手写二分</b>找到插入点、整体挪位插进去；' +
+          '<span class="var r">findMedian</span> 直接读正中间那 1~2 格。评测器仍按 ops / args 逐条调用（代码最下方的驱动）。' +
+          '二分只要 O(log n)，但挪位是 O(n)——它是"易读版"的官方替代。',
+
+    codeTitle: '跟着高亮读代码——二分时盯住三个名牌：<span style="color:var(--green)">绿</span>格＝已确认 &lt; num（lo 右跳），灰格＝已确认 ≥ num（hi 左收），蓝格＝还有嫌疑的区间 [lo, hi)；橙格＝正在比对的 mid。最右边的 ∅ 是末尾虚位——hi 一开始就指着它。最下面的 class Solution 是校验驱动（LeetCode 上答案类名是 MedianFinder）。',
+
+    legend: [
+      {c:'blue', text:'[lo, hi) 还在搜索'},
+      {c:'green', text:'左边已排除（< num）'},
+      {swatch:'#b3afa2', text:'右边已排除（≥ num）'},
+      {c:'orange', text:'mid 正在比对 / 插入点'}
+    ],
+
+    roles: [
+      {c:'orange', code:'lo / mid', text:'二分指针：区间 [lo, hi) 的左端与中点'},
+      {c:'blue',   code:'hi',      text:'区间右端（开）：arr[mid] ≥ num 时收过来'},
+      {c:'green',  code:'arr',     text:'始终有序的数组：中位数 = 正中间 1~2 格'},
+      {c:'violet', code:'insert',  text:'插入点后面整体右移一格'}
+    ],
+
+    idea: '让数组始终保持有序：addNum 二分定插入点再挪位插入，findMedian 直接读下标 ⌊n/2⌋——好想好写，软肋是 insert 挪位 O(n)。',
+
+    qa: [
+      {q:'已经有 O(log n) 的对顶堆了，为什么还要学 O(n) 插入的有序数组？',
+       a:'有序数组版几乎没有思维负担：不用维护"两堆平衡、lo 存相反数"这些机关，二分 + insert 两个动作，答案就是数组正中间。面试先给"能跑的"版本再升级对顶堆，是标准答题路线；数据量小的时候它也完全够用。'},
+      {q:'二分只要 O(log n)，为什么 addNum 整体还是 O(n)？',
+       a:'<code>insert</code> 要把插入点后面的元素<b>整体后移一格</b>，最坏 O(n)——二分省下的比较时间，全赔在挪位上。n 个数流进来总代价 O(n²)；对顶堆 addNum 全程 O(log n)，数据一大差距悬殊。'},
+      {q:'手写二分为什么用"第一个 ≥ num 的位置"这种写法？',
+       a:'区间用半开 [lo, hi) 不留死角：<code>arr[mid] &lt; num</code> 时插入点必在 mid 右边（lo = mid+1），否则在 mid 或其左边（hi = mid）。循环结束 lo == hi 正好是 insert 的下标；重复值会插到同值段的开头，不影响有序性。'},
+      {q:'findMedian 和对顶堆比谁快？',
+       a:'打平，都是 O(1)。数组始终有序，中位数就是下标 ⌊n/2⌋：奇数个读一格，偶数个取两格平均。有序数组唯一的优势时刻就在这——可惜 addNum 那边欠的账更多。'}
+    ],
+
+    complexity: 'addNum 时间 O(log n) 二分 + O(n) 挪位　·　findMedian 时间 O(1)　·　空间 O(n)',
+
+    code: `class MedianFinder:              # 解法二:力扣官方题解 方法一(有序数组 + 二分插入)
+    def __init__(self):
+        self.arr = []            # 有序数组: 从小到大
+    def addNum(self, num):
+        lo, hi = 0, len(self.arr)    # 手写二分: 找第一个 >= num 的插入点
+        while lo < hi:
+            mid = (lo + hi) // 2
+            if self.arr[mid] < num:
+                lo = mid + 1
+            else: hi = mid
+        self.arr.insert(lo, num)     # 插入点后面整体右移, 仍有序
+    def findMedian(self):
+        n = len(self.arr); mid = n // 2
+        if n % 2: return self.arr[mid]       # 奇数个: 正中间那格
+        return (self.arr[mid - 1] + self.arr[mid]) / 2
+
+class Solution:                  # 校验驱动: 模拟评测器按 ops 序列逐条调用
+    def run(self, ops, args):
+        mf, out = None, []
+        for op, arg in zip(ops, args):
+            if op == 'MedianFinder': mf = MedianFinder(); out.append(None)
+            elif op == 'addNum': mf.addNum(arg[0]); out.append(None)
+            else: out.append(mf.findMedian())
+        return out
+`,
+
+    sol(input){
+      const arg0 = a => Array.isArray(a) ? (a.length ? a[0] : null) : a;
+      const find = num => {           // 手写二分: 第一个 >= num 的位置
+        let lo = 0, hi = arr.length;
+        while(lo < hi){
+          const mid = (lo + hi) >> 1;
+          if(arr[mid] < num) lo = mid + 1; else hi = mid;
+        }
+        return lo;
+      };
+      let arr = [];
+      const out = [];
+      (input.ops || []).forEach((op, i) => {
+        if(op === 'MedianFinder'){ arr = []; out.push(null); return; }
+        if(op === 'addNum'){
+          const num = Number(arg0((input.args || [])[i]));
+          arr.splice(find(num), 0, num);
+          out.push(null);
+        } else if(op === 'findMedian'){
+          if(!arr.length){ out.push(null); return; }
+          const n = arr.length, mid = n >> 1;
+          out.push(n % 2 ? arr[mid] : (arr[mid - 1] + arr[mid]) / 2);
+        } else out.push(null);
+      });
+      return out;
+    },
+    expected: [null, null, null, 1.5, null, 2],
+
+    steps(input){
+      const F = [];
+      const ops = (input.ops || []).map(s => String(s).trim());
+      const rawArgs = input.args || [];
+      const arg0 = a => Array.isArray(a) ? (a.length ? a[0] : null) : a;
+      const fmt = x => Number.isInteger(x) ? x.toFixed(1) : String(x);
+
+      let arr = [];                 // 有序数组（真值）
+      const out = [];
+      let created = false;
+
+      const outTxt = () => JSON.stringify(out);
+      const mLo = i => ({name:'lo', idx:i, cls:'mi', text:'▲ lo'});
+      const mHi = i => ({name:'hi', idx:i, cls:'mr', text:'▲ hi'});
+      const mMid = i => ({name:'mid', idx:i, cls:'mg', text:'▲ mid'});
+      /* 搜索画面: 真实格子 + 末尾一个 ∅ 虚位(下标 n, 容纳 hi/插入点 = n 的情形) */
+      const cellsWithSlot = () => arr.concat([null]);
+      const searchStates = (lo, hi, mid) => {
+        const st = {};
+        for(let z = 0; z <= arr.length; z++){
+          if(z < lo) st[z] = 'done';
+          else if(z < hi) st[z] = 'in';
+          else st[z] = 'muted';
+        }
+        if(mid != null) st[mid] = 'active';
+        return st;
+      };
+      /* ★ 快照原则：cells/states/marks/vars 全部在 push 那一刻定死 */
+      const draw = (o) => (v) => {
+        v.arr('ARR', o.cells || [], {
+          label:'有序数组 <code>arr</code>　·　从小到大（∅ = 末尾之外的候选位）',
+          states:o.states || {}, markers:o.marks || []
+        });
+        if(o.vars) v.vars('vars', o.vars, {label:'当前状态', hl:o.hlv || []});
+        if(o.res !== undefined) v.result(o.res, {label:'中位数'});
+      };
+
+      F.push({hl:[1,2,3,17,18,19], tag:'开始', cls:'t-grey',
+        msg:'换官方题解的方法一：所有数放进一个<b>始终从小到大有序</b>的数组 arr——"有序"是本解法的核心不变式，谁也不能破坏。addNum 分两步：手写二分找插入点（O(log n)），再整体挪位插进去（O(n)，软肋）；findMedian 直接读正中间那 1~2 格，O(1)。评测器按 ops 列表逐条调用（下方驱动循环已高亮），out 逐条记录返回值。',
+        do: draw({cells:[], vars:{out:'[]'}})});
+
+      ops.forEach((op, oi) => {
+        const nOp = oi + 1;
+        const opLabel = op === 'MedianFinder' ? 'MedianFinder()'
+          : op === 'findMedian' ? 'findMedian()' : 'addNum(' + String(arg0(rawArgs[oi])) + ')';
+
+        if(op !== 'MedianFinder' && !created){
+          out.push(null);
+          F.push({hl:[op === 'findMedian' ? 23 : 22], no:op === 'findMedian' ? 23 : 22,
+            tag:'还没建对象', cls:'t-red',
+            msg:'第 ' + nOp + ' 条操作 <b>' + LCesc(opLabel) + '</b>：还没执行 MedianFinder()，对象压根不存在，这条只能跳过，out 记 null。先构造再使用，评测器也按这个约定对拍。',
+            do: draw({cells:[], vars:{out:outTxt()}, hlv:['out']})});
+          return;
+        }
+
+        if(op === 'MedianFinder'){
+          arr = []; created = true;
+          out.push(null);
+          F.push({hl:[20,21,2,3], tag:'创建 MedianFinder', cls:'t-blue',
+            msg:'第 ' + nOp + ' 条操作 <b>MedianFinder()</b>：新建一个空对象——有序数组 arr 还空着（画面无格子）。构造无返回值，out 记 null。之后每次 addNum 都要维持"arr 从小到大有序"这条不变式。',
+            do: draw({cells:[], vars:{out:outTxt()}, hlv:['out']})});
+          return;
+        }
+
+        if(op === 'addNum'){
+          const num = Number(arg0(rawArgs[oi]));
+          out.push(null);
+          F.push({hl:[20,22,4], tag:'调用 addNum', cls:'t-blue',
+            msg:'第 ' + nOp + ' 条操作 <b>addNum(' + num + ')</b>：数组要收下 ' + num + '（当前 arr ' + arr.length + ' 个数且有序），out 先记 null。两步走：① 手写二分找"第一个 ≥ ' + num + ' 的位置"当插入点——插在这里，前面的都比它小、后面的都不小于它，有序不破；② 从插入点起整体右移一格再放数。先看二分。',
+            do: draw({cells:arr.slice(), vars:{num:num, out:outTxt()}, hlv:['out']})});
+
+          let lo = 0, hi = arr.length, iters = 0;
+          F.push({hl:[5], tag:'二分初始化', cls:'t-ink',
+            msg:'<code>lo, hi = 0, ' + arr.length + '</code>：在<b>半开区间 [lo, hi)</b>里找第一个 ≥ ' + num + ' 的位置当插入点。用半开区间不留死角——hi 一开始就指着最右边的 ∅ 虚位：新数最大时插入点正好是 n = ' + arr.length + '，不留这个虚位就会漏掉"排最后"的情形。画面颜色：蓝格 = 还有嫌疑的候选位，绿格 = 已确认 &lt; ' + num + '，灰格 = 已确认 ≥ ' + num + '。',
+            do: draw({cells:cellsWithSlot(), states:searchStates(0, arr.length, null),
+                      marks:[mLo(0), mHi(arr.length)], vars:{num:num, lo:0, hi:arr.length, mid:'—'}})});
+
+          while(lo < hi){
+            iters++;
+            F.push({hl:[6], ok:6, tag:'区间没锁死', cls:'t-blue',
+              msg:'<code>lo=' + lo + ' &lt; hi=' + hi + '</code> → 区间 [lo, hi) 还剩 <b>' + (hi - lo) + '</b> 个候选位置（蓝色格），没锁死，继续二分。每轮都会借 mid 把候选砍掉至少一半，所以最多约 log₂n 轮必收口，绝不会来回打转。',
+              do: draw({cells:cellsWithSlot(), states:searchStates(lo, hi, null),
+                        marks:[mLo(lo), mHi(hi)], vars:{num:num, lo:lo, hi:hi, mid:'—'}})});
+            const mid = (lo + hi) >> 1;
+            F.push({hl:[7], tag:'取中点', cls:'t-ink',
+              msg:'<code>mid = (lo + hi) // 2 = ' + mid + '</code>（向下取整，mid 偏左）：瞄一眼区间正中间那格 <code>arr[' + mid + '] = ' + arr[mid] + '</code>（橙格）。接下来只凭这一次比较，就能把候选扔掉一半。',
+              do: draw({cells:cellsWithSlot(), states:searchStates(lo, hi, mid),
+                        marks:[mLo(lo), mHi(hi), mMid(mid)], vars:{num:num, lo:lo, hi:hi, mid:mid}})});
+            if(arr[mid] < num){
+              F.push({hl:[8,9], ok:8, tag:'往右跳', cls:'t-green',
+                msg:'<code>arr[' + mid + '] = ' + arr[mid] + ' &lt; ' + num + '</code>：mid 这格比 ' + num + ' 小，它左边的格只会更小（数组有序）→ 插入点<b>必在 mid 右边</b> → <code>lo = mid + 1 = ' + (mid + 1) + '</code>。画面：含 mid 在内的左侧格全部变绿（排除）。这里必须 +1——mid 已确认不可能，不跳过它区间就不缩，会死循环。',
+                do: draw({cells:cellsWithSlot(), states:searchStates(mid + 1, hi, mid),
+                          marks:[mLo(mid + 1), mHi(hi), mMid(mid)], vars:{num:num, lo:mid + 1, hi:hi, mid:mid}})});
+              lo = mid + 1;
+            } else {
+              F.push({hl:[8,10], no:8, tag:'往左收', cls:'t-red',
+                msg:'<code>arr[' + mid + '] = ' + arr[mid] + ' ≥ ' + num + '</code>：mid 这格不小于 ' + num + '，它右边的格只会更大，全部出局（画面变灰）→ 插入点在 <b>mid 或它左边</b> → <code>hi = mid = ' + mid + '</code>。注意是 hi = mid 而不是 mid − 1：mid 自己<b>还有嫌疑</b>——它可能正是第一个 ≥ ' + num + ' 的位置，冤枉它就把答案弄丢了。',
+                do: draw({cells:cellsWithSlot(), states:searchStates(lo, mid, mid),
+                          marks:[mLo(lo), mHi(mid), mMid(mid)], vars:{num:num, lo:lo, hi:mid, mid:mid}})});
+              hi = mid;
+            }
+          }
+          const pos = lo;
+          F.push({hl:[6], no:6, tag:'插入点锁定', cls:'t-orange',
+            msg:iters
+              ? '<code>lo = hi = ' + pos + '</code> → 区间空了，插入点锁定为 <b>' + pos + '</b>（画面标出的 target 格，只比了 ' + iters + ' 次）。它前面的数全 &lt; ' + num + '、后面的全 ≥ ' + num + '，插在这里 arr 依然有序。'
+              : '数组还空着，<code>lo = hi = 0</code> → 插入点就是 <b>0</b>，二分一次都不用跑——第一个进来的数没有对手。',
+            do: draw({cells:cellsWithSlot(),
+                      states:Object.assign(searchStates(pos, pos, null), {[pos]:'target'}),
+                      marks:[mLo(pos), mHi(pos)], vars:{num:num, lo:pos, hi:pos, mid:'—'}})});
+          arr.splice(pos, 0, num);
+          F.push({hl:[11], tag:'插入挪位', cls:'t-violet',
+            msg:'<code>arr.insert(' + pos + ', ' + num + ')</code>：真正的大头开销在这里——插入点后面的元素<b>整体右移一格</b>，腾出位置放下 ' + num + '（画面高亮格），最坏要挪 O(n) 个元素。二分省下的比较时间，全赔在挪位上：这就是有序数组版整体 O(n)、数据流一大就输给对顶堆的原因。挪完依旧从小到大。',
+            do: draw({cells:arr.slice(), states:{[pos]:'just'}, marks:[],
+                      vars:{num:num, 'len(arr)':arr.length, out:outTxt()}})});
+          return;
+        }
+
+        /* findMedian */
+        const m = arr.length, midI = m >> 1;
+        const odd = m % 2 === 1;
+        if(m === 0){
+          out.push(null);
+          F.push({hl:[13], no:13, tag:'空数组', cls:'t-grey',
+            msg:'数组还空着，一个数都还没加进来——没有中位数可取，out 记 null。正常评测不会在空数据上查中位数，这里只是防御性处理。',
+            do: draw({cells:[], vars:{out:outTxt()}})});
+          return;
+        }
+        F.push({hl:[20,23,12], tag:'调用 findMedian', cls:'t-blue',
+          msg:'第 ' + nOp + ' 条操作 <b>findMedian()</b>：数组天生有序（现在 ' + m + ' 个数），不用再排——中位数就藏在正中间，直接按下标取，O(1)。',
+          do: draw({cells:arr.slice(),
+                    states:odd ? {[midI]:'pivot'} : {[midI - 1]:'pivot', [midI]:'pivot'},
+                    vars:{n:m, mid:midI, out:outTxt()}})});
+        F.push({hl:[13], tag:'定位中间', cls:'t-ink',
+          msg:'<code>n = ' + m + '</code>，<code>mid = n // 2 = ' + midI + '</code>：mid 落在"右半边的第一位"。' + (odd ? 'n 是奇数 → arr[' + midI + '] 独自就是正中那格（画面高亮）。' : 'n 是偶数 → 中间有两个数：arr[' + (midI - 1) + '] 和 arr[' + midI + ']（两格高亮）。'),
+          do: draw({cells:arr.slice(),
+                    states:odd ? {[midI]:'pivot'} : {[midI - 1]:'pivot', [midI]:'pivot'},
+                    vars:{n:m, mid:midI}})});
+        if(odd){
+          const med = arr[midI];
+          out.push(med);
+          F.push({hl:[14], ok:14, tag:'奇数个', cls:'t-green',
+            msg:'n 是奇数 → <code>return arr[' + midI + ']</code> = <b>' + fmt(med) + '</b>（画面高亮），out 记 ' + fmt(med) + '。只读一个下标、不挪任何元素，O(1) 一步到位——这是有序数组版唯一的高光时刻。',
+            do: draw({cells:arr.slice(), states:{[midI]:'just'},
+                      vars:{中位数:fmt(med), out:outTxt()}, hlv:['中位数', 'out'], res:fmt(med)})});
+        } else {
+          const med = (arr[midI - 1] + arr[midI]) / 2;
+          F.push({hl:[14], no:14, tag:'偶数个', cls:'t-red',
+            msg:'n 是偶数 → 正中间有两个数，单独一格当不了中位数，得取 <code>arr[' + (midI - 1) + ']</code> 和 <code>arr[' + midI + ']</code> 的平均（两格已高亮）。',
+            do: draw({cells:arr.slice(), states:{[midI - 1]:'pivot', [midI]:'pivot'},
+                      vars:{n:m, mid:midI}})});
+          out.push(med);
+          F.push({hl:[15], ok:15, tag:'取平均', cls:'t-green',
+            msg:'(' + fmt(arr[midI - 1]) + ' + ' + fmt(arr[midI]) + ') / 2 = <b>' + fmt(med) + '</b>，out 记 ' + fmt(med) + '。读取本身 O(1)——可惜 addNum 每次插入要赔 O(n) 挪位，两下相抵还是对顶堆划算。',
+            do: draw({cells:arr.slice(), states:{[midI - 1]:'just', [midI]:'just'},
+                      vars:{中位数:fmt(med), out:outTxt()}, hlv:['中位数', 'out'], res:fmt(med)})});
+        }
+      });
+
+      F.push({hl:[24], tag:'全部操作完成', cls:'t-dark',
+        msg:'操作序列跑完，输出 <b>' + LCesc(outTxt()) + '</b>，和 LeetCode 期望一致。复盘：核心不变式是"arr 始终从小到大有序"，findMedian 因此敢直接读下标（O(1)）；但每次 addNum 的 insert 最坏挪 O(n) 个元素，n 个数流进来总代价 O(n²)——数据流一大，对顶堆的 O(log n) 就笑出来了。',
+        do: draw({cells:arr.slice(), res:out.slice(), vars:{out:outTxt()}, hlv:['out']})});
+
+      return F;
+    }
+  }
+});
+</script>
+</body>
+</html>

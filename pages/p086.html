@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P086 · 最长递增子序列 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/progress.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 86, num: 300, title: '最长递增子序列', diff: '中等', cat: '动态规划',
+  method: 'lengthOfLIS',
+
+  lede: '题目：在 <span class="var r">nums</span> 里挑出一条<b>严格递增</b>的子序列（可以跳着挑，但相对顺序不能乱），求<b>最长几步</b>。比如 [10,9,2,5,3,7,101,18] 里 2→3→7→101 长度 4。' +
+        '动画里 <span class="var o">dp[i]</span> = "强制以 nums[i] 结尾"的 LIS 长度：确定 dp[<span class="var i">i</span>] 时，<span class="var r">j</span> 名牌在左边扫，' +
+        '凡是比 nums[i] 小的数都是接驳点候选——接上谁的尾巴更长，就记谁。',
+
+  roles: [
+    {c:'orange', code:'i', text:'正在确定 dp[i]：以 nums[i] 结尾的 LIS'},
+    {c:'blue',   code:'j', text:'左边扫描的接驳点候选'},
+    {c:'blue',   code:'nums[j] < nums[i]', text:'能接上的条件'},
+    {c:'violet', code:'dp[j]+1', text:'接上 j 后的长度候选'},
+    {c:'green',  code:'max(dp)', text:'最终答案：全表最大值'}
+  ],
+
+  codeTitle: '跟着高亮读代码——if 那行变<span style="color:var(--green)">绿</span>＝nums[j] 比 nums[i] 小、能接上；变<span style="color:var(--red)">红</span>＝比它大（或相等），接不上。',
+
+  legend: [
+    {c:'orange', text:'nums[i] / dp[i] 当前'},
+    {c:'blue',   text:'nums[j] 正在比较'},
+    {c:'violet', text:'dp[j] 参考值'},
+    {c:'green',  text:'dp[i] 刷新'},
+    {swatch:'var(--violet-soft)', text:'紫色格 = 回溯出的一条 LIS 成员'}
+  ],
+
+  idea: 'dp[i] = 1 + max(dp[j])：只在"j 在 i 左边且 nums[j] < nums[i]"的 j 里挑最长的接上来；谁也不接就是 1。答案 = max(dp)，不一定是最后一个。',
+
+  qa: [
+    {q:'为什么 dp 要定义成"以 i 结尾"？',
+     a:'子序列可以任意跳，"区间最长"没有好的递推入口；但"以 i 结尾"就把答案钉死在 i 上——它只能从某个更靠左、更小的 j 接过来，于是 dp[j] → dp[i] 的转移链清清楚楚。这是 LIS 的标准姿势。'},
+    {q:'最后为什么 return max(dp) 而不是 dp[n−1]？',
+     a:'LIS 的结尾可以停在任何位置。本例 dp = [1,1,1,2,2,3,4,4]，以 101 结尾和以 18 结尾都是 4；如果最长那条停在中间，dp[n−1] 就会偏小。全表取最大才稳。'},
+    {q:'相等的数算递增吗？',
+     a:'不算。题目要严格递增，所以条件是 nums[j] < nums[i]——[7,7,7,7] 的答案只能是 1。把 < 换成 ≤ 就变成"非递减"版本。'},
+    {q:'O(n²) 之外还有更快的吗？',
+     a:'有：维护一个"耐心排序"数组 tails + 二分查找，O(n log n)。但 O(n²) 的 dp 思想最直白、最好画，面试先讲清它，再补二分优化。'}
+  ],
+
+  complexity: '时间 O(n²)　·　空间 O(n)（dp 表）',
+
+  form: [
+    {key:'nums', label:'nums', type:'arr', def:[10,9,2,5,3,7,101,18]}
+  ],
+  presets: [
+    {label:'经典例 → 4', values:{nums:[10,9,2,5,3,7,101,18]}},
+    {label:'[7,7,7,7,7] → 1（相等不算）', values:{nums:[7,7,7,7,7]}},
+    {label:'[1,2,3,4,5] → 5（整条递增）', values:{nums:[1,2,3,4,5]}},
+    {label:'[5,4,3,2,1] → 1（全是逆序）', values:{nums:[5,4,3,2,1]}}
+  ],
+
+  code: `class Solution:
+    def lengthOfLIS(self, nums):
+        n = len(nums)
+        dp = [1] * n                    # dp[i]: 以 nums[i] 结尾的 LIS 长度
+        for i in range(1, n):           # 逐个确定"以 i 结尾"的答案
+            for j in range(i):          # j: i 左边的接驳点候选
+                if nums[j] < nums[i]:   # nums[i] 能接在 nums[j] 后面
+                    dp[i] = max(dp[i], dp[j] + 1)
+        return max(dp)                  # LIS 可能停在任何位置, 取全表最大
+`,
+
+  sol(input){
+    const nums = input.nums || [];
+    const n = nums.length;
+    const dp = new Array(n).fill(1);
+    for(let i = 1; i < n; i++)
+      for(let j = 0; j < i; j++)
+        if(nums[j] < nums[i]) dp[i] = Math.max(dp[i], dp[j] + 1);
+    return n ? Math.max.apply(null, dp) : 0;
+  },
+  expected: 4,
+
+  quiz: [
+    {q:'确定 dp[i] 时,j 只要在 i 左边且 nums[j] < nums[i] 就能接上。j 和 i 中间隔着什么数,需要管吗?',
+     options:['要管——中间的数必须都比 nums[j] 大,链条才算一段段连续递增','不用管——子序列本来就能跳着挑,只要 j 更靠左、值更小,就能直接接在 nums[j] 后面','要管——中间不能有比 nums[i] 更大的数挡路'],
+     answer:1,
+     explain:'子序列的定义就是允许跳过任意元素、只保持相对顺序。接上之后链条是 "… → nums[j] → nums[i]",中间的数要么被跳过、要么压根不属于这条链,对合法性毫无影响。默认例里 dp[6](以 101 结尾)能接在最左边的 10 后面,中间隔着 6 个数照样合法。若要求"连续",那成了最长递增子数组问题,答案会从 4 掉到 2([2,5] 或 [3,7])——这是本题最常见的概念混淆。',
+     jumpTo:23},
+    {q:'nums = [0,1,0,3,2,3],dp[4](以 nums[4]=2 结尾)算出来是几?',
+     options:['1','2','3','4'],
+     answer:2,
+     explain:'全表推一遍:dp = [1, 2, 1, 3, 3, 4]。dp[4] 时往左扫,能接的 j 有:0(0<2,dp[0]+1=2)、1(1<2,dp[1]+1=3)、2(0<2,dp[2]+1=2)——最大取 3。常见误选是 2:只盯着紧邻的 nums[3]=3 比 2 大接不上就放弃,忘了最佳前驱可能藏在左边任何位置——更左边的 0、1 反而能接出长链。全表最大 4 出现在最后的 3(dp[4]+1),答案 max(dp)=4。',
+     jumpTo:11},
+    {q:'解法二的 tails 记账板为什么从头到尾都保持升序(这是能对它二分的前提)?',
+     options:['因为每来一个新数,程序都先把 tails 重新排序一遍','这是归纳出的不变式:追加时 x 比所有结尾都大、放末尾仍有序;替换发生在"第一个 ≥ x"的位置,左邻 < x ≤ 原值,换上 x 后照样有序','它并不保证升序,只是大部分输入下碰巧有序'],
+     answer:1,
+     explain:'数学归纳:空表天然有序。①追加分支只在 x 大于一切结尾时发生,放到末尾不破坏有序;②替换分支里,lo 是二分找到的第一个 ≥ x 的位置,必有 tails[lo−1] < x ≤ tails[lo],把 tails[lo] 换成更小的 x 后,与左右邻居依然满足有序。两种动作都不破坏升序 → 不变式恒成立。正因如此,"找第一个 ≥ x"的二分才合法、O(n log n) 才成立;若像选项 A 每轮重排,复杂度直接退化,方案就没意义了。',
+     jumpTo:22},
+  ],
+
+  steps(input){
+    const F = [];
+    const nums = input.nums || [];
+    const n = nums.length;
+
+    if(n === 0){
+      F.push({hl:[3], tag:'空数组', cls:'t-grey',
+        msg:'数组是空的——题目保证 n ≥ 1，这里就不演示了。',
+        do: (v) => { v.arr('nums', [], {label:'数组 <code>nums</code>'}); }});
+      return F;
+    }
+
+    // 跑完的终版 dp（仅供回溯 LIS 与收尾数字用，不参与动画逐格填充）
+    const dpFinal = new Array(n).fill(1);
+    for(let i = 1; i < n; i++)
+      for(let j = 0; j < i; j++)
+        if(nums[j] < nums[i]) dpFinal[i] = Math.max(dpFinal[i], dpFinal[j] + 1);
+
+    // 回溯一条 LIS（真实查 dpFinal 表）：先找全表最大，再往回找前驱
+    let end = 0;
+    for(let k = 1; k < n; k++) if(dpFinal[k] > dpFinal[end]) end = k;
+    const chain = [end];
+    {
+      let cur = end;
+      while(dpFinal[cur] > 1){
+        let p = -1;
+        for(let j = cur - 1; j >= 0; j--){
+          if(nums[j] < nums[cur] && dpFinal[j] === dpFinal[cur] - 1){ p = j; break; }
+        }
+        if(p < 0) break;
+        chain.push(p); cur = p;
+      }
+    }
+    const tie = [];
+    for(let k = 0; k < n; k++) if(k !== end && dpFinal[k] === dpFinal[end]) tie.push(k);
+
+    // 动画用的 dp 表：从全 1 开始，随帧生成逐格填（与 Python 执行顺序一致）
+    const dp = new Array(n).fill(1);
+
+    /* ---- 绘制（o 全是帧生成那一刻的快照，铁律 5） ---- */
+    const draw = (o) => (v) => {
+      v.arr('nums', nums, {
+        label:'数组 <code>nums</code>',
+        states:nst(o), markers:o.nmk || [], idxCls:o.nix || {}
+      });
+      v.arr('dp', o.disp, {
+        label:'DP 表 <code>dp</code>　·　<code>dp[i]</code> = 以 nums[i] 结尾的 LIS 长度',
+        cw:40, states:o.dst || {}, markers:o.dmk || [], idxCls:o.dix || {}
+      });
+      if(o.vars) v.vars('vars', o.vars, {label:'当前变量', hl:o.hlv || []});
+      if(o.res !== undefined) v.result(o.res, {label:'LIS 长度'});
+    };
+    const nst = o => {
+      const st = {};
+      (o.nin || []).forEach(k => { st[k] = 'in'; });
+      (o.npick || []).forEach(k => { st[k] = 'target'; });
+      if(o.ncur != null) st[o.ncur] = 'active';
+      return st;
+    };
+    const dst = o => {
+      const st = {};
+      (o.dpick || []).forEach(k => { st[k] = 'done'; });
+      if(o.dcur != null) st[o.dcur] = 'active';
+      if(o.dref != null) st[o.dref] = 'pivot';
+      return st;
+    };
+    const mi = (arr, i) => ({name:'i', idx:i, cls:'mi', text:'▲ i'});
+    const mj = (arr, j) => ({name:'j', idx:j, cls:'mr', text:'▲ j'});
+
+    F.push({hl:[1,2,3,4], tag:'初始化', cls:'t-grey',
+      msg:'dp[i] 的定义：<b>强制以 nums[i] 结尾</b>的严格递增子序列最长长度。为什么非得"以 i 结尾"？因为子序列可以跳着挑，"前 i 个里最长"这种区间式定义没有递推入口；钉死结尾后，dp[i] 只依赖左边更小的 dp[j]，转移链才清楚——这是 LIS 的标准姿势。现在还没接任何数，自己一个人就是长度 1，所以全表先填 1。提前记住结尾大坑：LIS 未必停在最后一格，答案是 <code>max(dp)</code>。',
+      do: draw({disp:dp.slice(), ncur:null, dpick:[], dcur:null,
+                vars:{n:n, 'dp 全部':1}})});
+
+    for(let i = 1; i < n; i++){
+      F.push({hl:[5], tag:'i=' + i, cls:'t-orange',
+        msg:'轮到确定 <b>dp[' + i + ']</b>（nums[' + i + '] = ' + nums[i] + '）：以它结尾的链，要么自成一派（长度 1），要么接在某个更靠左、值更小的数后面。最佳前驱可能藏在左边<b>任何位置</b>，不只紧邻的 i−1——比如 nums[i−1] 恰好比 nums[i] 大接不上，而更左边的某个小数反而能接出长链。所以 j 要从 0 开始<b>把左边整个扫一遍</b>；橙色 ▲i 指着当前数。',
+        do: draw({disp:dp.slice(), ncur:i, nmk:[mi(nums, i)], nix:{[i]:'on-i'},
+                  dcur:i, dmk:[mi(dp, i)], dix:{[i]:'on-i'}, dpick:[],
+                  vars:{i:i, 'nums[i]':nums[i], 'dp[i]':dp[i]}})});
+
+      for(let j = 0; j < i; j++){
+        const can = nums[j] < nums[i];
+        if(can){
+          const cand = dp[j] + 1;
+          const before = dp[i];
+          const improve = cand > before;
+          if(improve) dp[i] = cand;
+          F.push({hl:[6,7,8], ok:7, tag:'比 j=' + j, cls: improve ? 't-green' : 't-ink',
+            msg:'读数：nums[' + j + '] = ' + nums[j] + ' &lt; nums[' + i + '] = ' + nums[i] + '，<b>能接</b>——以 nums[i] 结尾的链可以长成"以 nums[j] 结尾的最长链 + nums[i]"，长度 = dp[' + j + '] + 1 = <b>' + cand + '</b>。' +
+                (improve
+                  ? '它比当前 dp[' + i + '] = ' + before + ' 长 → <b>dp[' + i + '] 升到 ' + cand + '</b>（绿色闪）。'
+                  : '它不比当前 dp[' + i + '] = ' + before + ' 长 → 不变——左边能接的 j 往往不止一个，max 逐个比、只留最长的。') +
+                '画面上蓝色 ▲j 指着候选前驱，dp 表紫色 pivot 格是参考值 dp[' + j + ']。',
+            do: draw({disp:dp.slice(), ncur:i, nin:[j], nmk:[mi(nums, i), mj(nums, j)],
+                      nix:{[i]:'on-i', [j]:'on-r'},
+                      dcur:i, dref:j, dmk:[mi(dp, i), mj(dp, j)],
+                      dix:{[i]:'on-i', [j]:'on-r'}, dpick:[],
+                      vars:{i:i, j:j, 'nums[j]':nums[j], 'nums[i]':nums[i], 'dp[j]+1':cand, 'dp[i]':dp[i]},
+                      hlv: improve ? ['dp[i]'] : []})});
+        } else {
+          F.push({hl:[6,7], no:7, tag:'比 j=' + j, cls:'t-red',
+            msg:'读数：nums[' + j + '] = ' + nums[j] + ' 不小于 nums[' + i + '] = ' + nums[i] + (nums[j] === nums[i] ? '（题目要<b>严格</b>递增，相等也不行）' : '') +
+                '：把 nums[i] 接在它后面链条就不递增了 → 这个 j 跳过，dp[' + i + '] 保持 ' + dp[i] + '。',
+            do: draw({disp:dp.slice(), ncur:i, nin:[j], nmk:[mi(nums, i), mj(nums, j)],
+                      nix:{[i]:'on-i', [j]:'on-r'},
+                      dcur:i, dref:j, dmk:[mi(dp, i), mj(dp, j)],
+                      dix:{[i]:'on-i', [j]:'on-r'}, dpick:[],
+                      vars:{i:i, j:j, 'nums[j]':nums[j], 'nums[i]':nums[i], 'dp[i]':dp[i]}})});
+        }
+      }
+    }
+
+    const dpJoin = dp.join(', ');
+    F.push({hl:[9], tag:'取全表最大', cls:'t-blue',
+      msg:'每个"以 i 结尾"的答案都定了：dp = [' + dpJoin + ']。为什么不能只取最后一格 dp[' + (n - 1) + '] = ' + dp[n - 1] + '？因为 LIS 可以停在任何位置——本表最大值 ' + dpFinal[end] + ' 出现在 dp[' + end + ']（以 ' + nums[end] + ' 结尾），末尾那格不一定最大。<code>return max(dp) = ' + dpFinal[end] + '</code>。',
+      do: draw({disp:dp.slice(), nmk:[], dmk:[], dpick:[], dcur:end, dix:{[end]:'on-i'},
+                vars:{'max(dp)':dpFinal[end]}})});
+
+    // 回溯一条 LIS：从 max 处往回逐个锁定（chain[0]=max 结尾, 末位=LIS 开头）
+    const picked = [];
+    for(let c = 0; c < chain.length; c++){
+      const idx = chain[c];
+      const isFirst = c === 0, isLast = c === chain.length - 1;
+      picked.push(idx);
+      const snapPick = picked.slice();
+      let msg;
+      if(isFirst){
+        msg = '全表最大在 i = ' + idx + ' 处取到：<b>nums[' + idx + '] = ' + nums[idx] + '</b>，dp[' + idx + '] = ' + dpFinal[idx] +
+              (isLast ? '——它自己就是一条完整 LIS（前面没有更小的数可接）。' : '——LIS 的<b>最后一个数</b>锁定。接下来倒着回溯：dp 值每往回一步减 1，且前驱的数值必须更小。');
+      } else {
+        const prev = chain[c - 1];
+        msg = '回溯：以 nums[' + prev + '] = ' + nums[prev] + ' 结尾的长 ' + dpFinal[prev] + ' 的链，前一个数是谁？往左找<b>dp 值正好小 1（= ' + (dpFinal[prev] - 1) + '）且数值 &lt; ' + nums[prev] + '</b> 的位置 → 找到 <b>nums[' + idx + '] = ' + nums[idx] + '</b>（dp[' + idx + '] = ' + dpFinal[idx] + '）✓ 锁定，紫色名牌标记。' +
+              (isLast ? '它左边再没有更小的数可接——' + nums[idx] + ' 就是这条 LIS 的开头。' : '');
+      }
+      F.push({hl:[9], tag:'回溯 LIS', cls:'t-violet',
+        msg:msg,
+        do: draw({disp:dp.slice(), npick:snapPick, nmk:[{name:'LIS', idx:idx, cls:'mv', text:'▲ LIS'}],
+                  dpick:snapPick, dmk:[],
+                  vars:{'LIS 长度':dpFinal[end], '已锁定':snapPick.length}})});
+    }
+
+    const lisVals = chain.slice().reverse().map(k => nums[k]);
+    F.push({hl:[9], tag:'返回', cls:'t-dark',
+      msg:'回溯完毕，一条完整的 LIS：<b>' + lisVals.join(' → ') + '</b>，长度 <code>' + dpFinal[end] + '</code> 🎉 复盘：dp[i] 只保证"以 i 结尾"的最优，全表取 max 得到长度，再沿 dp 值逐层 −1 就能还原一条真身。' +
+          (tie.length ? '（dp[' + tie.join(']、dp[') + '] 同样是 ' + dpFinal[end] + '——LIS 不止一条，题目只要长度。）' : ''),
+      do: draw({disp:dp.slice(), npick:chain.slice(), nmk:[],
+                dpick:chain.slice(), dmk:[],
+                res:dpFinal[end]})});
+
+    return F;
+  },
+
+  /* ========= 解法二：力扣官方方法二 · 贪心 + 二分（O(n log n)） ========= */
+  alt: {
+    label: '官方 · 贪心 + 二分',
+    method: 'lengthOfLIS',
+
+    lede: '题目不变：在 <span class="var r">nums</span> 里挑<b>严格递增</b>的子序列，求最长长度。这版换一个问题来问：' +
+          '<b>"长度为 k+1 的递增子序列，结尾最小能压到多少？"</b>答案记在记账板 <span class="var r">tails</span> 里——' +
+          '<code>tails[k]</code> 就是这个最小结尾（它天然保持升序）。每来一个新数 <span class="var o">x</span>，' +
+          '<b>手写二分</b>找 tails 里第一个 ≥ x 的位置：找到就替换成 x（同长度、结尾更小），' +
+          'x 比所有结尾都大就追加（LIS 变长 1）。答案 = tails 的最终长度。',
+
+    roles: [
+      {c:'orange', code:'x', text:'正在上记账板的新数'},
+      {c:'blue',   code:'lo / hi', text:'二分区间：找"第一个 ≥ x 的位置"'},
+      {c:'violet', code:'mid', text:'中点 tails[mid]，和 x 比大小定砍哪半'},
+      {c:'green',  code:'append', text:'追加 = tails 长度 +1 = LIS 变长'}
+    ],
+
+    legend: [
+      {c:'orange', text:'x 当前新数'},
+      {c:'blue',   text:'tails 里 lo~hi：还在二分区间内'},
+      {c:'violet', text:'mid 中点：正在和 x 比较'},
+      {c:'blue',   text:'刚追加/替换的格子会闪一下（just）'}
+    ],
+
+    codeTitle: '跟着高亮读代码——第 8 行变<span style="color:var(--green)">绿</span>＝tails[mid] &lt; x、第一名在右半；' +
+               '变<span style="color:var(--red)">红</span>＝tails[mid] ≥ x、中点即候选、缩左半。循环外一眼定乾坤：lo==len 追加，否则替换。',
+
+    idea: 'tails[k] 永远记"长度 k+1 的递增子序列的最小结尾"：每个 x 二分找第一个 ≥ x 的位置——找到就替换（同长度结尾更小，潜力只增不减），比谁都大就追加（LIS 变长）。答案 = len(tails)。',
+
+    complexity: '时间 O(n log n)（每个数一次二分）　·　空间 O(n)（tails 数组）',
+
+    qa: [
+      {q:'替换 tails[lo] = x，会不会把某条真实链"弄丢"？',
+       a:'不会——tails 从头到尾只是<b>记账板</b>，不存任何一条真实子序列。它维护的不变式是：<b>tails[k] = 已处理的数里，长度 k+1 递增子序列的最小可能结尾</b>。替换发生时 tails[lo−1] &lt; x ≤ tails[lo]，把结尾换成更小的 x 后，长度 k+1 的最小结尾只会更小——后面的数想接上同长度链条<b>更容易</b>，长度潜力只增不减。所以替换不丢任何信息，len(tails) 永远等于当前 LIS 长度。'},
+      {q:'tails 数组最终就是一条 LIS 吗？',
+       a:'<b>不是！</b>tails 只保证<b>长度</b>对，内容可能根本不是合法子序列。反例：nums = [3,4,1]，处理完后 tails = [1,4]——1 在原数组里排在 4 后面，[1,4] 连"相对顺序不乱"都做不到。而主解法的 dp 表每格都对应真实链条、还能回溯出 LIS 本尊（本页默认例 tails = [2,3,7,18] 只是碰巧凑成一条真 LIS）。要"长度 + 一条真身"用 dp；只要长度还要快，用 tails。'},
+      {q:'为什么 tails 一定升序（二分的前提）？',
+       a:'归纳一下：空表有序；追加时 x 比所有结尾都大，放末尾仍有序；替换时 lo 是<b>第一个 ≥ x</b> 的位置，故 tails[lo−1] &lt; x ≤ tails[lo]，换上 x 后依旧升序。升序不被破坏，"找第一个 ≥ x"的二分才合法——这也是为什么比较条件是 tails[mid] &lt; x（lower_bound 语义），相等也要往左缩。'},
+      {q:'和主解法 O(n²) DP 怎么取舍？',
+       a:'dp 版确定每个 dp[i] 要扫完左边所有 j，n = 10⁵ 时约 10¹⁰ 次比较，必然超时；二分版每个数只花 O(log n)，O(n log n) 轻松通过。代价：tails 含义更抽象，且替换会打乱尾巴顺序，<b>无法直接回溯出 LIS 本身</b>。面试建议：先用 dp 讲清"以 i 结尾"的思想，再补"结尾最小化 + 二分"写出 tails——两层都懂才稳。'}
+    ],
+
+    code: `class Solution:
+    def lengthOfLIS(self, nums):
+        tails = []                      # tails[k]: 长度 k+1 的递增子序列的最小结尾
+        for x in nums:                  # 逐个接待新数
+            lo, hi = 0, len(tails) - 1  # 二分区间 [lo, hi]
+            while lo <= hi:             # 找第一个 >= x 的位置
+                mid = (lo + hi) // 2
+                if tails[mid] < x:      # 中点结尾比 x 小 → 第一名在右半
+                    lo = mid + 1
+                else:                   # tails[mid] >= x → 中点是候选, 缩左半
+                    hi = mid - 1
+            if lo == len(tails):        # x 比所有结尾都大
+                tails.append(x)         # 追加: 最长长度 +1
+            else:                       # lo 就是第一个 >= x 的位置
+                tails[lo] = x           # 替换: 同长度结尾压得更小
+        return len(tails)               # tails 长度 = LIS 长度
+`,
+
+    sol(input){
+      const nums = input.nums || [];
+      const tails = [];
+      for(const x of nums){
+        let lo = 0, hi = tails.length - 1;
+        while(lo <= hi){
+          const mid = (lo + hi) >> 1;
+          if(tails[mid] < x) lo = mid + 1; else hi = mid - 1;
+        }
+        if(lo === tails.length) tails.push(x); else tails[lo] = x;
+      }
+      return tails.length;
+    },
+    expected: 4,
+
+    steps(input){
+      const F = [];
+      const nums = input.nums || [];
+      const n = nums.length;
+
+      if(n === 0){
+        F.push({hl:[3], tag:'空数组', cls:'t-grey',
+          msg:'数组是空的——题目保证 n ≥ 1，这里就不演示了。',
+          do: (v) => { v.arr('nums', [], {label:'数组 <code>nums</code>'}); }});
+        return F;
+      }
+
+      // 终版对照数据：dp 用主解法同款 O(n²) 递推算好，只在收尾对照时出现（不参与逐帧动画）
+      const dpFinal = new Array(n).fill(1);
+      for(let i = 1; i < n; i++)
+        for(let j = 0; j < i; j++)
+          if(nums[j] < nums[i]) dpFinal[i] = Math.max(dpFinal[i], dpFinal[j] + 1);
+      let dpMax = 0;
+      for(let k = 0; k < n; k++) if(dpFinal[k] > dpMax) dpMax = dpFinal[k];
+
+      const tails = [];
+      let appends = 0, replaces = 0;
+      const snapT = () => tails.slice();
+      const tlab = () => { const L = {}; for(let k = 0; k < tails.length; k++) L[k] = '长' + (k + 1); return L; };
+      const rng = (a, b) => { const s = {}; for(let k = a; k <= b; k++) s[k] = 'in'; return s; };
+      const lohi = (lo, hi, mid) => {
+        const mk = [{name:'lo', idx:lo, cls:'mr', text:'▲ lo'},
+                    {name:'hi', idx:hi, cls:'mg', text:'▲ hi'}];
+        if(mid != null) mk.push({name:'mid', idx:mid, cls:'mv', text:'▲ mid'});
+        return mk;
+      };
+
+      /* ---- 快照绘制（o 全是 push 那一刻定死的快照，铁律 5） ---- */
+      const draw = (o) => (v) => {
+        v.arr('nums', nums, {
+          label:'数组 <code>nums</code>',
+          states:o.nst || {}, markers:o.nmk || [], idxCls:o.nix || {}
+        });
+        v.arr('tails', o.t, {
+          label:'<code>tails</code>　·　tails[k] = 长度 k+1 的递增子序列的最小结尾',
+          states:o.tst || {}, markers:o.tmk || [], idxCls:o.tix || {},
+          labels:o.tlab || {}
+        });
+        if(o.vars) v.vars('vars', o.vars, {label:'当前变量', hl:o.hlv || []});
+        if(o.cmp) v.text('cmp', o.cmp, {html:true, label:'与主解法 dp 对照'});
+        if(o.res !== undefined) v.result(o.res, {label:'LIS 长度'});
+      };
+
+      F.push({hl:[1,2,3], tag:'记账板初始化', cls:'t-grey',
+        msg:'这版换一个问题来问：<b>"长度 k+1 的递增子序列，结尾最小能压到多少？"</b>——答案记在记账板 <code>tails</code> 里，tails[k] 就是这个最小结尾，格子下方的"长1、长2…"标着它管的长度。tails 全程保持升序，所以每个新数只需一次<b>手写二分</b>：找第一个 ≥ x 的位置，找到就替换、比谁都大就追加。主解法 dp 要 O(n²) 次比较，这里每个数只花 O(log n)。',
+        do: draw({t:snapT(), tmk:[], tst:{}, tlab:tlab(), vars:{'len(tails)':0}})});
+
+      for(let i = 0; i < n; i++){
+        const x = nums[i];
+        let lo = 0, hi = tails.length - 1;
+        F.push({hl:[4,5], tag:'新数 x=' + x, cls:'t-orange',
+          msg:'for 循环递来新数 <b>x = nums[' + i + '] = ' + x + '</b>。二分区间初始化：lo = 0、hi = ' + hi +
+              (hi < 0 ? '——tails 还是空表，区间不存在，<code>while</code> 马上就会跳过。'
+                      : '——要在 tails 里找<b>第一个 ≥ x 的位置</b>：那个位置的结尾 ≥ x，x 才能顶替它当"同长度的更小结尾"。') +
+              '橙色 ▲x 标出当前数，下方就是那张"每个长度的最小结尾"记账板。',
+          do: draw({t:snapT(), tmk:lohi(0, hi), tst:{}, tlab:tlab(),
+                    nst:{[i]:'active'}, nmk:[{name:'x', idx:i, cls:'mi', text:'▲ x'}], nix:{[i]:'on-i'},
+                    vars:{i:i, x:x, lo:0, hi:hi, 'len(tails)':tails.length}, hlv:['x']})});
+
+        if(hi < 0){
+          F.push({hl:[6], no:6, tag:'空表跳过二分', cls:'t-grey',
+            msg:'tails 还是空的：lo = 0、hi = −1，<code>while lo ≤ hi</code> 一轮都不跑。空表没有"第一个 ≥ x 的位置"——x 是第一个数，它自己就是一条长度 1 的链，直接落到下面的<b>追加</b>分支。',
+            do: draw({t:snapT(), tmk:[], tst:{}, tlab:tlab(),
+                      nst:{[i]:'active'}, nmk:[{name:'x', idx:i, cls:'mi', text:'▲ x'}], nix:{[i]:'on-i'},
+                      vars:{i:i, x:x, lo:0, hi:-1, 'len(tails)':0}})});
+        }
+        while(lo <= hi){
+          const mid = (lo + hi) >> 1;
+          F.push({hl:[6,7], ok:6, tag:'二分 · 看 mid', cls:'t-blue',
+            msg:'<code>while lo ≤ hi</code>：区间 [' + lo + ', ' + hi + '] 还有货 → 取中点 <code>mid = (' + lo + ' + ' + hi + ') // 2 = ' + mid + '</code>。读数：tails[' + mid + '] = ' + tails[mid] + '，拿它和 x = ' + x + ' 比大小来决定砍掉哪一半。每轮区间至少缩一半——O(log n) 就是这么省出来的；紫色 ▲mid 名牌指向中点格。',
+            do: draw({t:snapT(), tmk:lohi(lo, hi, mid),
+                      tst:Object.assign(rng(lo, hi), {[mid]:'pivot'}), tlab:tlab(),
+                      nst:{[i]:'active'}, nmk:[{name:'x', idx:i, cls:'mi', text:'▲ x'}], nix:{[i]:'on-i'},
+                      vars:{i:i, x:x, lo:lo, mid:mid, hi:hi}, hlv:['mid']})});
+          if(tails[mid] < x){
+            lo = mid + 1;
+            F.push({hl:[8,9], ok:8, tag:'中点太小 → 查右半', cls:'t-ink',
+              msg:'读数：tails[' + mid + '] = ' + tails[mid] + ' &lt; x = ' + x + ' → 长度 ' + (mid + 1) + ' 的链结尾比 x 还小，x 想接它绰绰有余，"第一个 ≥ x 的位置"只可能在<b>右半</b> → <code>lo = mid + 1</code>，新区间 [' + lo + ', ' + hi + ']（区间内蓝格）。这一步不产生替换——替换只会发生在二分彻底结束之后。',
+              do: draw({t:snapT(), tmk:lohi(lo, hi), tst:rng(lo, hi), tlab:tlab(),
+                        nst:{[i]:'active'}, nmk:[{name:'x', idx:i, cls:'mi', text:'▲ x'}], nix:{[i]:'on-i'},
+                        vars:{i:i, x:x, lo:lo, hi:hi}, hlv:['lo']})});
+          } else {
+            hi = mid - 1;
+            F.push({hl:[8,10,11], no:8, tag:'中点是候选 → 缩左半', cls:'t-ink',
+              msg:'读数：tails[' + mid + '] = ' + tails[mid] + ' ≥ x = ' + x + ' → 中点自己就是"≥ x"的候选，第一名只可能在 <b>mid 或它左边</b> → <code>hi = mid − 1</code>，新区间 [' + lo + ', ' + hi + ']。注意 tails[' + mid + '] 即使恰好等于 x 也走这边：题目要<b>严格</b>递增，相等的结尾直接被 x 顶替最划算，长度绝不虚增。',
+              do: draw({t:snapT(), tmk:lohi(lo, hi), tst:rng(lo, hi), tlab:tlab(),
+                        nst:{[i]:'active'}, nmk:[{name:'x', idx:i, cls:'mi', text:'▲ x'}], nix:{[i]:'on-i'},
+                        vars:{i:i, x:x, lo:lo, hi:hi}, hlv:['hi']})});
+          }
+        }
+        if(lo === tails.length){
+          tails.push(x); appends++;
+          F.push({hl:[12,13], ok:12, tag:'追加 · LIS 变长', cls:'t-green',
+            msg:'区间扫空：lo = ' + lo + ' 一路越过 hi——lo 停在哪，"第一个 ≥ x 的位置"就在哪。这里 lo = ' + lo + ' = len(tails) → x = ' + x + ' 比<b>所有</b>结尾都大，能接在当前最长的链（长 ' + (tails.length - 1) + '）后面 → <b>追加</b>：tails 变成 [' + tails.join(', ') + ']。只有追加能让 tails 长度 +1，它就是"LIS 又长出一节"的信号（第 ' + appends + ' 次追加）。',
+            do: draw({t:snapT(), tmk:[{name:'lo', idx:lo, cls:'mr', text:'▲ lo'}],
+                      tst:{[lo]:'just'}, tlab:tlab(),
+                      nst:{[i]:'active'}, nmk:[{name:'x', idx:i, cls:'mi', text:'▲ x'}], nix:{[i]:'on-i'},
+                      vars:{i:i, x:x, lo:lo, 'len(tails)':tails.length, 动作:'追加'}, hlv:['len(tails)']})});
+        } else {
+          const oldv = tails[lo];
+          tails[lo] = x; replaces++;
+          F.push({hl:[12,14,15], no:12, tag:'替换 · 结尾压小', cls:'t-violet',
+            msg:'区间扫空，lo = ' + lo + ' 停在 tails 内部 → 这就是<b>第一个 ≥ x 的位置</b>，执行<b>替换</b>：tails[' + lo + '] 从 ' + oldv + ' 换成 x = ' + x + '。为什么不伤正确性？不变式"tails[k] = 长度 k+1 的最小结尾"：' +
+                (lo > 0
+                  ? 'x 的左邻 tails[' + (lo - 1) + '] = ' + tails[lo - 1] + ' &lt; x，说明 x 能接在长度 ' + lo + ' 的链后面，'
+                  : 'x 左边没有更小的结尾，它自己就能开一条长度 1 的链，') +
+                '于是长度 ' + (lo + 1) + ' 的最小结尾从 ' + oldv + ' 压到 ' + x + '——<b>同长度结尾更小，后面每个数都更容易接上，机会只多不少、长度只增不减</b>。tails 长度没变，答案也没变。',
+            do: draw({t:snapT(), tmk:[{name:'lo', idx:lo, cls:'mr', text:'▲ lo'}],
+                      tst:{[lo]:'just'}, tlab:tlab(),
+                      nst:{[i]:'active'}, nmk:[{name:'x', idx:i, cls:'mi', text:'▲ x'}], nix:{[i]:'on-i'},
+                      vars:{i:i, x:x, lo:lo, 'len(tails)':tails.length, 动作:'替换 tails[' + lo + ']'}, hlv:[]})});
+        }
+      }
+
+      const tJoin = tails.join(', ');
+      const dpJoin = dpFinal.join(', ');
+      const cmpTxt = '主解法 dp = [' + dpJoin + '] · max = ' + dpMax + '<br>本解法 tails = [' + tJoin + '] · len = ' + tails.length + '　→　<b>答案一致 ✓</b>';
+      F.push({hl:[16], tag:'返回', cls:'t-dark',
+        msg:'🎉 <code>return len(tails) = ' + tails.length + '</code>。复盘：整场 tails 只做过两种动作——<b>追加</b> ' + appends + ' 次（长度 +1）和<b>替换</b> ' + replaces + ' 次（同长度压小结尾），长度只增不减、也从不虚报，最终 len(tails) 就是 LIS 长度。每个数只花一次二分，总时间 O(n log n)：n = 10⁵ 时比主解法 O(n²) 的约 10¹⁰ 次比较快了五六个数量级。',
+        do: draw({t:snapT(), tmk:[], tst:{}, tlab:tlab(),
+                  vars:{'len(tails)':tails.length, 追加:appends + ' 次', 替换:replaces + ' 次'},
+                  cmp:cmpTxt, res:tails.length})});
+
+      F.push({hl:[16], tag:'与 dp 表对照', cls:'t-ink',
+        msg:'对照主解法：同一份输入，dp 版算出 dp = [' + dpJoin + ']，max(dp) = ' + dpMax + '；本版 tails = [' + tJoin + ']，len(tails) = ' + tails.length + '——<b>答案一致</b>。但别混淆：dp 每格都是某条真实链的长度、还能回溯出 LIS 本尊；tails 只是记账板——本例 [' + tJoin + '] 恰好凑成一条真 LIS，换个输入如 [3,4,1]，结束时 tails = [1,4]，而 1 在原数组里排在 4 后面，它<b>不是任何真实子序列</b>。要"长度 + 一条真身"用 dp，只要长度还要快就用 tails。',
+        do: draw({t:snapT(), tmk:[], tst:{}, tlab:tlab(), cmp:cmpTxt, res:tails.length})});
+
+      return F;
+    }
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P083 · 完全平方数 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/progress.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 83, num: 279, title: '完全平方数', diff: '中等', cat: '动态规划',
+  method: 'numSquares',
+
+  lede: '题目：把正整数 <span class="var r">n</span> 拆成若干个<b>完全平方数之和</b>（1、4、9、16…每个可以重复用），求<b>最少用几个</b>。比如 12 = 4+4+4，只要 3 个。' +
+        '动画里 <span class="var o">f[i]</span> 表示"凑出 i 最少要几个平方数"，f 表从左往右逐格填：' +
+        '填 f[<span class="var i">i</span>] 时，<span class="var r">j</span> 名牌指着被参考的格子 f[i−j·j]——相当于先从 i 里拿走一块 j²，剩下的部分查表。',
+
+  roles: [
+    {c:'orange', code:'f[i]',  text:'正在填的格子：凑出 i 最少几个平方数'},
+    {c:'blue',   code:'j',     text:'名牌指着 f[i−j·j]：拆掉 j² 后剩下的部分'},
+    {c:'green',  code:'done',  text:'已经填好定格的格子'},
+    {c:'grey',   code:'∞',     text:'还没凑出来的格子'}
+  ],
+
+  codeTitle: '跟着高亮读代码——while 那行变<span style="color:var(--green)">绿</span>＝j² 还没超过 i，继续试；变<span style="color:var(--red)">红</span>＝平方数枚举完了，f[i] 定格。',
+
+  legend: [
+    {c:'orange', text:'f[i] 正在填'},
+    {c:'blue',   text:'f[i−j²] 被参考的格子'},
+    {c:'green',  text:'已定格'},
+    {c:'grey',   text:'∞ 还凑不出来'}
+  ],
+
+  idea: 'f[i] = min(f[i−j²]) + 1：想凑出 i，先把某块平方数 j² 拿走当"最后一块"，剩下 i−j² 用它自己的最优解，再加这一块。从小往大填表，每格都站在已算好的格子上。',
+
+  qa: [
+    {q:'为什么从小往大算？直接算 n 不行吗？',
+     a:'算 f[12] 要用到 f[11]、f[8]、f[3]……这些更小的子问题。从小往大填，轮到任何一格时它依赖的格子<b>全都已经就位</b>，查表即得——这就是自底向上的动态规划。'},
+    {q:'贪心为什么错？先拿最大的 9 不好吗？',
+     a:'对 12 贪心：拿 9 剩 3，只能 1+1+1，共 <b>4</b> 块；但最优是 4+4+4 共 <b>3</b> 块。贪心每步只顾眼前最大，可能把余数引进死胡同。DP 把每种"最后一块"都试一遍，min 取最优，不会上当。'},
+    {q:'这题和背包有什么关系？',
+     a:'是完全背包：物品 = 各个平方数 j²，"容量" = i，每个物品可以重复选，求<b>装满容量的最少件数</b>。f[i−j²]+1 里的 +1 就是"选上 j² 这一件"。'},
+    {q:'复杂度是多少？',
+     a:'外层 i 跑 n 轮，内层 j 只到 √i，所以时间 O(n·√n)；f 表长 n+1，空间 O(n)。'}
+  ],
+
+  complexity: '时间 O(n·√n)　·　空间 O(n)（f 表）',
+
+  form: [
+    {key:'n', label:'n', type:'num', def:12, integer:true, min:0, max:200}
+  ],
+  presets: [
+    {label:'n=12 → 3（4+4+4）', values:{n:12}},
+    {label:'n=13 → 2（4+9）', values:{n:13}},
+    {label:'n=18 → 2（贪心 3 块会错）', values:{n:18}},
+    {label:'n=1 边界', values:{n:1}}
+  ],
+
+  code: `class Solution:
+    def numSquares(self, n):
+        f = [0] + [float('inf')] * n   # f[i]: 凑出 i 最少要几个平方数
+        for i in range(1, n + 1):      # 从小到大, 依次凑出 1..n
+            j = 1
+            while j * j <= i:          # 枚举不超过 i 的平方数 j*j
+                f[i] = min(f[i], f[i - j*j] + 1)   # 拆出 j*j, 剩下 i-j*j 的最优解+1
+                j += 1
+        return f[n]
+`,
+
+  sol(input){
+    const n = Math.max(0, Math.floor(+input.n || 0));
+    const f = [0];
+    for(let i = 1; i <= n; i++) f[i] = Infinity;
+    for(let i = 1; i <= n; i++)
+      for(let j = 1; j * j <= i; j++)
+        f[i] = Math.min(f[i], f[i - j * j] + 1);
+    return f[n];
+  },
+  expected: 3,
+
+  quiz: [
+    {q:'贪心"先拿最大的平方数"在 n = 12 上怎么翻车的?',
+     options:['贪心会拿 9,剩 3 只能 1+1+1,共 4 块;而最优 4+4+4 只要 3 块——每步最大把余数引进了死胡同','贪心算出的是 5 块,比 DP 多 2 块','贪心根本跑不完,12 太大枚举不动'],
+     answer:0,
+     explain:'对 12 贪心:最大平方数 9,拿走剩 3,只能 1+1+1,合计 4 块;但 12 = 4+4+4 只要 3 块。贪心的毛病是"最后一块"只看眼前最大,余数的结构完全失控。DP 则把每个不超过 i 的平方数都试当"最后一块",min 从全部候选里挑最省——不会押错注。这正是本题必须 DP 而不能贪的理由。',
+     jumpTo:51},
+    {q:'n = 15 最少要几个平方数?',
+     options:['3','4','5'],
+     answer:1,
+     explain:'递推:凑 15 的"最后一块"只有 1、4、9 三种试法——f[15] = min(f[14], f[11], f[6]) + 1。f[13] = 2(4+9)、f[14] = 3、f[11] = 3(9+1+1)、f[6] = 3(4+1+1)→ f[15] = 4,拆法 9+4+1+1。选 3 的是想当然以为 15 ≈ 9+4 再补一点就两三块;实际 15 = 9+4+2?2 不是平方数,补不上,只能落到 4 块。这种"差一步凑不齐"正是要逐格填表的原因。',
+     jumpTo:46},
+    {q:'外层 i 跑 n 轮、内层还要枚举平方数,为什么总时间 O(n·√n) 而不是 O(n²)?',
+     options:['因为内层循环平均只转半圈,按折半算','因为内层 j 只需枚举到 j·j ≤ i,即 j ≤ √i——每轮最多 √n 次,两层相乘是 n·√n','因为 min 操作是 O(1),常数很小可忽略'],
+     answer:1,
+     explain:'内层的枚举上界由 "j·j ≤ i" 卡死:比 i 还大的平方数拆不动(i − j² 变负数,没有对应子问题),所以 j 最多走到 √i。每格 √n 次尝试、n 格合计 O(n·√n)——比暴力枚举所有拆法的天文数字好太多,也比"每次重新找拆法"的朴素递归(指数级)好。f 表长 n+1,空间 O(n)。',
+     jumpTo:50},
+  ],
+
+  steps(input){
+    const F = [];
+    const n = Math.max(0, Math.floor(+input.n || 0));
+
+    // 先真实跑一遍算法（与 Python 完全同逻辑），f 数组随跑随变
+    const f = [0];
+    for(let i = 1; i <= n; i++) f[i] = Infinity;
+
+    // 跑完的终版表（仅供收尾解说回查拆分方案用，不参与动画）
+    const fdone = [0];
+    for(let i = 1; i <= n; i++) fdone[i] = Infinity;
+    for(let i = 1; i <= n; i++)
+      for(let j = 1; j * j <= i; j++)
+        fdone[i] = Math.min(fdone[i], fdone[i - j * j] + 1);
+
+    // 画面最多画 15 格：0..shown（n 更大时 msg 说明只画前段）
+    const shown = Math.min(n, 14);
+    const fmt = x => x === Infinity ? '∞' : x;
+    const disp = () => { const a = []; for(let i = 0; i <= shown; i++) a.push(fmt(f[i])); return a; };
+
+    // 收尾解说用：从 n 往回找拆分方案（真实回查 fdone 表）
+    const parts = [];
+    (function walk(x){
+      if(x <= 0) return;
+      for(let j = 1; j * j <= x; j++){
+        if(fdone[x - j * j] + 1 === fdone[x]){ parts.push(j * j); walk(x - j * j); return; }
+      }
+    })(n);
+    // 贪心对照（收尾时若贪心更差才提）
+    const gp = [];
+    let rem = n;
+    while(rem > 0){ const s = Math.floor(Math.sqrt(rem)); gp.push(s * s); rem -= s * s; }
+
+    /* ---- 绘制：o 里全是帧生成那一刻的快照（铁律 5） ---- */
+    const draw = (o) => (v) => {
+      v.arr('f', o.disp, {
+        label:'DP 表 <code>f</code>　·　<code>f[i]</code> = 凑出 i 最少要几个平方数',
+        cw:40, states:o.st || {}, markers:o.mk || [], idxCls:o.ix || {}
+      });
+      if(o.vars) v.vars('vars', o.vars, {label:'当前变量', hl:o.hlv || []});
+      if(o.res !== undefined) v.result(o.res, {label:'返回结果'});
+    };
+    const mi = i => ({name:'i', idx:i, cls:'mi', text:'▲ i'});
+    const mj = k => ({name:'j', idx:k, cls:'mr', text:'▲ j'});
+
+    F.push({hl:[1,2,3], tag:'初始化', cls:'t-grey',
+      msg:'要把 <b>' + n + '</b> 拆成平方数之和（1、4、9、16…<b>每种无限供应、可重复拿</b>），求最少几块。开 f 表：<code>f[i]</code> = 凑出 i 最少要几块——<code>f[0] = 0</code>（凑 0 一块都不用，是递推的地基），其余全记 <b>∞</b>（还凑不出来）。填表必须<b>从小往大</b>：算 f[i] 时要回头查更小的 f[i−j²]，先把小格填好，回头查到的才一定是现成答案——这就是自底向上 DP 的顺序保证。' +
+          (n > shown ? '（表太长，画面只画前 15 格，后面的格子照常口算）' : '') +
+          '画面上 f[0] 已绿色定格，灰色 ∞ 格等着被逐个点亮。',
+      do: draw({disp:disp(), st:{0:'done'}, mk:[mi(0)],
+                vars:{n:n, 'f[0]':0, 其余:'∞'}})});
+
+    for(let i = 1; i <= n; i++){
+      F.push({hl:[4,5], tag:'凑 i=' + i, cls:'t-orange',
+        msg:'轮到填 <b>f[' + i + ']</b>，读数：它此刻还是 <b>' + fmt(f[i]) + '</b>（没定，等着被更新）。想凑出 i，任何方案都有"最后一块"，它必是某个平方数 j·j——把这块拿走，剩下的 i−j·j 是个更小的子问题，答案早已在表里。所以 j 从 1 开始，把每个不超过 i 的平方数挨个试当<b>"最后一块"</b>，min 挑出总块数最少的拿法；橙色 ▲i 指着正在填的格子。',
+        do: draw({disp:disp(), st:{[i]:'active'}, mk:[mi(i)], ix:{[i]:'on-i'},
+                  vars:{i:i, j:1, 'j*j':1, 'f[i]':fmt(f[i])}})});
+
+      for(let j = 1; j * j <= i; j++){
+        const src = i - j * j;              // 拆掉 j*j 后剩下的部分
+        const cand = f[src] + 1;            // 候选答案
+        const before = f[i];
+        const improve = cand < before;
+        if(improve) f[i] = cand;            // 真实更新，后续帧的 disp() 才对
+        F.push({hl:[6,7,8], ok:6, tag:'试 j*j=' + (j * j), cls: improve ? 't-green' : 't-ink',
+          msg:'试"最后一块 = <b>' + (j * j) + '</b>"：拆掉它剩 ' + src + '，读数 f[' + src + '] = <b>' + fmt(f[src]) + '</b> → 候选 = f[' + src + '] + 1 = <b>' + fmt(cand) + '</b>，那个 +1 就是 j² 这块本身。f[' + src + '] 为什么是现成的？因为 ' + src + ' &lt; i = ' + i + '，我们从 1 往大填，轮到 f[' + i + '] 时它早就算好了——这正是填表顺序换来的"查表即得"。' +
+              (improve
+                ? '它比当前 f[' + i + '] = ' + fmt(before) + ' 优 → <b>更新为 ' + cand + '</b>（绿色闪）。'
+                : '它不比当前 f[' + i + '] = ' + fmt(before) + ' 优 → 不动——min 就是在多种拆法里只留最省的。') +
+              '蓝色 ▲j 指着被参考的 f[' + src + '] 格，随后 j 加一试下一个平方数。' +
+              (src === j * j ? '顺带看清"完全"二字：f[' + src + '] = ' + fmt(f[src]) + ' 那格用的正是 ' + (j * j) + ' 本人，现在再拿一块——平方数<b>可重复使用</b>，这就是完全背包（物品无限件）；0-1 背包每件只能拿一次，才要倒序扫表防重复，这里不用。' : ''),
+          do: draw({disp:disp(), st:{[i]:'active', [src]:'in'},
+                    mk:[mi(i), mj(src)], ix:{[i]:'on-i', [src]:'on-r'},
+                    vars:{i:i, j:j, 'j*j':j * j, 'f[i-j*j]+1':cand, 'f[i]':fmt(f[i])},
+                    hlv: improve ? ['f[i]'] : []})});
+      }
+
+      const jx = Math.floor(Math.sqrt(i)) + 1;   // 让 while 失败的那个 j
+      F.push({hl:[6], no:6, tag:'j*j 超了', cls:'t-grey',
+        msg:'j = ' + jx + ' 时 j·j = ' + (jx * jx) + ' &gt; i = ' + i + '：比 i 还大的平方数拆不动（i − j² 会变负数，没有对应的子问题）→ 枚举到此为止，<b>f[' + i + '] = ' + fmt(f[i]) + '</b> 绿色定格。' +
+            (f[i] === Infinity ? '它暂时凑不出来——不过 1 永远可用，往后每一格都至少有解。' : '复盘：刚才每个平方数都被试当过"最后一块"，min 从全部候选里挑出了最省的组合。'),
+        do: draw({disp:disp(), st:{[i]:'done'}, mk:[mi(i)],
+                  vars:{i:i, j:jx, 'j*j':jx * jx, 'f[i]':fmt(f[i])}})});
+    }
+
+    const ansTxt = n === 0
+      ? 'n = 0 什么都不用拆，答案就是 f[0] = 0。'
+      : '<b>' + n + ' = ' + parts.join(' + ') + '</b>，一共 <b>' + f[n] + '</b> 块' +
+        (gp.length && gp.reduce((a,b)=>a+b,0) === n && gp.length > f[n]
+          ? '。贪心先拿最大平方数要 ' + gp.length + ' 块（' + gp.join(' + ') + '）——DP 不上当 🎉'
+          : ' 🎉');
+    F.push({hl:[9], tag:'返回', cls:'t-dark',
+      msg:'全表填完，<code>return f[' + n + ']</code>：' + ansTxt +
+          ' 复盘：从小往大填表，每格把各平方数试当"最后一块"、min+1 挑最省——小格最优保证大格最优，f[n] 就是全局最少块数。',
+      do: draw({disp:disp(), st:{[shown]:'target'}, mk:[{name:'ans', idx:shown, cls:'mg', text:'▲ 答案'}],
+                res:f[n]})});
+
+    return F;
+  }
+});
+</script>
+</body>
+</html>

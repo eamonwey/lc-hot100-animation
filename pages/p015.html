@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P015 · 轮转数组 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/progress.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 15, num: 189, title: '轮转数组', diff: '中等', cat: '普通数组',
+  method: 'rotate',
+
+  lede: '题目：把数组向右轮转 <span class="var i">k</span> 位：[1,2,3,4,5,6,7]、k=3 → [5,6,7,1,2,3,4]，要求<b>原地</b>修改（O(1) 额外空间）。' +
+        '搬运太啰嗦，这里用巧的——<b>三次翻转</b>：先把整个数组翻个底朝天，再把前 k 个翻回来、后一段也翻回来，顺序就全对了。' +
+        '动画里 <span class="var i">i</span>、<span class="var r">j</span> 是每次翻转的两只手，从两端往中间挤，边挤边交换。',
+
+  roles: [
+    {c:'orange', code:'i', text:'翻转的左端下标'},
+    {c:'blue',   code:'j', text:'翻转的右端下标'},
+    {c:'green',  code:'rev(i,j)', text:'把 nums[i..j] 原地反转'}
+  ],
+
+  codeTitle: '三次翻转各是哪次调用？盯住 <code>rev(...)</code> 三行的高亮顺序；每轮交换的两格会闪橙。',
+
+  legend: [
+    {c:'orange', text:'i 左手'},
+    {c:'blue', text:'j 右手'},
+    {c:'green', text:'这一段已翻好'}
+  ],
+
+  idea: '旋转 = 整体翻转 + 前后各翻回来：[1,2,3,4,5,6,7] → [7,6,5,4,3,2,1] → [5,6,7|4,3,2,1] → [5,6,7|1,2,3,4]。',
+
+  qa: [
+    {q:'为什么三次翻转正好等于右旋 k？',
+     a:'右旋 k 位 = 把最后 k 个整体搬到前面。整体翻转后，最后 k 个确实跑到了最前面——只是内部顺序反了。把前 k 个翻回来、后面的也翻回来，两段各自恢复正序，拼起来就是答案。每步都只动一段，谁也不越界。'},
+    {q:'开头为什么先 k %= n？',
+     a:'右旋 n 位等于没转，右旋 n+2 位等于右旋 2 位。k 可能比 n 大（题目里甚至能到 10⁹），不取余的话 rev(0, k-1) 的下标直接越界。取余后 k 一定落在 [0, n-1]。'},
+    {q:'还有什么别的解法？',
+     a:'拼接法 new = nums[n-k:] + nums[:n-k] 最直观，但要 O(n) 新数组；环状替换能 O(1) 空间，但下标跳跃、要数圈数，容易写错。三次翻转是"O(1) 空间 + 最好写"的平衡点，面试首选。'}
+  ],
+
+  complexity: '时间 O(n)（每个元素被交换常数次）　·　空间 O(1)（原地交换，不开新数组）',
+
+  form: [
+    {key:'nums', label:'nums', type:'arr', def:[1,2,3,4,5,6,7]},
+    {key:'k', label:'k', type:'num', def:3}
+  ],
+  presets: [
+    {label:'[1..7] k=3', values:{nums:[1,2,3,4,5,6,7], k:3}},
+    {label:'[-1,-100,3,99] k=2', values:{nums:[-1,-100,3,99], k:2}},
+    {label:'[1,2] k=5（k 比 n 大）', values:{nums:[1,2], k:5}},
+    {label:'[1,2,3] k=0（不用转）', values:{nums:[1,2,3], k:0}}
+  ],
+
+  code: `class Solution:
+    def rotate(self, nums, k):
+        n = len(nums)
+        k %= n                       # k 可能比 n 大, 先取余
+        def rev(i, j):               # 原地翻转 nums[i..j]
+            while i < j:
+                nums[i], nums[j] = nums[j], nums[i]
+                i += 1; j -= 1
+        rev(0, n - 1)                # 1) 整体翻转
+        rev(0, k - 1)                # 2) 翻转前 k 个
+        rev(k, n - 1)                # 3) 翻转后面一段
+`,
+
+  sol(input){
+    const nums = input.nums.slice();
+    const n = nums.length;
+    if(!n) return null;
+    let k = input.k % n;
+    const rev = (i, j) => {
+      while(i < j){ const t = nums[i]; nums[i] = nums[j]; nums[j] = t; i++; j--; }
+    };
+    rev(0, n - 1);
+    rev(0, k - 1);
+    rev(k, n - 1);
+    return null;
+  },
+  expected: null,
+
+  quiz: [
+    {q:'为什么开头必须先执行 k %= n?不取余直接用会出什么事?',
+     options:['右旋 n 位等于没转;k 可能大到 10⁹,不取余的话 rev(0, k−1) 的下标直接越界,程序崩掉','不取余只是多转几圈,结果还是对的,不取也行','取余是为了让 k 变小、跑得更快'],
+     answer:0,
+     explain:'右旋 n 位每个数都绕回原地,右旋 n+2 位等于右旋 2 位——先取余把 k 压回 [0, n−1],语义不变。但不取余的话,k=10⁹ 时 rev(0, k−1) 里 j 一上来就远超数组范围,nums[j] 直接越界报错。这一行既是数学化简,也是程序保命符。',
+     jumpTo:2},
+    {q:'nums = [1,2,3,4,5,6]、k = 10,轮转后数组是什么?',
+     options:['[5,6,1,2,3,4]','[3,4,5,6,1,2]','[6,1,2,3,4,5]','[4,5,6,1,2,3]'],
+     answer:1,
+     explain:'k = 10 % 6 = 4:右旋 10 位和右旋 4 位等价——最后 4 个 [3,4,5,6] 整体搬到最前面,得 [3,4,5,6,1,2]。选 [5,6,1,2,3,4] 是按 k=2 算的,忘了取余;[6,1,2,3,4,5] 是 k=1;[4,5,6,1,2,3] 是 k=3。',
+     jumpTo:30},
+    {q:'三次翻转各负责什么?为什么整体翻完一次还不够?',
+     options:['整体翻把最后 k 个搬到最前面(但内部顺序是反的);再把前 k 个翻回来、后段也翻回来,各自修正内部顺序——位置和顺序就都对了','三次翻转等价于把数组排了个序','整体翻要执行两次才能抵消,第三次是保险'],
+     answer:0,
+     explain:'以 [1,2,3,4,5,6,7]、k=3 为例:整体翻 → [7,6,5,4,3,2,1](最后 3 个 5,6,7 已到最前,但顺序反了)→ 翻前 3 个 → [5,6,7,4,3,2,1] → 翻后 4 个 → [5,6,7,1,2,3,4]。每步各管一件事:整体翻定位、两段翻修序。全程只有两两交换,不开新数组,O(1) 额外空间。',
+     jumpTo:3},
+  ],
+
+  steps(input){
+    const F = [];
+    const nums = input.nums.slice();
+    const n = nums.length;
+    const kRaw = Number(input.k) || 0;
+    const k = n ? kRaw % n : 0;
+    if(!n){
+      F.push({hl:[1,2,3], tag:'空数组', cls:'t-grey', msg:'数组是空的（n = 0），没有元素可转——动画无事可做，直接结束。', do: () => {}});
+      return F;
+    }
+
+    const mk = (i, j) => {
+      const m = [];
+      if(i != null) m.push({name:'i', idx:i, cls:'mi', text:'▲ i'});
+      if(j != null) m.push({name:'j', idx:j, cls:'mr', text:'▲ j'});
+      return m;
+    };
+    const vars = o => ({n:n, k:k, i:o.i, j:o.j});
+    const allDone = () => {
+      const st = {};
+      for(let q = 0; q < n; q++) st[q] = 'done';
+      return st;
+    };
+
+    const draw = (o) => (v) => {
+      v.arr('nums', o.arr, {
+        label:'数组 <code>nums</code>（原地修改）　·　<code>k = ' + k + '</code>',
+        states: o.states || {},
+        markers: o.marks || []
+      });
+      v.vars('vars', o.vars, {label:'变量', hl:o.vhl || []});
+      if(o.result !== undefined) v.result(o.result, {label:'数组最终状态'});
+    };
+
+    F.push({hl:[1,2,3], tag:'初始化', cls:'t-grey',
+      msg:'n = ' + n + '，k = ' + kRaw + '：要把数组向右转 ' + kRaw + ' 位，即最后几个数整体搬到最前面、其余后移——要求原地 O(1) 空间。硬搬太啰嗦（每放一个数都得先腾位置），改用"翻转"实现搬运，口诀三步：<b>整体翻 → 前 k 个翻回 → 后段翻回</b>。画面上数组条 + 变量面板，橙蓝名牌 i、j 就是每段翻转的两只手。',
+      do: draw({arr:nums.slice(), vars:vars({i:'—', j:'—'})})});
+
+    F.push({hl:[4], tag:'k 取余', cls:'t-grey',
+      msg:'<code>k = ' + kRaw + ' % ' + n + ' = ' + k + '</code>：右旋 n 位等于没转（每个数绕一整圈回到原地），所以右旋 ' + kRaw + ' 位和右旋 ' + k + ' 位结果完全一样。这行不能省——题目允许 k 大到 10⁹，不取余的话 <code>rev(0, k−1)</code> 的下标直接越界崩掉；取余后 k 必落在 [0, ' + (n - 1) + ']，后面三段翻转的下标就都安全了。',
+      do: draw({arr:nums.slice(), vars:vars({i:'—', j:'—'}), vhl:['k']})});
+
+    const revSeg = (from, to, tag, cls, line) => {
+      let i = from, j = to;
+      F.push({hl:[5, line], tag:tag, cls:cls,
+        msg: to < from
+          ? '调用 <code>rev(' + from + ', ' + to + ')</code>：这段区间是空的（长度 0），双手还没开工循环就退出——这一段不需要翻，原样保留。'
+          : '调用 <code>rev(' + from + ', ' + to + ')</code>：要原地反转下标 ' + from + ' 到 ' + to + ' 这一段。双手 <code>i = ' + from + '</code>、<code>j = ' + to + '</code> 站到两端（两端格子淡橙）；手法固定不变：两头一换、各进一格，像拉链从两边往中间合，直到双手相遇。',
+        do: draw({arr:nums.slice(), states:{[from]:'peek', [to]:'peek'}, marks:mk(from, to),
+                  vars:vars({i:from, j:to})})});
+      while(i < j){
+        F.push({hl:[6], ok:6, tag:tag, cls:cls,
+          msg:'循环条件 <code>i = ' + i + ' &lt; j = ' + j + '</code> 成立：两端还没碰头，这一对外侧该交换了。为什么护栏是 <code>i &lt; j</code>：i、j 相遇（i == j）时中间只剩一个元素，跟自己换没意义，正好停手；这样两两配对谁也不会被换两次。画面上闪橙的两格就是即将交换的一对。',
+          do: draw({arr:nums.slice(), states:{[i]:'active', [j]:'active'}, marks:mk(i, j),
+                    vars:vars({i:i, j:j})})});
+        const vi = nums[i], vj = nums[j];
+        nums[i] = vj; nums[j] = vi;
+        F.push({hl:[7], tag:tag, cls:cls,
+          msg:'<code>nums[' + i + '] ↔ nums[' + j + ']</code>：' + vi + ' 和 ' + vj + ' 交换位置（两格闪橙）。交换只借一个临时变量就完成，全程不开第二个数组装结果——"原地"的含义就在这，也是本题 O(1) 空间的来源。',
+          do: draw({arr:nums.slice(), states:{[i]:'just', [j]:'just'}, marks:mk(i, j),
+                    vars:vars({i:i, j:j}), vhl:['i', 'j']})});
+        i++; j--;
+        F.push({hl:[8], tag:tag, cls:cls,
+          msg:'双手向中间收：<code>i→' + i + '</code>，<code>j→' + j + '</code>' + (i < j ? '，还有下一对。' : '，挤到头了。') + '一段长 ' + (to - from + 1) + ' 的区间最多换 ' + Math.floor((to - from + 1) / 2) + ' 对——每对只碰一次、绝不回头，这是一次翻转只花 O(段长) 时间的原因。',
+          do: draw({arr:nums.slice(),
+                    states: i < j ? {[i]:'peek', [j]:'peek'} : {},
+                    marks: i <= j ? mk(i, j) : [],
+                    vars:vars({i:i, j:j})})});
+      }
+      F.push({hl:[6], no:6, tag:tag, cls:cls,
+        msg:'<code>i = ' + i + ', j = ' + j + '</code>' + (i === j ? '，在正中间相遇' : '，互相越过') + ' → 这一段翻转完成。数组现在是 <b>[' + nums.join(', ') + ']</b>' + (i === j ? '。正中间那个数没动——对称位置互相交换时，它本来就不挪窝。' : '。'),
+        do: draw({arr:nums.slice(), states:{}, marks: i <= j ? mk(i, j) : [],
+                  vars:vars({i:i, j:j})})});
+    };
+
+    F.push({hl:[9], tag:'阶段1 · 整体翻转', cls:'t-orange',
+      msg:'第一步 <code>rev(0, ' + (n - 1) + ')</code>：整个数组翻个底朝天。为什么这步有用：右旋 k=' + k + ' 位要把最后 ' + k + ' 个搬到最前面——翻转后它们<b>确实到了最前面</b>，只是内部顺序是反的；位置先到位、顺序等前段翻回来再修，三步各管一件事。',
+      do: draw({arr:nums.slice(), states:{0:'peek', [n - 1]:'peek'}, marks:mk(0, n - 1),
+                vars:vars({i:0, j:n - 1})})});
+    revSeg(0, n - 1, '阶段1 · 整体翻转', 't-orange', 9);
+
+    F.push({hl:[10], tag:'阶段2 · 翻前 k 个', cls:'t-blue',
+      msg: k === 0
+        ? '第二步 <code>rev(0, ' + (k - 1) + ')</code>：k = 0，这一步是空操作（区间为空），循环直接跳过——三次翻转的公式对 k=0 依然自洽，不用写特判。'
+        : '第二步 <code>rev(0, ' + (k - 1) + ')</code>：只翻前 k=' + k + ' 个。它们刚被阶段 1 甩到最前面、内部顺序是反的，这一步把它们翻回正序——"该在前面的"位置和顺序就都就位了。',
+      do: draw({arr:nums.slice(), states:{0:'peek', [Math.max(k - 1, 0)]:'peek'},
+                marks:k > 0 ? mk(0, k - 1) : [], vars:vars({i:0, j:k - 1})})});
+    revSeg(0, k - 1, '阶段2 · 翻前 k 个', 't-blue', 10);
+
+    F.push({hl:[11], tag:'阶段3 · 翻后段', cls:'t-green',
+      msg: k === 0
+        ? '第三步 <code>rev(' + k + ', ' + (n - 1) + ')</code>：k = 0 时它恰好把阶段 1 的整体翻转原样翻回去，数组复原——"不用转"就由公式自己算出来了，还是不用写特判。'
+        : '第三步 <code>rev(' + k + ', ' + (n - 1) + ')</code>：把下标 ' + k + ' 起的后一段也翻回正序。三步拼图完成：整体翻负责"把最后 k 个搬到前面"，前后各翻一次负责"把两段各自的顺序修回来"——一次元素搬运都没有，全靠交换。',
+      do: draw({arr:nums.slice(), states:{[k]:'peek', [n - 1]:'peek'}, marks:mk(k, n - 1),
+                vars:vars({i:k, j:n - 1})})});
+    revSeg(k, n - 1, '阶段3 · 翻后段', 't-green', 11);
+
+    F.push({hl:[11], tag:'完成', cls:'t-dark',
+      msg:'三段拼完：<b>[' + nums.join(', ') + ']</b>，正是右旋 k=' + k + ' 位的结果 🎉 复盘：整体翻定位、两段翻修序，口诀"先全翻、再各翻"；每个元素最多被交换两次，O(n) 时间。全程只有 i、j 两个下标原地交换，没开任何新数组——这就是题目要的 O(1) 原地轮转。',
+      do: draw({arr:nums.slice(), states:allDone(), marks:[],
+                vars:vars({i:'—', j:'—'}), result:nums.slice()})});
+    return F;
+  },
+
+  /* ========= 解法二：力扣官方方法二 · 环状替换 ========= */
+  alt: {
+    label: '官方 · 环状替换',
+    method: 'rotate',
+
+    lede: '题目不变：原地右旋 <span class="var i">k</span> 位。主解法用三次翻转；这里演<b>官方方法二「环状替换」</b>——' +
+          '核心只有一句话：下标 i 的数最终要住进 <code>(i + k) % n</code>。让每个数被拎在手里、' +
+          '沿环一跳一格直送目的地，被覆盖的值接着拎走；数组由 <code>gcd(n, k)</code> 个独立的环组成，' +
+          '从 start = 0, 1, … 各起一圈，恰好把全部格子各写一次。',
+
+    roles: [
+      {c:'orange', code:'cur', text:'刚空出来、等别人搬进来的位置'},
+      {c:'blue',   code:'nxt', text:'手里这个值的目的地 (cur + k) % n'},
+      {c:'violet', code:'start', text:'本圈起点：绕一圈必须踩回它'},
+      {c:'green',  code:'done', text:'已完成圈的格子（已归位）'}
+    ],
+
+    codeTitle: '跟着高亮读代码——第 13 行算目的地、第 14 行"安放 + 拎起"；第 16 行踩回起点收圈。格下 # 号是全局写入顺序，全部走完你会看到每格恰好写一次。',
+
+    legend: [
+      {c:'violet', text:'start 本圈起点'},
+      {c:'orange', text:'cur 当前位置'},
+      {c:'blue', text:'nxt 目的地'},
+      {c:'green', text:'已归位的格子'}
+    ],
+
+    idea: '下标 i 的家在 (i+k)%n：拎着值沿环直送、把被覆盖的接着拎走；一圈走 n/gcd(n,k) 步回起点，共走 gcd(n,k) 圈才能铺满 n 格。',
+
+    qa: [
+      {q:'为什么一圈只走 n/gcd(n,k) 步就必须停？',
+       a:'从 0 出发每次 +k，第 s 步落在 (s·k) mod n。要踩回起点，得让 s·k 是 n 的倍数；约掉 gcd 后最小的 s = n / gcd(n, k)。所以一圈只踏过 n/g 个格子就回到原地——环是"闭合"的，不换起点再跳只会原地打转。'},
+      {q:'为什么数够 gcd(n,k) 圈就恰好铺满、不多不少？',
+       a:'总账两条：①每圈 n/g 格、互不重叠（圈与圈的起点错开，落点集合不相交）；②g 圈 × 每圈 n/g 格 = g·(n/g) = n 格。所以"恰好每格写一次"。少一圈就有格子没归位，多一圈必然重写——gcd 就是把 n 拆成"圈数 × 圈长"的唯一分法。'},
+      {q:'和主解法三次翻转怎么取舍？',
+       a:'两者都是 O(n) 时间、O(1) 空间。三次翻转几乎不会写错，面试首选；环状替换每个元素只被写一次，但必须把"圈数 = gcd"想对，下标一错就死循环或漏格。这版的意义在于看穿"旋转 = 每个数沿环搬家"的本质，以及练习 gcd 式的循环计数。'},
+      {q:'k = 0 会出什么事？',
+       a:'gcd(n, 0) = n：每个"圈"只有起点自己一个格子，走 1 步就踩回自己——每个数原地安放一遍，数组纹丝不动。算法对边界自动退化，不用特判。'}
+    ],
+
+    complexity: '时间 O(n)（每个元素恰好被写入一次）　·　空间 O(1)（只借一个变量拎值）',
+
+    code: `from math import gcd
+
+class Solution:
+    def rotate(self, nums, k):
+        n = len(nums)
+        k %= n                      # k 可能比 n 大, 先取余
+        count = gcd(n, k)           # 圈数 = gcd(n, k)
+        start = 0
+        while count > 0:            # 一圈一圈归位
+            cur = start
+            prev = nums[start]      # 手里拎着待安放的值
+            while True:             # 沿环跳跃
+                nxt = (cur + k) % n # cur 的值最终要去的格子
+                nums[nxt], prev = prev, nums[nxt]   # 安放, 并拎起被覆盖的值
+                cur = nxt
+                if cur == start:    # 绕回起点 → 这一圈闭合
+                    break
+            start += 1              # 下一个圈从 start+1 出发
+            count -= 1
+`,
+
+    sol(input){
+      const nums = (input.nums || []).slice();
+      const n = nums.length;
+      if(!n) return null;
+      const k = Number(input.k) % n;
+      const g0 = (a, b) => (b ? g0(b, a % b) : a);
+      let count = g0(n, k), start = 0;
+      while(count > 0){
+        let cur = start, prev = nums[start];
+        while(true){
+          const nxt = (cur + k) % n;
+          const t = nums[nxt];
+          nums[nxt] = prev;
+          prev = t;
+          cur = nxt;
+          if(cur === start) break;
+        }
+        start += 1;
+        count -= 1;
+      }
+      return null;
+    },
+    expected: null,
+
+    steps(input){
+      const F = [];
+      const nums = (input.nums || []).slice();
+      const n = nums.length;
+      const kRaw = Number(input.k) || 0;
+      const k = n ? kRaw % n : 0;
+      if(!n){
+        F.push({hl:[1,3,4,5], tag:'空数组', cls:'t-grey', msg:'数组为空，没有元素可转，动画到此结束。', do: () => {}});
+        return F;
+      }
+      const g0 = (a, b) => (b ? g0(b, a % b) : a);
+      const g = g0(n, k);              // gcd(n, k) = 圈数
+      const per = n / g;               // 每圈步数
+
+      /* ★ 快照原则：数组内容/染色/名牌/步号在 push 那一刻定死 */
+      const draw = (o) => (v) => {
+        v.arr('nums', o.arr, {label:'数组 <code>nums</code>（原地轮转）', states:o.states || {}, markers:o.marks || [], labels:o.labels || {}});
+        v.vars('vars', o.vars, {label:'变量', hl:o.vhl || []});
+        if(o.note) v.text('note', o.note, {html:true, label:'圈账本'});
+        if(o.result !== undefined) v.result(o.result, {label:'数组最终状态'});
+      };
+      const vv = (start, cur, prev) => ({n:n, k:k, '圈数gcd':g, '每圈步数':per, start:start, cur:cur, '手里prev':prev});
+
+      F.push({hl:[1,3,4,5], tag:'读题', cls:'t-grey',
+        msg:'n = ' + n + '，k = ' + kRaw + '：把数组向右转 ' + kRaw + ' 位。主解法用三次翻转；解法二演示<b>官方方法二「环状替换」</b>——想清楚一件事：下标 i 的数最终要住进 <code>(i + k) % n</code>。让每个数被拎在手里、沿环一跳一跳直送目的地，被覆盖的值接着拎走，全程只借一个临时变量。',
+        do: draw({arr:nums.slice(), states:{}, vars:vv('—','—','—')})});
+
+      F.push({hl:[6], tag:'k 取余', cls:'t-grey',
+        msg:'<code>k = ' + kRaw + ' % ' + n + ' = ' + k + '</code>：先取余。环状视角一眼看穿：跳 k 步取模 = 在周长 n 的环上走 k 步，多转整圈等于原地踏步——右旋 ' + kRaw + ' 位与右旋 ' + k + ' 位是同一件事。',
+        do: draw({arr:nums.slice(), states:{}, vars:vv('—','—','—'), vhl:['k']})});
+
+      F.push({hl:[7], tag:'圈数 = gcd(n,k)', cls:'t-blue',
+        msg:'<code>count = gcd(n, k) = gcd(' + n + ', ' + k + ') = ' + g + '</code> → 数组由 <b>' + g + '</b> 个独立的环组成。为什么一圈恰走 ' + per + ' 步：从 0 出发每次 +k，第 s 步落在 (s·k) mod n；要踩回起点，s·k 得是 n 的倍数，最小的 s = n / gcd(n, k) = ' + n + '/' + g + ' = ' + per + '——一圈只踏过 ' + per + ' 个格子。',
+        do: draw({arr:nums.slice(), states:{}, vars:vv('—','—','—'), vhl:['圈数gcd'],
+                  note:'一圈只归位 ' + per + ' 格，剩下的格子它永远碰不到。'})});
+
+      F.push({hl:[7,8], tag:'为什么共 g 圈', cls:'t-blue',
+        msg: g === 1
+          ? 'gcd = 1：一圈 ' + per + ' 步 × 1 圈 = ' + n + ' 格，恰好每个格子各写一次——从 start = 0 出发转一整圈就收官，这是最好想的情形。'
+          : '一圈只归位 ' + per + ' 格就绕回起点，剩下的格子这条环永远碰不到——必须再从 start = 1, 2, … 各起一圈。总账：<b>' + g + ' 圈 × 每圈 ' + per + ' 格 = ' + (g * per) + ' = n</b>，各圈互不重叠、每格恰好被写一次。"圈数 = gcd(n,k)"不是拍脑袋，是"每圈走 n/gcd 步"的必然推论。',
+        do: draw({arr:nums.slice(), states:{}, vars:vv(0, '—', '—'),
+                  note:'圈账本：共 <b>' + g + '</b> 圈 × 每圈 <b>' + per + '</b> 步 = ' + n + ' 格，不重不漏。'})});
+
+      const order = {};                // 格子 → 写入步号 '#s'
+      let writeNo = 0;
+      const doneIdx = [];
+      const doneSt = () => { const st = {}; doneIdx.forEach(i => { st[i] = 'done'; }); return st; };
+      const labSnap = () => Object.assign({}, order);
+      const noteCyc = (fin) => '圈账本：共 <b>' + g + '</b> 圈 × 每圈 <b>' + per + '</b> 步 = ' + n + ' 格。' + (fin ? '已完成 ' + fin + ' 圈。' : '');
+
+      for(let s = 0; s < g; s++){
+        const cycIdx = [];
+        let cur = s, prev = nums[s];
+        F.push({hl:s === 0 ? [8,9,10,11] : [9,10,11], ok:9, tag:'第 ' + (s + 1) + '/' + g + ' 圈开工', cls:'t-blue',
+          msg:'第 ' + (s + 1) + ' 圈从 <code>start = ' + s + '</code> 出发：<code>cur = ' + s + '</code>，把 <code>nums[' + s + '] = ' + prev + '</code> 拎在手里（prev）。紫色格是本圈起点，走一圈必须踩回这里才算闭合；已完成的圈（绿格）与本圈零重叠、互不干扰。',
+          do: draw({arr:nums.slice(),
+                    states:(() => { const st = doneSt(); st[s] = 'target'; return st; })(),
+                    marks:[{name:'cur', idx:s, cls:'mi', text:'▲ cur'}],
+                    labels:labSnap(), vars:vv(s, s, prev), note:noteCyc(s)})});
+
+        let guard = 0;
+        while(true){
+          if(++guard > n + 1) break;   // 保险丝: 算法保证 per 步内必回起点
+          const nxt = (cur + k) % n;
+          F.push({hl:[12,13], ok:12, tag:'第 ' + (cycIdx.length + 1) + ' 跳 · 算目的地', cls:'t-blue',
+            msg:'<code>while True</code>：继续跳。<code>nxt = (cur + k) % n = (' + cur + ' + ' + k + ') % ' + n + ' = ' + nxt + '</code>——手里拎的 <b>' + prev + '</b> 最终要住进第 ' + nxt + ' 格。橙牌 cur = 刚空出来的位置，蓝牌 nxt = 目的地。',
+            do: draw({arr:nums.slice(),
+                      states:(() => { const st = doneSt(); cycIdx.forEach(i => { st[i] = 'in'; }); st[s] = 'target'; st[cur] = 'active'; st[nxt] = 'peek'; return st; })(),
+                      marks:[{name:'cur', idx:cur, cls:'mi', text:'▲ cur'}, {name:'nxt', idx:nxt, cls:'mr', text:'▲ nxt'}],
+                      labels:labSnap(), vars:vv(s, cur, prev), note:noteCyc(s)})});
+
+          const placed = prev;
+          const old = nums[nxt];
+          nums[nxt] = placed;
+          prev = old;
+          writeNo++; order[nxt] = '#' + writeNo;
+          cycIdx.push(nxt);
+          F.push({hl:[14], tag:'第 ' + cycIdx.length + ' 跳 · 安放', cls:'t-orange',
+            msg:'<code>nums[' + nxt + '] = ' + placed + '</code>：' + placed + ' 安放进第 ' + nxt + ' 格（全局第 ' + writeNo + ' 次写入，格下 # ' + writeNo + '），同时把原住户 <b>' + old + '</b> 拎到手里——它接下来也要跳往自己的目的地。一进一出只借一个变量，这就是"原地 O(1)"。',
+            do: draw({arr:nums.slice(),
+                      states:(() => { const st = doneSt(); cycIdx.forEach(i => { st[i] = 'in'; }); st[s] = 'target'; st[cur] = 'active'; st[nxt] = 'just'; return st; })(),
+                      marks:[{name:'cur', idx:cur, cls:'mi', text:'▲ cur'}, {name:'nxt', idx:nxt, cls:'mr', text:'▲ nxt'}],
+                      labels:labSnap(), vars:vv(s, cur, prev), vhl:['手里prev'], note:noteCyc(s)})});
+
+          cur = nxt;
+          const back = cur === s;
+          F.push({hl:[15,16], ok:back ? 16 : undefined, no:back ? undefined : 16,
+            tag:'第 ' + cycIdx.length + ' 跳 · 前进', cls:back ? 't-green' : 't-ink',
+            msg: back
+              ? '<code>cur = ' + cur + '</code>，踩回了本圈起点 start = ' + s + ' → 这一圈闭合！本圈共 ' + cycIdx.length + ' 跳 = n/gcd = ' + per + ' 步，' + per + ' 个格子全部归位，手里的值恰好换回出发时的 nums[' + s + ']。'
+              : '<code>cur = ' + nxt + '</code> ≠ start = ' + s + '：还没绕回起点，本圈已归位 ' + cycIdx.length + '/' + per + ' 格。手里的 ' + prev + ' 等着下一跳安放。',
+            do: draw({arr:nums.slice(),
+                      states:(() => { const st = doneSt(); cycIdx.forEach(i => { st[i] = 'in'; }); st[s] = 'target'; st[cur] = 'active'; return st; })(),
+                      marks:[{name:'cur', idx:cur, cls:'mi', text:'▲ cur'}],
+                      labels:labSnap(), vars:vv(s, cur, prev), note:noteCyc(s)})});
+          if(back) break;
+        }
+
+        cycIdx.forEach(i => doneIdx.push(i));
+        F.push({hl:[17,18,19], ok:17, tag:'第 ' + (s + 1) + ' 圈闭合', cls:'t-green',
+          msg:'<code>break</code> 跳出，本圈 ' + per + ' 格全部变绿。<code>start += 1</code>、<code>count -= 1</code>：' + (s + 1 < g
+            ? '已完成 ' + (s + 1) + '/' + g + ' 圈，剩 ' + (g - s - 1) + ' 圈管着剩下的 ' + (n - doneIdx.length) + ' 格——下一圈从 start = ' + (s + 1) + ' 出发，正好补上。'
+            : '全部 ' + g + ' 圈走完：' + g + ' × ' + per + ' = ' + n + ' 个格子各写一次、恰好全部归位。'),
+          do: draw({arr:nums.slice(), states:doneSt(), marks:[],
+                    labels:labSnap(), vars:vv(s + 1, '—', '—'), note:noteCyc(s + 1)})});
+      }
+
+      F.push({hl:[19], tag:'完成', cls:'t-dark',
+        msg:'全部归位：<b>[' + nums.join(', ') + ']</b>，正是右旋 k = ' + k + ' 位的结果。格下 # 号就是写入顺序——每格恰好写一次、共 n 次写入，O(n) 时间 O(1) 空间。与三次翻转的取舍：翻转更好写、几乎不会错；环状替换每格只动一次，但"圈数 = gcd"这个数学点最容易翻车。两招都值得懂：翻转靠"位置先到位、再修顺序"，替换靠"沿环直送、一次到位"。',
+        do: draw({arr:nums.slice(),
+                  states:(() => { const st = {}; for(let i = 0; i < n; i++) st[i] = 'done'; return st; })(),
+                  marks:[], labels:labSnap(), vars:vv('—','—','—'), result:nums.slice()})});
+
+      return F;
+    }
+  }
+});
+</script>
+</body>
+</html>

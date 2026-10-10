@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P045 · 二叉树展开为链表 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/progress.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 45, num: 114, title: '二叉树展开为链表', diff: '中等', cat: '二叉树',
+  method: 'flatten',
+
+  lede: '题目：把二叉树<b>原地</b>揉成一条"向右的链"：<code>left</code> 全部清空，' +
+        '<code>right</code> 串起来的顺序恰好等于<b>前序遍历</b>。要求就地改节点，不返回东西。' +
+        '口诀是<b>逆前序</b>：按 <span class="var i">右 → 左 → 根</span> 的顺序递归，' +
+        '每回到一个节点，就把 <span class="var o">prev</span>（已接好的链的头）挂到自己右边，自己成为新链头——' +
+        '链从尾巴 6 开始，一节一节往回长到 1。',
+
+  roles: [
+    {c:'orange', code:'active', text:'正在处理的节点'},
+    {c:'blue',   code:'in',     text:'递归路径上的祖先'},
+    {c:'green',  code:'done',   text:'已接上链的节点'},
+    {c:'violet', code:'prev',   text:'已接好链的链头'},
+    {c:'ink',    code:'stack',  text:'右侧竖条 = 递归调用栈'}
+  ],
+
+  codeTitle: '跟着高亮读代码——递归按 <code>右 → 左</code> 走到底，回程第 9~11 行才是本体：接链、清左、prev 前移。原树仅作参考，当前指针图逐步更新 L / R 连线，下方单独显示 <code>prev</code> 链。',
+
+  legend: [
+    {c:'orange', text:'正在处理的节点'},
+    {c:'green', text:'已接上链'},
+    {c:'violet', text:'prev 链头'},
+    {swatch:'var(--violet-soft)', text:'下方链面板 = prev 开头的已接好链'}
+  ],
+
+  idea: '逆前序（右→左→根）回程接链：node.right = prev; node.left = None; prev = node——链从 6 一路长回头 1。',
+
+  qa: [
+    {q:'为什么按"右→左→根"走？',
+     a:'最终链的顺序是前序：根 → 左子树全部 → 右子树全部。我们<b>从链尾往链头倒着装</b>，所以处理的先后恰好倒过来：先装右子树（链尾段），再装左子树，最后装根（链头）。每步把旧链接在自己右边，装完的自己就是新链头。'},
+    {q:'node.left = None 会不会把还没处理的节点弄丢？',
+     a:'不会。<b>接链发生在回程</b>：执行到第 9~11 行时，这个节点的左右子树已经全部递归完毕、整条搬进了 prev 链里。此时左指针只剩"指路"作用，清掉刚好符合"展开后 left 全空"的要求。'},
+    {q:'前序遍历一边走一边接不行吗？',
+     a:'正前序接链有个别扭点：接完 node → prev 后，还要找"原来的右子树"继续递归，得额外存后继，容易断链。逆前序天然从尾巴装起，永远只依赖 prev 一个变量，是最不易错的写法。'},
+    {q:'这题为什么返回 None？',
+     a:'题目要求<b>原地</b>修改：函数把 root 这棵树本身改成链，LeetCode 会拿同一个 root 去校验，所以没有返回值。判断标准：沿 root.right 一路走到底，值恰好是前序序列。'}
+  ],
+
+  complexity: '时间 O(n)（每节点访问、接链各一次）　·　空间 O(h)（递归栈，h 为树高）',
+
+  form: [
+    {key:'root', label:'root', type:'tree', def:[1,2,5,3,4,null,6]}
+  ],
+  presets: [
+    {label:'[1,2,5,3,4,null,6]', values:{root:[1,2,5,3,4,null,6]}},
+    {label:'[1,null,2,3]（右孩子带左孩）', values:{root:[1,null,2,3]}},
+    {label:'左斜链 [1,2,null,3]', values:{root:[1,2,null,3]}},
+    {label:'单节点 [1]', values:{root:[1]}},
+    {label:'空树 []', values:{root:[]}}
+  ],
+
+  code: `class Solution:
+    def flatten(self, root):
+        self.prev = None               # 已接好的链, 头在 prev
+        def go(node):                  # 逆前序: 右 -> 左 -> 根
+            if not node:               # 空位直接返回
+                return
+            go(node.right)             # 1) 先走最右边
+            go(node.left)              # 2) 再走左边
+            node.right = self.prev     # 3) 把接好的链接到自己右边
+            node.left = None           #    左指针清空
+            self.prev = node           # 4) 自己成为新链头
+        go(root)
+`,
+
+  sol(input){
+    const T = Viz.parseTree(input.root || []);
+    const byKey = {}; T.nodes.forEach(n => byKey[n.key] = n);
+    // 原树前序（展示对拍基准）
+    const pre = [];
+    (function preorder(k){
+      if(k == null) return;
+      pre.push(byKey[k].val);
+      preorder(byKey[k].left);
+      preorder(byKey[k].right);
+    })(T.root);
+    // 原地展开（与动画/Python 同逻辑：逆前序回程接链）
+    let prev = null;
+    (function go(k){
+      if(k == null) return;
+      go(byKey[k].right);
+      go(byKey[k].left);
+      byKey[k].right = prev;
+      byKey[k].left = null;
+      prev = k;
+    })(T.root);
+    // 沿右脊走一遍，必须恰好等于前序
+    const spine = [];
+    let p = T.root;
+    while(p != null){ spine.push(byKey[p].val); if(byKey[p].left != null) throw new Error('展开后仍有 left 指针'); p = byKey[p].right; }
+    if(JSON.stringify(spine) !== JSON.stringify(pre)) throw new Error('展开结果 ' + JSON.stringify(spine) + ' ≠ 前序 ' + JSON.stringify(pre));
+    return null;   // 原地修改，无返回值
+  },
+  expected: null,
+
+  quiz: [
+    {q:'为什么按「逆前序」(右→左→根)递归接链,而不是按正前序(根→左→右)边走边接?',
+     options:['正前序也一样能接,两种写法难度相同','正前序接完 node 后还要回头找"原来的右子树"继续递归,得额外存后继、容易断链;逆前序从链尾往链头倒着装,永远只依赖 prev 一个变量','因为题目要求返回链表,逆着写才能 return'],
+     answer:1,
+     explain:'最终链的顺序是前序"根→左子树→右子树",从尾巴往头倒着装,处理次序正好整个倒过来:先装右子树(链尾段)、再装左子树、最后装根(链头)。每步只做"把旧链接到自己右边、prev 指向自己"三件事,一个辅助变量就够。正前序接链时 node 的 right 还要留给递归用,存储和指针纠缠在一起,是著名的易错点。',
+     jumpTo:3},
+    {q:'把输入换成 [1,null,2,3]（1 的右孩子是 2,2 的左孩子是 3）,展开后的链是?',
+     options:['1→3→2','1→2→3','3→2→1'],
+     answer:1,
+     explain:'展开结果沿 right 走下来必须等于原树的前序遍历(根→左→右):1 → 先左子树(空) → 再右子树;右子树里 2 在前,2 的左孩子 3 在 2 的空右孩子之前 → 前序 1,2,3。递归过程:3 先接链(链尾),然后 2.right=3,最后 1.right=2。所以是 1→2→3;3→2→1 是"倒着接"误解——链从尾巴长起,但最终方向仍是 1 开头。',
+     jumpTo:39},
+    {q:'回程执行 node.left = None 时,该节点的左子树还没"保存",会不会把节点弄丢?',
+     options:['会,必须先把左子树存进临时变量','会,所以最后要再遍历一次修复','不会——接链发生在回程:执行这三行时左右子树已全部递归完毕、整条搬进了 prev 链;左指针只剩"指过路"的历史使命,清掉正合适'],
+     answer:2,
+     explain:'逆前序的第 9~11 行只在回程执行:走到这里,说明 go(node.right)、go(node.left) 都已返回,左右子树的每个节点都已经挂进 prev 开头的链里。此刻左指针不再承担任何信息,清空它恰好满足"展开后 left 全空"的验收要求。信息不丢的关键是"先递归、后改指针"的次序。',
+     jumpTo:32},
+  ],
+
+  steps(input){
+    const F = [];
+    const T = Viz.parseTree(input.root || []);
+    const byKey = {}; T.nodes.forEach(n => byKey[n.key] = n);
+    const origLayout = Viz.treeLayout(input.root || []);
+    const nodeOrder = [];
+    (function preorder(k){
+      if(k == null) return;
+      nodeOrder.push(k); preorder(byKey[k].left); preorder(byKey[k].right);
+    })(T.root);
+    const pointerSnap = () => nodeOrder.map(k => ({...byKey[k]}));
+    let prevKey = null;                   // 已接好链的头
+    let seq = 0;
+
+    const valOf = k => k == null ? '空' : LCesc(String(byKey[k].val));
+    const chainSnap = () => {             // 从链头 prev 沿 right 收集整条链
+      const arr = [];
+      let p = prevKey;
+      while(p != null){ arr.push(p); p = byKey[p].right; }
+      return arr;
+    };
+    const chainStr = () => chainSnap().map(k => LCesc(String(byKey[k].val))).join('→');
+
+    /* Snapshot pointer fields before recording each frame; shared targets are not copied nodes. */
+    const draw = o => (v) => {
+      const states = {};
+      (o.path || []).forEach(k => { if(states[k] == null) states[k] = 'in'; });
+      (o.chain || []).forEach(k => { if(states[k] == null) states[k] = 'done'; });
+      if(o.cur != null) states[o.cur] = 'active';
+      v.tree('original', origLayout, {label:'原树参考（结构不随接线改变）'});
+      const edges = [], edgeLabels = [], edgeStates = {}, pointers = [];
+      for(const n of o.nodes){
+        for(const [field,label,cls] of [['left','L','e-active'],['right','R','e-done']]){
+          if(n[field] != null){ edgeStates[edges.length] = cls; edges.push([n.key,n[field]]); edgeLabels.push(label); }
+        }
+      }
+      if(T.root != null) pointers.push({key:T.root,text:'root',cls:'mq'});
+      if(o.cur != null) pointers.push({key:o.cur,text:'node',cls:'mi'});
+      if(o.chain?.length) pointers.push({key:o.chain[0],text:'prev',cls:'mv'});
+      v.list('T', o.nodes, {label:'当前指针结构 · L = left（橙），R = right（绿）· 节点按原树前序固定排列',
+        edges, edgeLabels, edgeStates, states, pointers});
+      const chain = o.chain || [];
+      v.list('L', chain.map(k => ({key:k, val:byKey[k].val})), {
+          label:'已接好的链（从链头 <code>prev</code> 往右看）',
+          pointers:chain.length ? [{key:chain[0], text:'▼ prev 链头', cls:'mv'}] : []
+        });
+      const stack = o.stack || [];
+      if(stack.length) v.stack('S', stack, {
+        label:'递归调用栈　·　越往下越新',
+        states:{[stack[stack.length - 1].key]:'active'},
+        topTag:'栈顶'
+      });
+      if(o.vars) v.vars('vars', o.vars, {label:'变量', hl:o.hlVars || []});
+      if(Object.prototype.hasOwnProperty.call(o,'result')) v.result(o.result, {label:'返回值（原地修改）'});
+      v.order(['original','T','L','vars','S','result']);
+    };
+
+    function visit(kk, frames, path){
+      const id = 'c' + (++seq);
+      const stack = frames.concat([{key:id, val:'go(' + (kk == null ? '空' : valOf(kk)) + ')'}]);
+      const base = extra => Object.assign({
+        nodes:pointerSnap(), stack, chain: chainSnap(), path,
+        vars:{node:kk == null ? 'None' : '节点' + valOf(kk), prev:prevKey == null ? 'None' : '节点' + valOf(prevKey)}
+      }, extra || {});
+      if(kk == null){
+        F.push({hl:[5,6], ok:5, tag:'递归出口', cls:'t-grey',
+          msg:'调用 <code>go(空)</code>：这个方向已经没有孩子，撞上空位，<code>not node</code> 成立 → 直接返回，没有节点要接链。它是递归的「悬崖边」，保证 go 每一步都有尽头；同时也在提醒上层：该处理下一个方向了。',
+          do: draw(base())});
+        return;
+      }
+      F.push({hl:[5], no:5, tag:'进入 go', cls:'t-blue',
+        msg:'进入 <b>go(节点 ' + valOf(kk) + ')</b>：按逆前序「右→左→根」的规矩，它自己先靠边站——<b>最右边的子树先装链</b>。为什么倒着来？最终链的顺序是前序「根→左子树→右子树」，而从尾巴往链头倒着装，就得先装右子树（链尾段）、再装左子树、最后装根（链头）。此刻 <code>prev</code> = ' + (prevKey != null ? '节点' + valOf(prevKey) : 'None') + '。',
+        do: draw(base({cur:kk, path: path.concat(kk)}))});
+
+      F.push({hl:[7], tag:'递归右子树', cls:'t-blue',
+        msg:'执行 <code>go(node.right)</code>，从节点 ' + valOf(kk) + ' 进入右孩子 ' + valOf(byKey[kk].right) + '。此时尚未修改任何指针。',
+        do:draw(base({cur:kk,path:path.concat(kk)}))});
+      visit(byKey[kk].right, stack, path.concat(kk));
+      if(byKey[kk].right != null){
+        F.push({hl:[7], tag:'右边走完', cls:'t-ink',
+          msg:'节点 ' + valOf(kk) + ' 的右子树整段装链完毕（画面里已全绿）——它们现在全在 prev 链里，链头是节点' + valOf(prevKey) + '。接着第 8 行走左边：左子树也要整段装进来，之后才轮到节点 ' + valOf(kk) + ' 自己接链。',
+          do: draw(base({cur:kk, path: path.concat(kk)}))});
+      }
+
+      F.push({hl:[8], tag:'递归左子树', cls:'t-blue',
+        msg:'右侧调用已经返回，执行 <code>go(node.left)</code>，进入左孩子 ' + valOf(byKey[kk].left) + '。prev 继续保留已经接好的链头。',
+        do:draw(base({cur:kk,path:path.concat(kk)}))});
+      visit(byKey[kk].left, stack, path.concat(kk));
+      if(byKey[kk].left != null){
+        F.push({hl:[8], tag:'左边走完', cls:'t-ink',
+          msg:'左子树也接完了。此刻 <b>节点 ' + valOf(kk) + ' 的左右子树已经全部搬进链里</b>，<code>prev</code> 链头 = 节点' + valOf(prevKey) + '——整条链从尾巴一路接到了它眼前，轮到它本尊上场。踩坑提醒：正因为子树都处理完了，下一步清空它的左指针不会弄丢任何节点。',
+          do: draw(base({cur:kk, path: path.concat(kk)}))});
+      }
+
+      const oldPrev = prevKey;
+      byKey[kk].right = oldPrev;
+      F.push({hl:[9], tag:'接链 ①', cls:'t-orange',
+        msg: oldPrev != null
+          ? '第 9 行 <code>node.right = prev</code>：节点 ' + valOf(kk) + ' 的右指针指向旧链头节点' + valOf(oldPrev) + '——整条已接好的链挂到了自己右边。这一步是「缝合」：右子树段和左子树段（都已在链里）从此连成一整条。'
+          : '第 9 行 <code>node.right = prev</code>：prev 还是 None → 右指针置空。它接链时整条链还不存在，说明它是全树最右下的节点，暂时就是链的尾巴——之后父辈们会一个个被接到它前面。',
+        do: draw(base({cur:kk, path: path.concat(kk)}))});
+
+      const hadL = byKey[kk].left != null;
+      byKey[kk].left = null;
+      F.push({hl:[10], tag:'接链 ②', cls:'t-orange',
+        msg: hadL
+          ? '第 10 行 <code>node.left = None</code>：把左指针断开——节点 ' + valOf(kk) + ' 原来的左子树早已整体搬进链里，这个指针只剩「指过路」的历史使命，现在按「展开后 left 全空」的要求清掉。'
+          : '第 10 行 <code>node.left = None</code>：左边本来就是空，照规矩再清一遍——保证展开结果里任何节点都不残留 left 指针（题目验收就看这条）。',
+        do: draw(base({cur:kk, path: path.concat(kk)}))});
+
+      prevKey = kk;
+      F.push({hl:[11], tag:'接链 ③', cls:'t-violet',
+        msg:'第 11 行 <code>prev = 节点' + valOf(kk) + '</code>：新链头诞生！链现在是 <b>' + chainStr() + '</b>（右下面板从 prev 往右看）。把三行连起来读就是一遍头插法：挂右链 → 清左指针 → prev 指向自己；每个节点回程都来一遍，链就从尾巴一节节长到根。go(节点' + valOf(kk) + ') 返回上一层。',
+        do: draw(base({cur:kk, path:path.concat(kk), hlVars:['prev']}))});
+      F.push({hl:[11], tag:'go 返回', cls:'t-grey',
+        msg:'节点 ' + valOf(kk) + ' 已完成接链，本次 go 调用结束并出栈，prev 保持指向它。',
+        do:draw(base({stack:frames, cur:path.length ? path[path.length - 1] : null,
+          vars:{node:path.length ? '节点' + valOf(path[path.length - 1]) : 'None', prev:'节点' + valOf(prevKey)}}))});
+    }
+
+    F.push({hl:[1,2,3,4], tag:'初始化', cls:'t-grey',
+      msg:'目标：把树<b>原地</b>揉成一条向右的链，沿 right 走下来的顺序必须等于前序遍历（根→左→右）。套路是<b>逆前序</b>递归（右→左→根）：从链尾往链头倒着装，<code>prev</code> 始终指着已装好段的链头——每一步都是「把旧链整个挂到新节点右边」，相当于链表的头插法。此刻 prev = None、链为空。',
+      do: draw({nodes:pointerSnap(), stack:[], chain:[], vars:{prev:'None'}})});
+
+    F.push({hl:[12], tag:'发起递归', cls:'t-blue',
+      msg:'<code>go(root)</code>：从根节点 ' + (T.root != null ? valOf(T.root) : '—') + ' 开始逆前序递归。看画面：右边的调用栈记录「还没接链、在等子树」的节点；右下方的链面板此刻还是空的——链会从<b>树最右下角的节点</b>开始，一节一节往回长到根。',
+      do: draw({nodes:pointerSnap(), stack:[], chain:[], vars:{prev:'None'}})});
+
+    visit(T.root, [], []);
+
+    const fullChain = chainSnap();
+    F.push({hl:[12], tag:'展开完成', cls:'t-dark',
+      msg: T.root == null
+        ? '🎉 空树本来就「展开」好了：一个节点都没有，函数什么都不用做。'
+        : '🎉 <code>go(root)</code> 结束：树已原地变成一条链 <b>' + chainStr() + '</b>——恰好是原树的前序遍历（沿 root.right 一路走到底即可验证，且所有 left 都为空）。函数<b>没有返回值</b>：题目只要求就地修改，LeetCode 会拿同一个 root 来验收。复盘：每个节点访问、接链各一次，时间 O(n)；递归栈深 O(h)。',
+      do: draw({nodes:pointerSnap(), stack:[], chain: fullChain,
+                vars:{prev: prevKey != null ? '节点' + valOf(prevKey) : 'None'},
+                result: null})});
+
+    return F;
+  }
+});
+</script>
+</body>
+</html>
