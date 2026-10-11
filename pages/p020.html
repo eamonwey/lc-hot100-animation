@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P020 · 旋转图像 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/progress.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 20, num: 48, title: '旋转图像', diff: '中等', cat: '矩阵',
+  method: 'rotate',
+
+  lede: '题目：把 n×n 方阵<b>顺时针旋转 90°</b>，要求原地旋转（不开新矩阵）。' +
+        '硬背坐标公式容易翻车，动画拆成两步直觉动作：' +
+        '<b>①转置</b>——沿主对角线（紫框）把 matrix[i][j] 和 matrix[j][i] 对折互换，只换右上三角；' +
+        '<b>②左右翻转</b>——每行照镜子，matrix[i][j] 和 matrix[i][n−1−j] 互换。两步合起来正好是 90°。',
+
+  roles: [
+    {c:'violet', code:'轴',    text:'主对角线 / 中间列（镜像轴，不动）'},
+    {c:'orange', code:'active', text:'互换中的一半'},
+    {c:'blue',   code:'peek',  text:'互换中的另一半'},
+    {c:'green',  code:'done',  text:'已换到位'}
+  ],
+
+  codeTitle: '跟着高亮读代码——第 6、9 行是两次 swap；' +
+             '转置的 j 从 i+1 开始（只扫上三角），翻转的 j 只扫半行（换一次就到位）。',
+
+  legend: [
+    {c:'violet', text:'对角线 / 镜像轴'},
+    {c:'orange', text:'正在互换'},
+    {c:'blue',   text:'互换的另一半'},
+    {c:'green',  text:'换到位的格子'}
+  ],
+
+  idea: '顺时针 90° = 先转置（沿对角线对折），再左右翻转（每行照镜子）：(r,c)→(c,r)→(c, n−1−r)。',
+
+  qa: [
+    {q:'为什么"转置 + 左右翻转"恰好是顺时针 90°？',
+     a:'跟一个数走一遍：它从 (r,c) 出发。转置把它送到 (c,r)；左右翻转把列号 c 换成 n−1−c，' +
+       '最终落在 (c, n−1−r)。而顺时针 90° 的公式正是 (r,c) → (c, n−1−r)——完全吻合。' +
+       '（逆时针则是"转置 + 上下翻转"。）'},
+    {q:'转置为什么只扫 j > i 的上三角？',
+     a:'swap(i,j) 和 swap(j,i) 是同一件事：把 (0,2) 换给 (2,0) 的同时 (2,0) 也换给了 (0,2)。' +
+       '上三角换一遍，下三角就自动换好了；对角线 (i,i) 跟自己换，跳过。扫全图反而会换回去。'},
+    {q:'左右翻转为什么 j 只扫半行？',
+     a:'一行里 (i,j) 和 (i,n−1−j) 互换是一次动作做两边；j 扫到一半，整行就各就各位了，' +
+       '扫全行会把刚换好的又换回去。'},
+    {q:'还有别的做法吗？',
+     a:'有"四数轮换"：直接按 (r,c)→(c,n−1−r) 四个位置转圈换，一次换 4 个数，但下标容易写错；' +
+       '还有"先上下翻再转置"。转置+翻转两步最不容易错，面试首选。'}
+  ],
+
+  complexity: '时间 O(n²)（两遍各扫一半）　·　空间 O(1)（原地 swap）',
+
+  form: [
+    {key:'matrix', label:'matrix（每行一行）', type:'grid', def:[[1,2,3],[4,5,6],[7,8,9]]}
+  ],
+  presets: [
+    {label:'3×3 方阵', values:{matrix:[[1,2,3],[4,5,6],[7,8,9]]}},
+    {label:'4×4（LeetCode 例）', values:{matrix:[[5,1,9,11],[2,4,8,10],[13,3,6,7],[15,14,12,16]]}},
+    {label:'2×2（边界）', values:{matrix:[[1,2],[3,4]]}},
+    {label:'1×1（边界）', values:{matrix:[[7]]}}
+  ],
+
+  code: `class Solution:
+    def rotate(self, matrix):
+        n = len(matrix)
+        for i in range(n):               # 第 1 步: 转置
+            for j in range(i + 1, n):    # 只扫对角线右上三角
+                matrix[i][j], matrix[j][i] = matrix[j][i], matrix[i][j]
+        for i in range(n):               # 第 2 步: 每行左右翻转
+            for j in range(n // 2):
+                matrix[i][j], matrix[i][n - 1 - j] = matrix[i][n - 1 - j], matrix[i][j]
+`,
+
+  sol(input){
+    const m = input.matrix.map(r => r.slice());
+    const n = m.length;
+    for(let i = 0; i < n; i++)
+      for(let j = i + 1; j < n; j++){
+        const t = m[i][j]; m[i][j] = m[j][i]; m[j][i] = t;
+      }
+    for(let i = 0; i < n; i++)
+      for(let j = 0; j < (n >> 1); j++){
+        const t = m[i][j]; m[i][j] = m[i][n - 1 - j]; m[i][n - 1 - j] = t;
+      }
+    return m;
+  },
+  expected: [[7,4,1],[8,5,2],[9,6,3]],
+
+  quiz: [
+    {q:'转置为什么只扫 j > i 的右上三角？把下三角也扫一遍会怎样？',
+     options:['只是省一半时间，扫全图结果一样','(i,j) 和 (j,i) 是同一次 swap 的两端：上三角换一遍，下三角就自动换好了；再扫下三角等于把刚换好的又换回去，矩阵回到原样','下三角的数不符合转置条件，扫了会报错'],
+     answer:1,
+     explain:'swap 是一次动作做两边：把 (0,2) 换给 (2,0) 的同时，(2,0) 也换给了 (0,2)——一次交换就安顿了上、下三角各一个格子。对角线 (i,i) 自己和自己换等于没动，跳过。若下三角再扫一遍，每对镜像又被换回去，转置白做。同理左右翻转 j 只扫半行：一次 swap 两头同时就位，扫全行会把刚翻好的又翻回去。',
+     jumpTo:2},
+    {q:'输入 [[2,5,8],[1,4,7],[0,3,6]]，顺时针旋转 90° 后是？',
+     options:['[[0,1,2],[3,4,5],[6,7,8]]','[[0,3,6],[1,4,7],[2,5,8]]（只转置、没翻转）','[[6,7,8],[3,4,5],[0,1,2]]（逆时针）'],
+     answer:0,
+     explain:'第一步转置：行列互换得 [[2,1,0],[5,4,3],[8,7,6]]；第二步每行左右翻转 → [[0,1,2],[3,4,5],[6,7,8]]。跟一个数验证：2 从 (0,0) 出发，转置后仍在 (0,0)，翻转把它送到 (0,2)——公式 (r,c)→(c, n−1−r) 的落点正是 (0,2)。误选第二个是只做了转置：转置结果每行恰好是目标行的倒序，还差一步照镜子；误选第三个是做成了逆时针（转置 + 上下翻转）。',
+     jumpTo:23},
+    {q:'想要「逆时针」旋转 90°，两步应该怎么组合？',
+     options:['转置 + 左右翻转（和顺时针一样）','转置 + 上下翻转','只转置一次，不用翻转'],
+     answer:1,
+     explain:'跟 (r,c) 走一遍：转置把它送到 (c,r)；上下翻转把行号换成 n−1−r，最终落点 (n−1−r, c)——这正是逆时针 90° 的坐标公式。顺时针是「转置 + 左右翻转」，两者共享同一个转置，只是第二步照镜子的方向不同。也可以记成：顺时针 = 先上下翻再转置，逆时针 = 先左右翻再转置。',
+     jumpTo:23},
+  ],
+
+  steps(input){
+    const F = [];
+    const orig = input.matrix.map(r => r.slice());
+    const m = input.matrix.map(r => r.slice());
+    const n = m.length;
+
+    /* ★ 快照原则：矩阵内容与状态都在 F.push 那一刻定死 */
+    const snap = () => m.map(r => r.slice());
+    const diag = () => {
+      const o = {};
+      for(let k = 0; k < n; k++) o[k + ',' + k] = 'pivot';
+      return o;
+    };
+    const midcol = () => {
+      const o = {};
+      if(n % 2 === 1) for(let r = 0; r < n; r++) o[r + ',' + ((n - 1) / 2)] = 'pivot';
+      return o;
+    };
+    const draw = (o) => (v) => {
+      v.grid('G', o.mat, {label:'矩阵 <code>matrix</code>　·　紫框 = 对角线 / 镜像轴（不动）', states:o.states});
+      if(o.vars) v.vars('vars', o.vars, {label:'变量'});
+      if(o.res !== undefined) v.result(o.res, {label:'旋转后的矩阵'});
+    };
+
+    F.push({hl:[1,2,3], tag:'初始化', cls:'t-grey',
+      msg:n + '×' + n + ' 方阵要<b>原地顺时针转 90°</b>（本例 n = ' + n + '），不许开新矩阵。硬背坐标公式 (r,c)→(c, n−1−r) 又难记又容易把行列写反，' +
+          '拆成两步直觉动作：<b>①转置</b>——沿主对角线（画面上的紫框）对折，(r,c) 换到 (c,r)；<b>②左右翻转</b>——每行照镜子，列号 c 换成 n−1−c。' +
+          (n >= 2 ? '跟 (0,1) 格的数走一遍：转置送它到 (1,0)，翻转再送它到 (1,' + (n - 1) + ')——正是公式 (r,c)→(c, n−1−r) 的落点，两步拼起来恰好 90°。' : '只有一个格子，转不转都是它自己，正好用来验证代码不越界。') +
+          '全程只用 swap、不开新矩阵——这就是"原地"的底气。',
+      do: draw({mat:snap(), states:{}, vars:{n:n, 方案:'转置 → 左右翻转'}})});
+
+    /* ---------- 第 1 步：转置 ---------- */
+    F.push({hl:[4], tag:'第一步·转置', cls:'t-blue',
+      msg:'第一步<b>转置</b> = 行列互换：<code>matrix[i][j] ↔ matrix[j][i]</code>——画面上沿紫框对角线把右上三角的数翻折到左下，此刻矩阵还没动过一格。' +
+          '为什么只扫 <code>j &gt; i</code> 的上三角？因为 (i,j) 和 (j,i) 是同一次 swap 的两端：换前者的同时后者自动就位；' +
+          '要是下三角再换一遍，等于把刚换好的又换了回去，白忙一场。对角线 (i,i) 自己和自己换等于没动，直接跳过。',
+      do: draw({mat:snap(), states:diag(), vars:{阶段:'转置', n:n}})});
+
+    for(let i = 0; i < n; i++){
+      F.push({hl:[4], tag:'转置·第' + (i + 1) + '行', cls:'t-ink',
+        msg:'i = ' + i + '，本行此刻是 [' + m[i].join(', ') + ']：j 从 <code>' + (i + 1) + '</code> 起步——第 ' + i + ' 列以左（j &lt; i）早在前面几行就换过了，对角线自己换自己又没意义，只处理右边剩下的。' +
+            (i + 1 <= n - 1 ? '本轮要换 j = ' + (i + 1) + '~' + (n - 1) + '，共 ' + (n - 1 - i) + ' 对。' : 'range(' + (i + 1) + ', ' + n + ') 为空——这一行在对角线右边没有格子，直接跳过。'),
+        do: draw({mat:snap(), states:diag(), vars:{i:i, 阶段:'转置'}})});
+      for(let j = i + 1; j < n; j++){
+        F.push({hl:[5], tag:'找一对', cls:'t-blue',
+          msg:'找到隔着对角线相望的一对：橙格 (i=' + i + ', j=' + j + ') 是 <code>' + LCesc(m[i][j]) + '</code>，蓝格 (j=' + j + ', i=' + i + ') 是它的镜像 <code>' + LCesc(m[j][i]) + '</code>。' +
+              '转置的本质是行列对调，所以 (i,j) 的数天生该搬到 (j,i) 去、反之亦然——橙、蓝两个格子马上互换。',
+          do: draw({mat:snap(), states:Object.assign(diag(), {[i + ',' + j]:'active', [j + ',' + i]:'peek'}),
+                    vars:{i:i, j:j, 阶段:'转置'}})});
+        const t = m[i][j]; m[i][j] = m[j][i]; m[j][i] = t;
+        F.push({hl:[6], tag:'互换', cls:'t-orange',
+          msg:'swap 完毕：<code>' + t + '</code> 从 (' + i + ',' + j + ') 搬到 (' + j + ',' + i + ')，<code>' + m[i][j] +
+              '</code> 从 (' + j + ',' + i + ') 搬到 (' + i + ',' + j + ')——两个数都到了转置后该在的位置。' +
+              '一次 swap 一石二鸟，同时安顿上、下三角各一个格子；变绿 = 定稿，后面绝不再碰（再碰一次就换回去了）。',
+          do: draw({mat:snap(), states:Object.assign(diag(), {[i + ',' + j]:'just', [j + ',' + i]:'just'}),
+                    vars:{i:i, j:j, 阶段:'转置'}})});
+      }
+    }
+
+    F.push({hl:[6], tag:'转置完成', cls:'t-green',
+      msg:'转置完毕：整个矩阵沿紫框对角线翻了个面——看第 0 行，现在是 [' + m[0].join(', ') + ']，恰好是<b>原来第 0 列从上到下</b>的数，"行变列"名不虚传。' +
+          '离顺时针 90° 还差最后一步：转置只管行列对调、不管行内顺序，每行现在只是"倒着排"，<b>再左右翻转一次</b>才到位。',
+      do: draw({mat:snap(), states:diag(), vars:{阶段:'转置 ✓'}})});
+
+    /* ---------- 第 2 步：左右翻转 ---------- */
+    F.push({hl:[7], tag:'第二步·翻转', cls:'t-blue',
+      msg:'第二步，每行<b>照镜子</b>：<code>matrix[i][j] ↔ matrix[i][n−1−j]</code>，镜轴就是中间列（紫框）。' +
+          '转置只完成了一半：每行恰好是目标行的<b>倒序</b>，照个镜子把顺序正过来，两步拼起来才是完整的顺时针 90°。' +
+          'j 只扫左半边（每行 ' + (n >> 1) +
+          ' 对）——一次 swap 两头同时就位，扫到半行整行就翻好；扫全行会把刚换好的又换回去。' + (n % 2 === 1 ? '中间列自己就是镜轴，保持不动。' : 'n 是偶数没有正中列，n−1−j 正好两两配对。'),
+      do: draw({mat:snap(), states:midcol(), vars:{阶段:'左右翻转', 每行对数:n >> 1}})});
+
+    for(let i = 0; i < n; i++){
+      F.push({hl:[7], tag:'翻转·第' + (i + 1) + '行', cls:'t-ink',
+        msg:'i = ' + i + '：本行是 [' + m[i].join(', ') + ']，翻完应变成 [' + m[i].slice().reverse().join(', ') + ']。' +
+            ((n >> 1) === 0 ? '这一行没有镜像对（单列），整行原样跳过。' : '要换 j = 0~' + ((n >> 1) - 1) + '，共 ' + (n >> 1) + ' 对——左边换完，右边自动就位。'),
+        do: draw({mat:snap(), states:midcol(), vars:{i:i, 阶段:'左右翻转'}})});
+      for(let j = 0; j < (n >> 1); j++){
+        F.push({hl:[8], tag:'找一对', cls:'t-blue',
+          msg:'镜像对：第 ' + i + ' 行里，橙格 (i,' + j + ') 的 <code>' + LCesc(m[i][j]) + '</code> 和蓝格 (i,' + (n - 1 - j) +
+              ') 的 <code>' + LCesc(m[i][n - 1 - j]) + '</code>。两个格子到镜轴的距离一样远，互换后各自落到对方的位置——这正是"照镜子"的几何含义。',
+          do: draw({mat:snap(), states:Object.assign(midcol(), {[i + ',' + j]:'active', [i + ',' + (n - 1 - j)]:'peek'}),
+                    vars:{i:i, j:j, 阶段:'左右翻转'}})});
+        const t = m[i][j]; m[i][j] = m[i][n - 1 - j]; m[i][n - 1 - j] = t;
+        F.push({hl:[9], tag:'互换', cls:'t-orange',
+          msg:'互换完成：<code>' + t + '</code> 走到右端第 ' + (n - 1 - j) + ' 列，<code>' + m[i][j] + '</code> 落到左端第 ' + j +
+              ' 列，两个都变绿定稿。正因为一次 swap 同时安顿了左右两端，j 只需扫到半行，整行就全部就位。',
+          do: draw({mat:snap(), states:Object.assign(midcol(), {[i + ',' + j]:'just', [i + ',' + (n - 1 - j)]:'just'}),
+                    vars:{i:i, j:j, 阶段:'左右翻转'}})});
+      }
+    }
+
+    /* ---------- 返回 ---------- */
+    const firstRow = [];
+    for(let r = n - 1; r >= 0; r--) firstRow.push(LCesc(orig[r][0]));
+    F.push({hl:[9], tag:'原地完成', cls:'t-dark',
+      msg:'🎉 原地旋转完成——<b>原题不返回任何值，matrix 本身就是答案</b>。自检一下：顺时针转 90° 后，新矩阵的第 0 行应该 = 原来第 0 列<b>从下往上</b>读——正是 <code>' + firstRow.join(', ') +
+          '</code>，对上了。口诀收好：<b>先转置、再左右翻 = 顺时针 90°</b>（想逆时针就换成"转置 + 上下翻"）。',
+      do: (v) => {
+        const st = {};
+        for(let r = 0; r < n; r++) for(let c = 0; c < n; c++) st[r + ',' + c] = 'target';
+        v.grid('G', snap(), {label:'矩阵 <code>matrix</code>　·　全部换到位', states:st});
+      }});
+    return F;
+  }
+});
+</script>
+</body>
+</html>

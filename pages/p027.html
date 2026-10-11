@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P027 · 合并两个有序链表 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/progress.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 27, num: 21, title: '合并两个有序链表', diff: '简单', cat: '链表',
+  method: 'mergeTwoLists',
+
+  lede: '题目：把两条<b>已升序</b>的链表合并成一条升序链表。像 merge 两摞排好序的牌：每次只看两摞<b>最上面的那张</b>，' +
+        '小的抽走放到结果堆，直到一摞抽空，另一摞整摞端过去。' +
+        '<span class="var v">tail</span> 永远站在结果链末尾，负责接住新来的节点；虚线的 <span class="var v">dummy</span> 是起跑线。',
+
+  roles: [
+    {c:'orange', code:'list1', text:'链表 1 的队头（下一个要比较的）'},
+    {c:'blue',   code:'list2', text:'链表 2 的队头'},
+    {c:'violet', code:'tail', text:'结果链的尾巴，新节点接在它后面'},
+    {swatch:'var(--violet-soft)', text:'虚线节点 = dummy 哑节点（值为 0）'}
+  ],
+
+  codeTitle: '跟着高亮读代码——if 那行变<span style="color:var(--green)">绿</span>＝list1 的队头更小（或相等）取 list1，变<span style="color:var(--red)">红</span>＝取 list2 的。',
+
+  legend: [
+    {c:'orange', text:'list1 队头'},
+    {c:'blue',   text:'list2 队头'},
+    {c:'violet', text:'tail 结果链尾巴'},
+    {swatch:'var(--violet-soft)', text:'虚线节点 = dummy 哑节点'}
+  ],
+
+  idea: '哑节点当起跑线，每轮摘下较小的队头接到 tail 后面；一边空了，另一边整段直接拖过来。',
+
+  qa: [
+    {q:'为什么一定要 dummy 哑节点？',
+     a:'第一个接上来的节点没有"前驱"，没有 dummy 就得为"结果头是谁"写特判。有了 dummy，任何节点都有前驱，<code>tail.next</code> 一路接到底，最后 <code>return dummy.next</code> 干净利落。'},
+    {q:'一边空了，为什么剩下的一边能整段接上？',
+     a:'两条输入链各自有序，剩下的那段整体 ≥ 已经接上的所有值，而且内部顺序本来就正确——一个 <code>tail.next</code> 指过去就完事，不用逐个比。'},
+    {q:'比较用 &lt;= 还是 &lt;？',
+     a:'用 <code>&lt;=</code>：两队头相等时优先摘 list1。这样合并是稳定的，结果也和题目期望一致。'},
+    {q:'复杂度？',
+     a:'时间 O(m+n)：每个节点被摘且只被摘一次；空间 O(1)：只是把现成节点的 next 重新接线，不新建节点。'}
+  ],
+
+  complexity: '时间 O(m+n)　·　空间 O(1)（只接指针，不新建节点）',
+
+  form: [
+    {key:'list1', label:'list1', type:'list', def:[1,2,4]},
+    {key:'list2', label:'list2', type:'list', def:[1,3,4]}
+  ],
+  presets: [
+    {label:'1→2→4 与 1→3→4', values:{list1:[1,2,4], list2:[1,3,4]}},
+    {label:'交错：1→3→5 与 2→4→6', values:{list1:[1,3,5], list2:[2,4,6]}},
+    {label:'重复值：2→2→3 与 2→2', values:{list1:[2,2,3], list2:[2,2]}},
+    {label:'一条为空：[] 与 1→3→5', values:{list1:[], list2:[1,3,5]}}
+  ],
+
+  code: `class Solution:
+    def mergeTwoLists(self, list1, list2):
+        dummy = ListNode(0)             # 哑节点: 结果链的起跑线
+        tail = dummy                    # tail 永远站在结果链末尾
+        while list1 and list2:                # 两边都还有节点才比
+            if list1.val <= list2.val:        # 较小(相等取 list1)的先接
+                tail.next = list1
+                list1 = list1.next
+            else:
+                tail.next = list2
+                list2 = list2.next
+            tail = tail.next            # 结果尾巴右移
+        tail.next = list1 if list1 else list2    # 没比完的一整段直接接上
+        return dummy.next               # 跳过哑节点就是答案
+`,
+
+  sol(input){
+    const A = (input.list1 || []).filter(x => x != null);
+    const B = (input.list2 || []).filter(x => x != null);
+    const out = [];
+    let i = 0, j = 0;
+    while(i < A.length && j < B.length){
+      if(A[i] <= B[j]){ out.push(A[i]); i++; }
+      else { out.push(B[j]); j++; }
+    }
+    while(i < A.length){ out.push(A[i]); i++; }
+    while(j < B.length){ out.push(B[j]); j++; }
+    return out;
+  },
+  expected: [1,1,2,3,4,4],
+
+  quiz: [
+    {q:'结果链为什么要先挂一个 dummy 哑节点？',
+     options:['占个内存位置，防止结果链被回收','第一个接上来的节点没有「前驱」——没有 dummy 就得为「结果头是 list1 头还是 list2 头」写特判；有了它，任何节点都有前驱，tail.next 一路接到底，最后 return dummy.next 干净利落','为了记录结果链的长度'],
+     answer:1,
+     explain:'merge 每一轮都是 tail.next = 摘下的节点——这个动作要求 tail 已经存在。结果链第一个节点出现之前 tail 无处可站，「头是谁」又取决于第一次比较的结果，特判难免出错。dummy（值 0 的虚线格）当起跑线后，第一对比较照样往 dummy.next 上接，最后跳过它返回即可。这也是链表题的通用起手式：凡「往结果链上挂节点」，先想想 dummy。',
+     jumpTo:1},
+    {q:'list1 = 1→4→7、list2 = 2→3→9：合并结果是什么？前三轮各摘走谁？',
+     options:['1→2→3→4→7→9；前三轮依次摘 list1 的 1、list2 的 2、list2 的 3','1→2→3→4→7→9；前三轮依次摘 1、2、4（两条链轮流取）','1→4→7→2→3→9；先接完 list1 再接 list2'],
+     answer:0,
+     explain:'每轮只比两个队头：1 vs 2 → 摘 list1 的 1；4 vs 2 → 摘 list2 的 2；4 vs 3 → 摘 list2 的 3。注意第 3 轮：list1 队头是 4，但队头 3 更小，必须先摘 3——不能因为 4 出现得早就先接 4，否则结果就不是升序。之后 4、7 依次比赢接上，list2 只剩 [9]，整段拖过来 → 1→2→3→4→7→9。误选「轮流取」是把归并当成了洗牌；误选「先接完一条」丢掉了合并的意义。',
+     jumpTo:9},
+    {q:'一边取空后，为什么剩下的那段能「整段直接接上」，不用再逐个比较？',
+     options:['因为剩下的一定只有一个节点','因为剩下的段内部本来就有序，且每个值都不小于已接上的所有值（它们是一路比输了才剩下的）——一句 tail.next 指过去，顺序天然正确','其实还要再比一轮，代码只是省略了'],
+     answer:1,
+     explain:'两条输入链各自有序，剩下的段从头到尾保持着升序；它在历次比较中全是输家，说明每个值都 ≥ 结果链现有的一切。两者叠加，整段接在结果尾上依旧有序。这也是时间 O(m+n) 的一部分：剩余段一个指针就接完，不再花比较次数。后面 p033 归并排序的收尾也是同一个红利。',
+     jumpTo:18},
+  ],
+
+  steps(input){
+    const F = [];
+    const A = (input.list1 || []).filter(x => x != null);
+    const B = (input.list2 || []).filter(x => x != null);
+    const aN = A.map((v, i) => ({key: 'a' + i, val: v}));
+    const bN = B.map((v, i) => ({key: 'b' + i, val: v}));
+    let i = 0, j = 0;
+    let tailKey = '__d';
+    const merged = [];                       // 结果链节点 {key,val}
+
+    /* ★ 快照原则：snap() 在 F.push 那一刻调用，把三条链的节点切片、
+       指针名牌、高亮状态全部定死；draw 只消费快照，绝不读外层变量 */
+    const snap = (o) => Object.assign({
+      n1: aN.slice(i),
+      n2: bN.slice(j),
+      r: [{key: '__d', val: 0, dummy: true}].concat(merged),
+      p1: i < aN.length ? [{key: 'a' + i, text: '▼ list1', cls: 'mi'}] : [],
+      p2: j < bN.length ? [{key: 'b' + j, text: '▼ list2', cls: 'mr'}] : [],
+      pr: [{key: tailKey, text: '▼ tail', cls: 'mv'}],
+      s1: {}, s2: {},
+      sr: merged.length ? {[merged[merged.length - 1].key]: 'just'} : {}
+    }, o || {});
+    const draw = (o) => (v) => {
+      v.list('L1', o.n1, {label: '链表 list1　·　队头随时被摘走',
+        states: o.s1, pointers: o.p1});
+      v.list('L2', o.n2, {label: '链表 list2',
+        states: o.s2, pointers: o.p2});
+      v.list('R', o.r, {label: '结果链　·　从 dummy 起跑线往后长',
+        states: o.sr, pointers: o.pr, headTag: {key:'__d', text:'dummy', cls:'mq'}});
+      if(o.res !== undefined) v.result(o.res, {label: '合并结果'});
+    };
+    const remain = () =>
+      (i < aN.length ? 'list1 剩 [' + aN.slice(i).map(n => n.val).join('→') + ']' : 'list1 已空') +
+      '，' +
+      (j < bN.length ? 'list2 剩 [' + bN.slice(j).map(n => n.val).join('→') + ']' : 'list2 已空');
+
+    F.push({hl: [1,2,3,4], tag: '哑节点', cls: 't-grey',
+      msg: '先立一个值 0 的 <b>dummy 哑节点</b>当结果链的起跑线（画面 R 里那个虚线格），tail 也站在它身上。为什么要 dummy？结果链第一个接谁（list1 头还是 list2 头）现在还不知道，没有 dummy 就得为"头是谁"单写特判——有了它，任何节点都有前驱，后面一路 <code>tail.next</code> 接到底，最后 <code>return dummy.next</code> 即可。画面三行：上是待合并的 list1、list2，下是即将长出的结果链。',
+      do: draw(snap({}))});
+
+    while(i < aN.length && j < bN.length){
+      F.push({hl: [5], ok: 5, tag: 'while 检查', cls: 't-blue',
+        msg: 'while 检查：' + remain() + ' → 两边都还有队头，<b>开比</b>。条件要两边都非空才成立——一旦一边取空就没法再比了，循环到此为止；剩下那一边也不会丢，出循环后整段接走。',
+        do: draw(snap({}))});
+      const takeL1 = A[i] <= B[j];
+      F.push({hl: [6], ok: takeL1 ? 6 : undefined, no: takeL1 ? undefined : 6,
+        tag: '比队头', cls: takeL1 ? 't-green' : 't-red',
+        msg: '<code>list1.val ≤ list2.val</code>？list1 队头 <b>' + A[i] + '</b> vs list2 队头 <b>' + B[j] + '</b> → ' +
+             (takeL1 ? '<b>成立</b>，摘 list1 的（它被染红框）' : '<b>不成立</b>，摘 list2 的（它被染红框）') +
+             (A[i] === B[j] ? '（两值相等，按"≤"的规矩取 list1，保证合并稳定）' : '') + '。为什么只比两个队头就够？两条链各自有序，小的那个队头后面不会有人比它更小——这保证了"边走边接"不会接错顺序；要是摘走大的那个，结果就不有序了。',
+        do: draw(snap(takeL1 ? {s1: {['a' + i]: 'target'}} : {s2: {['b' + j]: 'target'}}))});
+      const picked = takeL1 ? {key: 'a' + i, val: A[i]} : {key: 'b' + j, val: B[j]};
+      if(takeL1) i++; else j++;
+      merged.push(picked);
+      tailKey = picked.key;
+      F.push({hl: takeL1 ? [7,8,12] : [9,10,11,12], tag: '接到结果链', cls: 't-orange',
+        msg: '<code>tail.next</code> 指向刚摘下的队头 <b>' + picked.val + '</b>，它挂上结果链（新节点闪绿），tail 随即右移到它身上继续当尾巴；被摘的那条链队头也右移一格——现在' + remain() + '。tail 必须跟着右移：它要永远站在结果链末尾，忘了移，下一个节点就会接错位置。',
+        do: draw(snap({sr: {[picked.key]: 'just'}}))});
+    }
+
+    F.push({hl: [5], no: 5, tag: '一边取完', cls: 't-red',
+      msg: (i >= aN.length && aN.length ? 'list1 先取完了' :
+            j >= bN.length && bN.length ? 'list2 先取完了' :
+            i >= aN.length ? 'list1 本来就是空的' : 'list2 本来就是空的') +
+           ' → while 条件不成立，循环结束。此刻' + remain() + '，但先别担心它会不会被落下——下一段整条接走，一个不丢。',
+      do: draw(snap({}))});
+
+    const fromL1 = i < aN.length;
+    const rest = fromL1 ? aN.slice(i) : bN.slice(j);
+    rest.forEach(n => merged.push({key: n.key, val: n.val}));
+    if(fromL1) i = aN.length; else j = bN.length;
+    F.push({hl: [13], tag: '整段接上', cls: 't-green',
+      msg: rest.length
+        ? (fromL1 ? 'list1' : 'list2') + ' 还剩 [<b>' + rest.map(n => n.val).join('→') + '</b>]——这段内部本来就有序，而且每个值都 ≥ 已接上的所有值（它们是一路比输了才剩下的），所以<b>整段直接接到结果尾</b>，一句 <code>tail.next</code> 搞定、不用再比（新接的节点全部闪绿）。'
+        : '两边正好同时取完，没有剩余节点要接——结果链已经完整。',
+      do: draw(snap({sr: rest.reduce((m, n) => (m[n.key] = 'just', m), {})}))});
+
+    const outVals = merged.map(n => n.val);
+    F.push({hl: [14], tag: '返回', cls: 't-dark',
+      msg: 'return dummy.next：跳过虚线哑节点，真正的头是它后面那个节点——合并结果 = <b>' +
+           (outVals.length ? outVals.join('→') : '(空链)') + '</b> 🎉 复盘：每个节点恰好被摘一次，时间 O(m+n)；全程只改 next 指针、没新建节点，空间 O(1)。',
+      do: draw(snap({res: outVals}))});
+
+    return F;
+  }
+});
+</script>
+</body>
+</html>

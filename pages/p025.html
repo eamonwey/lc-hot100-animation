@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P025 · 环形链表 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/progress.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 25, num: 141, title: '环形链表', diff: '简单', cat: '链表',
+  method: 'hasCycle',
+
+  lede: '题目：链表里<span class="var v">尾节点可能指回前面某个节点</span>形成环（紫色虚线弧），判断到底有没有环。' +
+        '不能傻走——有环就永远走不完！用<span class="var i">慢指针 slow</span>（一次 1 步）和<span class="var r">快指针 fast</span>（一次 2 格）：' +
+        '像操场跑圈，快的必定从后面<b>套圈追上</b>慢的；快的一旦冲出链尾（None），就是没环。',
+
+  roles: [
+    {c:'orange', code:'slow', text:'慢指针：一次走 1 步'},
+    {c:'blue',   code:'fast', text:'快指针：一次走 2 格'},
+    {c:'violet', code:'环',   text:'紫色虚线弧 = 尾巴绕回形成的环'}
+  ],
+
+  codeTitle: '跟着高亮读代码——if 那行变<span style="color:var(--green)">绿</span>＝快指针追上慢指针（有环！），变<span style="color:var(--red)">红</span>＝这一轮还没追上。',
+
+  legend: [
+    {c:'orange', text:'slow 慢指针'},
+    {c:'blue',   text:'fast 快指针'},
+    {c:'violet', text:'紫色虚线弧 = 回环'}
+  ],
+
+  idea: '操场跑圈：跑得快的人每圈必从背后追上慢的人——快指针"套圈"撞上慢指针就有环；快指针能走到 None 就没环。',
+
+  qa: [
+    {q:'为什么快指针一定追得上慢指针？',
+     a:'进环之后每走一轮，fast 与 slow 的距离就<b>缩小 1</b>（fast 每轮多走 1 步）。环长有限，距离迟早缩到 0——而且一定在 slow 进环的一圈之内追上。'},
+    {q:'fast 会不会正好"跳过"slow？',
+     a:'不会。每一轮距离恰好减 1，是一格一格连续靠近的，不存在从两侧越过去的情况。'},
+    {q:'pos = -1 是什么意思？',
+     a:'尾节点的 next 指向空，链表走到尾就结束——无环。此时 fast 最多 n/2 轮就冲到 None，while 条件不成立退出。'},
+    {q:'用哈希表存"见过的节点"不行吗？',
+     a:'行，走到重复节点就是有环，时间同样 O(n)——但要 O(n) 空间。快慢指针把空间压到 O(1)，面试更想要这个。'}
+  ],
+
+  complexity: '时间 O(n)　·　空间 O(1)',
+
+  form: [
+    {key:'head', label:'head', type:'arr', def:[3,2,0,-4]},
+    {key:'pos', label:'pos', type:'num', def:1}
+  ],
+  presets: [
+    {label:'官方例：3→2→0→-4, pos=1', values:{head:[3,2,0,-4], pos:1}},
+    {label:'1→2, pos=0（入口是头）', values:{head:[1,2], pos:0}},
+    {label:'无环：1→2→3→4→5→6, pos=-1', values:{head:[1,2,3,4,5,6], pos:-1}},
+    {label:'单节点无环：1, pos=-1', values:{head:[1], pos:-1}}
+  ],
+
+  code: `class Solution:
+    def hasCycle(self, head):
+        slow = fast = head          # 快慢指针同一地点出发
+        while fast and fast.next:   # 快的能再走两步才继续
+            slow = slow.next        # 慢的走 1 步
+            fast = fast.next.next   # 快的走 2 步
+            if slow is fast:        # 快的绕圈追上慢的
+                return True         # 有环实锤
+        return False                # 快的到头 = 无环
+`,
+
+  sol(input){
+    const vals = (input.head || []).map(Number);
+    const n = vals.length;
+    const pos = (input.pos == null ? -1 : (input.pos | 0));
+    const nx = i => (i + 1 < n) ? i + 1 : (pos >= 0 && pos < n ? pos : -1);
+    if(!n) return false;
+    let slow = 0, fast = 0;
+    while(fast !== -1 && nx(fast) !== -1){
+      slow = nx(slow);
+      fast = nx(nx(fast));
+      if(slow === fast) return true;
+    }
+    return false;
+  },
+  pyCheck: false,
+  expected: true,
+
+  quiz: [
+    {q:'有环时，fast 每轮比 slow 多走 1 步。为什么能断定 fast 一定追得上，而不会「跳过」slow？',
+     options:['因为 fast 速度快，跑的圈数多了总有一轮撞上，纯属概率','进环后每走一轮两者的距离恰好减 1，一格一格连续靠近，不存在从两侧越过去的情况；环长有限，距离迟早归零','因为 slow 会被 while 条件拦停下来等 fast'],
+     answer:1,
+     explain:'设某一刻 fast 在 slow 身后（按前进方向）距离 d，每轮 fast 走 2、slow 走 1，轮末距离恰好变成 d−1——是连续的逐格逼近，不是离散跳跃，所以只能经过 d−1、d−2……一路到 0，绝不会从 1 直接跳到「身后一格」。d 是有限值（不超过环长），追上只是时间问题，而且一定发生在 slow 进环的一圈之内。',
+     jumpTo:6},
+    {q:'链表 1→2→3→4→5→6（pos = -1，无环）：fast 走几轮冲出链尾？返回什么？',
+     options:['3 轮——fast 落点依次是下标 2、4，第 3 轮迈出链尾变 None → 返回 False','6 轮——每个节点都要检查一遍 → 返回 False','2 轮——fast 第二轮就追上 slow → 返回 True'],
+     answer:0,
+     explain:'fast 每轮跨 2 格：第 1 轮落到下标 2（节点 3），第 2 轮落到下标 4（节点 5），第 3 轮先到下标 5（节点 6）、再迈一步就是 None。while 条件发现 fast 为空 → 循环结束，met 保持 False → 无环。此时 slow 才走到下标 3（节点 4），刚过半程——无环时 fast 永远先到终点，这正是「能走到 None 就没环」的判据；有环的话 fast 永远困在环里、身后永远有人，两者形成完美区分。',
+     jumpTo:18},
+    {q:'为什么不能直接从头走到尾判断有没有环？用哈希表记「见过的节点」又差在哪？',
+     options:['走得慢而已，多等一会就行；哈希表没毛病，就是写起来长','有环时指针会永远绕圈，「走到尾」这条路根本不存在，程序停不下来；哈希表能判环但要 O(n) 空间——快慢指针把空间压到 O(1)','哈希表会漏记节点，误判成有环'],
+     answer:1,
+     explain:'「走到尾」的前提是链表有尾——有环的链表没有最后一个节点，指针会无限绕圈，傻走永远停不下来，这就是必须引入「速度差」的原因。哈希表法确实正确：第一次重复出现的节点就是入环口，时间也是 O(n)，但要存下整条链的节点，空间 O(n)。快慢指针只用两个变量，空间 O(1)，是这道题的标准答案。',
+     jumpTo:1},
+  ],
+
+  steps(input){
+    const F = [];
+    const vals = (input.head || []).map(Number);
+    const N = vals.length;
+    const pos = (input.pos == null ? -1 : (input.pos | 0));
+    const hasCycle = N > 0 && pos >= 0 && pos < N;
+    const nodes = vals.map((v, i) => ({key: 'n' + i, val: v}));
+    const name = k => k == null ? 'None' : '节点' + vals[+k.slice(1)];
+    const idxOf = k => +k.slice(1);
+    const nx = k => {
+      if(k == null) return null;
+      const i = idxOf(k);
+      if(i + 1 < N) return 'n' + (i + 1);
+      return hasCycle ? 'n' + pos : null;
+    };
+    const info = 'head = ' + LCesc(vals.join('→') || '(空)') + '，pos = ' + pos + '：' +
+      (hasCycle
+        ? '尾节点（值 ' + vals[N - 1] + '）的 next 指回第 <b>' + pos + '</b> 个节点（值 ' + vals[pos] + '）→ 有环。'
+        : '尾巴不指回任何节点 → 无环，没有紫色弧线。');
+
+    let slow = N ? 'n0' : null, fast = N ? 'n0' : null;
+    let met = false;
+
+    /* ★ 快照原则：ptrSF()/varsSF() 都在 F.push 那一刻调用求值，
+       结果存进帧对象；draw 只消费快照，绝不读外层可变变量 */
+    const ptrSF = () => {
+      const a = [];
+      if(slow != null && slow === fast) a.push({key: slow, text: '▼ slow = fast', cls: 'mv'});
+      else {
+        if(slow != null) a.push({key: slow, text: '▼ slow', cls: 'mi'});
+        if(fast != null) a.push({key: fast, text: '▼ fast', cls: 'mr'});
+      }
+      return a;
+    };
+    const varsSF = m => ({slow: name(slow), fast: name(fast), met: m ? 'True' : 'False'});
+    const draw = (o) => (v) => {
+      v.list('L', nodes, {label: '链表　·　紫色虚线弧 = 尾巴绕回的环',
+        states: o.st || {}, pointers: o.ptr || [],
+        cycleFrom: hasCycle ? 'n' + pos : undefined,
+        headTag: N ? {key: 'n0', text: 'head', cls: 'mq'} : null});
+      v.text('info', info, {html: true});
+      if(o.vars) v.vars('vars', o.vars, {label: '变量'});
+      if(o.res !== undefined) v.result(o.res, {label: '返回结果'});
+    };
+
+    F.push({hl: [1,2], tag: '造链+成环', cls: 't-grey',
+      msg: '先按输入把链造出来：head = ' + LCesc(vals.join('→') || '(空)') + '，共 ' + N + ' 个节点，' +
+        (hasCycle
+          ? '再把尾巴（值 ' + vals[N - 1] + '）的 next 指回第 <b>' + pos + '</b> 个节点（值 ' + vals[pos] + '）——画面上那条紫色虚线弧就是这条回环，链从此没有"最后一个节点"。'
+          : 'pos = -1，尾巴不指回任何节点——<b>没有环</b>，走到尾就是 None，画面上也没有紫色弧线。') +
+        '为什么不能"傻走一遍"来判断？因为有环时指针会永远绕圈、程序根本停不下来——必须让两个速度不同的指针自己去分辨。',
+      do: draw({ptr: ptrSF(), vars: varsSF(false)})});
+
+    F.push({hl: [3], tag: '出发', cls: 't-blue',
+      msg: 'slow、fast 同时站在节点 ' + name(slow) + ' 上出发（画面里两个名牌摞在同一格），met 先记 False——此刻还没有任何"有环"的证据。同一起跑线不影响结果：跑起来后 fast 每轮比 slow 多走 1 步，差距从 0 开始拉开，就像操场跑圈，跑得快的人迟早从背后<b>套圈</b>。规则只有两条：<b>slow 一次 1 步，fast 一次 2 格</b>。',
+      do: draw({ptr: ptrSF(), st: {[slow || 'x']:'active'}, vars: varsSF(false)})});
+
+    let guard = 0;
+    while(fast != null && nx(fast) != null && guard++ < 2 * N + 20){
+      F.push({hl: [4], ok: 4, tag: 'while 检查', cls: 't-blue',
+        msg: 'while 先点名：slow 在 ' + name(slow) + '、fast 在 ' + name(fast) + '，fast 身后还有 ' + name(nx(fast)) + '，两步迈得开 → <b>条件成立</b>，继续跑。这一行顺便兼任"无环探测器"：无环时 fast 一路冲向链尾，迟早身后凑不齐两步、循环自动停；有环时 fast 永远在环里打转，身后永远有人。',
+        do: draw({ptr: ptrSF(), st: {[slow]:'active', [fast]:'in'}, vars: varsSF(false)})});
+      slow = nx(slow);
+      F.push({hl: [5], tag: 'slow 走 1 步', cls: 't-ink',
+        msg: 'slow 迈 1 步：现在站在 <b>' + name(slow) + '</b>（橙色名牌前移，变量面板里 slow 的读数同步更新）。慢指针的任务就是匀速"陪跑"，给 fast 一个稳定的追击目标，它自己不做任何判断。为什么固定走 1 步？只有这样 fast（走 2 步）每轮才能恰好追近 1 格，一格一格连续靠近，永远不会"跳过" slow。',
+        do: draw({ptr: ptrSF(), st: {[slow]:'active', [fast]:'in'}, vars: varsSF(false)})});
+      const f1 = nx(fast);
+      F.push({hl: [6], tag: 'fast 走 2 格', cls: 't-ink',
+        msg: 'fast 迈出本轮第 1 步：落到 ' + name(f1) + '（蓝色名牌前移）' + (idxOf(f1) <= idxOf(fast) ? '——它刚从尾巴沿着紫色虚线弧绕回了环里，这种"往回走"正是有环才有的现象。' : '。') + 'fast 一次要跨 2 格，动画拆成两帧演：先走一步、再走一步，把它的落脚点看清楚。',
+        do: draw({ptr: ptrSF(), st: {[slow]:'active', [f1 || 'x']:'in'}, vars: varsSF(false)})});
+      const f2 = nx(f1);
+      fast = f2;
+      F.push({hl: [6], tag: 'fast 走 2 格', cls: 't-ink',
+        msg: 'fast 第 2 步：落到 <b>' + name(f2) + '</b>' + (f2 != null && idxOf(f2) <= idxOf(f1) ? '（从尾巴又一次绕回环里）' : '') +
+             '。清点这一轮：fast 走 2 格、slow 走 1 格，两者的距离又<b>缩短 1</b>——现在 slow 在 ' + name(slow) + '、fast 在 ' + name(f2) + '。这个"每轮 -1"就是全部秘密：差距一格一格缩，迟早归零，绝不会一下跳过。',
+        do: draw({ptr: ptrSF(), st: {[slow]:'active', [fast || 'x']:'in'}, vars: varsSF(false)})});
+      if(slow === fast){
+        met = true;
+        F.push({hl: [7,8], ok: 7, tag: '追上了！', cls: 't-green',
+          msg: '<code>if slow is fast</code> 成立：slow 和 fast <b>站在同一个节点 ' + name(slow) + ' 上</b>——快的从背后追上了慢的，met 改成 True 并 break 跳出循环，<b>有环实锤</b>。画面上两个名牌合成一个"▼ slow = fast"，节点染成金色。为什么必然追得上？进环后每轮距离恰好减 1、一格一格连续靠近不会跳过，而环长有限——就像操场跑圈，快的人一定套圈。',
+          do: draw({ptr: ptrSF(), st: {[slow]:'target'}, vars: varsSF(true)})});
+        break;
+      }
+      F.push({hl: [7], no: 7, tag: '追上了吗', cls: 't-red',
+        msg: '<code>if slow is fast</code> 不成立：slow 在 ' + name(slow) + '（橙名牌）、fast 在 ' + name(fast) + '（蓝名牌），两人分居两格——还没追上，回 while 检查 fast 是不是已经到头。这里不用担心"永远追不上"：有环时距离每轮缩 1，追上只是时间问题；没环时 fast 会先冲出链尾、循环自己结束。',
+        do: draw({ptr: ptrSF(), st: {[slow]:'active', [fast || 'x']:'in'}, vars: varsSF(false)})});
+    }
+
+    if(!met){
+      F.push({hl: [4], no: 4, tag: 'while 结束', cls: 't-red',
+        msg: N ? 'while 条件第一次不成立：fast 站在 ' + name(fast) + '，身后凑不齐两步——快指针<b>冲出了链尾</b>，循环结束（画面上 fast 的蓝名牌已消失）。这一步就是"无环"的证据：有环的话 fast 永远困在环里出不去，能走到头就说明链有尽头。'
+               : '链表是空的，slow、fast 连出发的地方都没有，循环一次都没进——空链表自然无环。',
+        do: draw({ptr: ptrSF(), st: {}, vars: varsSF(false)})});
+    }
+
+    F.push({hl: met ? [8] : [9], tag: '返回', cls: 't-dark',
+      msg: met
+        ? 'return met = <b>True</b> 🎉 复盘：fast 能套圈追上 slow，唯一解释是链表里<b>有环</b>（无环的话 fast 早就冲到 None 了）。时间 O(n)——slow 被追上前最多走完一圈；空间 O(1)——只用两个指针，比"用哈希表记下见过的每个节点"的 O(n) 空间省得多。'
+        : 'return met = <b>False</b>：fast 一路冲到 None 都没追上谁——<b>无环</b>。整个过程 slow、fast 各自最多走一遍链，时间 O(n)、空间 O(1)。',
+      do: draw({ptr: ptrSF(), st: met ? {[slow]:'target'} : {}, vars: varsSF(met), res: met})});
+
+    return F;
+  },
+
+  /* ========= 解法二：力扣官方方法一 · 哈希集合 ========= */
+  alt: {
+    label: '官方 · 哈希集合',
+    method: 'hasCycle',
+
+    lede: '题目不变：判断链表有没有环（紫色虚线弧 = 尾巴绕回）。解法一的快慢指针把空间压到 O(1)；' +
+          '这一版是力扣官方方法一——<b>哈希集合</b>：拿一个 <span class="var b">visited</span> 集合逐节点登记"见过的节点"，' +
+          '一旦走到<b>集合里已有的</b>节点就是有环；一路走到 <code>None</code> 都没重复就是无环。思路最直白：查重复而已。',
+
+    roles: [
+      {c:'orange', code:'cur',     text:'当前指针：逐节点往前走'},
+      {c:'blue',   code:'visited', text:'visited 集合：见过的节点全部登记'},
+      {c:'violet', code:'环',      text:'紫色虚线弧 = 尾巴绕回形成的环'}
+    ],
+    legend: [
+      {c:'orange', text:'cur 当前节点'},
+      {c:'blue',   text:'已登记进 visited 的节点'},
+      {c:'violet', text:'紫色虚线弧 = 回环'}
+    ],
+
+    codeTitle: '跟着高亮读代码——第 13 行 <code>if</code> 变<span style="color:var(--green)">绿</span>＝当前节点在集合里出现过（有环实锤），变<span style="color:var(--red)">红</span>＝新面孔，登记后继续走。',
+
+    idea: '有环 = 走着走着撞见老面孔：逐节点登记进哈希集合，重复即有环、走到 None 即无环——思路最直白，代价是 O(n) 空间。',
+
+    complexity: '时间 O(n)（每个节点最多登记一次）　·　空间 O(n)（visited 最坏存下整条链）',
+
+    qa: [
+      {q:'和快慢指针（解法一）怎么取舍？',
+       a:'时间同为 O(n)，分水岭在空间：哈希集合要 O(n)——无环时也得把整条链登记完；快慢指针只用两个变量 O(1)。快慢指针还能延伸出"找环入口"（141 的进阶版），面试更受青睐；哈希集合胜在直白、一眼就能写对。'},
+      {q:'集合里存的到底是什么？值相同的节点会误判吗？',
+       a:'存的是<b>节点对象</b>（按对象身份去重），不是节点值——两个不同节点即使值相同也会分别登记，所以"重复"一定意味着走到了同一个节点，判定不会误报。'},
+      {q:'为什么走到 None 就能断定无环？',
+       a:'有环的链表没有"最后一个节点"，任何节点的 next 都非空，指针永远出不了环；能一路走到 None，说明链真的有尽头——这一步本身就是"无环"的证据，不用再检查任何东西。'}
+    ],
+
+    code: `class Solution:
+    def hasCycle(self, head):
+        visited = set()             # 集合: 登记见过的每个节点
+        cur = head                  # 从头出发
+        while cur:                  # 还没走出链尾就继续
+            if cur in visited:      # 撞见老面孔 → 有环实锤
+                return True
+            visited.add(cur)        # 登记当前节点
+            cur = cur.next          # 往前走一步
+        return False                # 冲到 None 没重复 → 无环
+`,
+
+    sol(input){
+      const vals = (input.head || []).map(Number);
+      const n = vals.length;
+      const pos = (input.pos == null ? -1 : (input.pos | 0));
+      const nx = i => (i + 1 < n) ? i + 1 : (pos >= 0 && pos < n ? pos : -1);
+      if(!n) return false;
+      const visited = new Set();
+      let cur = 0;
+      while(cur !== -1){
+        if(visited.has(cur)) return true;
+        visited.add(cur);
+        cur = nx(cur);
+      }
+      return false;
+    },
+    pyCheck: false,
+    expected: true,
+
+    steps(input){
+      const F = [];
+      const vals = (input.head || []).map(Number);
+      const N = vals.length;
+      const pos = (input.pos == null ? -1 : (input.pos | 0));
+      const hasCycle = N > 0 && pos >= 0 && pos < N;
+      const nodes = vals.map((v, i) => ({key: 'n' + i, val: v}));
+      const name = k => k == null ? 'None' : '节点' + vals[+k.slice(1)];
+      const idxOf = k => +k.slice(1);
+      const nx = k => {
+        if(k == null) return null;
+        const i = idxOf(k);
+        if(i + 1 < N) return 'n' + (i + 1);
+        return hasCycle ? 'n' + pos : null;
+      };
+      const info = 'head = ' + LCesc(vals.join('→') || '(空)') + '，pos = ' + pos + '：' +
+        (hasCycle
+          ? '尾节点（值 ' + vals[N - 1] + '）的 next 指回第 <b>' + pos + '</b> 个节点（值 ' + vals[pos] + '）→ 有环。'
+          : '尾巴不指回任何节点 → 无环，没有紫色弧线。');
+
+      const visited = [];           // 已登记节点 key(按登记顺序)
+      let cur = N ? 'n0' : null;
+
+      /* ★ 快照原则：visited/cur/states 在 push 那一刻定死，draw 只读快照 */
+      const draw = (o) => (v) => {
+        v.list('L', nodes, {label: '链表　·　紫色虚线弧 = 尾巴绕回的环',
+          states: o.st || {}, pointers: o.ptr || [],
+          cycleFrom: hasCycle ? 'n' + pos : undefined,
+          headTag: N ? {key: 'n0', text: 'head', cls: 'mq'} : null});
+        v.text('info', info, {html: true});
+        v.set('visited', (o.vis || []).map(k => String(vals[idxOf(k)])),
+          {label: '<code>visited</code> 集合　·　每登记一个节点就多一枚芯片', color: 'b'});
+        if(o.vars) v.vars('vars', o.vars, {label: '变量'});
+        if(o.res !== undefined) v.result(o.res, {label: '返回结果'});
+      };
+
+      F.push({hl: [1,2], tag: '造链+成环', cls: 't-grey',
+        msg: '先按输入把链造出来：head = ' + LCesc(vals.join('→') || '(空)') + '，共 ' + N + ' 个节点，' +
+          (hasCycle
+            ? '再把尾巴（值 ' + vals[N - 1] + '）的 next 指回第 <b>' + pos + '</b> 个节点（值 ' + vals[pos] + '）——紫色虚线弧就是这条回环。'
+            : 'pos = -1，尾巴不指回任何节点——<b>没有环</b>，画面上也没有紫色弧线。') +
+          '这一版不追不赶：拿一个哈希集合把<b>见过的每个节点</b>都记下来，走着瞧——撞见登记过的就是环，走到 None 就是无环。',
+        do: draw({vis: [], st: {}, ptr: N ? [{key: 'n0', text: '▼ cur', cls: 'mi'}] : [],
+                  vars: {cur: N ? name('n0') : 'None', visited: '0 个'}})});
+
+      if(N === 0){
+        F.push({hl: [5], no: 5, tag: 'while 检查', cls: 't-red',
+          msg: '链表是空的：cur = None → <code>while cur</code> 第一次就不成立，循环一次都不进。',
+          do: draw({vis: [], st: {}, ptr: [], vars: {cur: 'None', visited: '0 个'}})});
+        F.push({hl: [10], tag: '返回 False', cls: 't-dark',
+          msg: '🎉 <code>return False</code>：空链表没有节点，自然无环——visited 全程为空。',
+          do: draw({vis: [], st: {}, ptr: [], vars: {cur: 'None', visited: '0 个'}, res: false})});
+        return F;
+      }
+
+      F.push({hl: [3,4], tag: '初始化', cls: 't-blue',
+        msg: '<code>cur</code> 站在 ' + name(cur) + '（此刻和 head 同格），<code>visited = set()</code> 空空如也——还没有任何节点登记在案。' +
+             '这一版的规则只有一条：<b>每到一个节点，先查集合、再登记、然后前进</b>。查到登记过的＝走回头路＝有环；一路走到 None＝无环。',
+        do: draw({vis: visited.slice(), st: {[cur]: 'active'}, ptr: [{key: cur, text: '▼ cur', cls: 'mi'}],
+                  vars: {cur: name(cur), visited: '0 个'}})});
+
+      while(cur != null){
+        F.push({hl: [5], ok: 5, tag: 'while 检查', cls: 't-blue',
+          msg: '<code>while cur</code>：当前在 ' + name(cur) + '，不是 None → 继续走。这一行同时兼任"无环探测器"：' +
+               '有环的链表任何节点的 next 都非空，指针永远困在环里；一旦某天 cur 走成 None，就说明冲出了链尾——循环自己结束。',
+          do: draw({vis: visited.slice(), st: {[cur]: 'active'}, ptr: [{key: cur, text: '▼ cur', cls: 'mi'}],
+                    vars: {cur: name(cur), visited: visited.length + ' 个'}})});
+
+        if(visited.includes(cur)){
+          F.push({hl: [6], ok: 6, tag: '撞见老面孔！', cls: 't-green',
+            msg: '<code>cur in visited</code> 成立：' + name(cur) + ' 早就登记在集合里了！它被<b>第二次</b>走到，唯一的解释是链绕了一圈回到这里——<b>有环实锤</b>。' +
+                 '画面上它被点亮：这就是环的入口（此例中尾巴沿紫色弧绕回的落点）。哈希法不追不赶、逐点查重，判定逻辑就这一句。',
+            do: draw({vis: visited.slice(), st: {[cur]: 'target'}, ptr: [{key: cur, text: '▼ cur', cls: 'mi'}],
+                      vars: {cur: name(cur), visited: visited.length + ' 个'}})});
+          F.push({hl: [7], tag: '返回 True', cls: 't-dark',
+            msg: '🎉 <code>return True</code>：重复节点＝有环。复盘：时间 O(n)——每个节点最多登记一次；空间 O(n)——visited 最坏把整条链都存下来。' +
+                 '对比解法一：快慢指针同样线性时间、却只用两个指针 O(1)——这正是它成为标准答案的原因；哈希法胜在直白、一眼写对。',
+            do: draw({vis: visited.slice(), st: {[cur]: 'target'}, ptr: [{key: cur, text: '▼ cur', cls: 'mi'}],
+                      vars: {cur: name(cur), visited: visited.length + ' 个'}, res: true})});
+          return F;
+        }
+
+        F.push({hl: [6], no: 6, tag: '查重', cls: 't-ink',
+          msg: '<code>cur in visited</code>：' + name(cur) + ' 是新面孔（集合里现有 ' + visited.length + ' 个节点）→ 不是环的证据，继续。' +
+               '注意集合里存的是<b>节点</b>而不是值：两个不同节点哪怕值相同也会分开登记，所以"重复"必然意味着走到了同一个节点，不会误报。',
+          do: draw({vis: visited.slice(), st: {[cur]: 'active'}, ptr: [{key: cur, text: '▼ cur', cls: 'mi'}],
+                    vars: {cur: name(cur), visited: visited.length + ' 个'}})});
+
+        visited.push(cur);
+        F.push({hl: [8], tag: '登记', cls: 't-blue',
+          msg: '<code>visited.add</code>：' + name(cur) + ' 登记进集合——下方芯片墙多了一枚蓝色芯片，树上它标蓝＝已登记。' +
+               '从这一刻起，谁再走到它谁就露馅。目前集合大小：' + visited.length + '。',
+          do: draw({vis: visited.slice(), st: {[cur]: 'in'}, ptr: [{key: cur, text: '▼ cur', cls: 'mi'}],
+                    vars: {cur: name(cur), visited: visited.length + ' 个'}})});
+
+        const prev = cur;
+        cur = nx(cur);
+        const wrapped = cur != null && idxOf(cur) <= idxOf(prev);
+        F.push({hl: [9], tag: '前进', cls: 't-ink',
+          msg: cur != null
+            ? '<code>cur = cur.next</code>：前进到 <b>' + name(cur) + '</b>。' +
+              (wrapped ? '注意它是从尾巴沿着紫色弧<b>绕回</b>来的——"往回走"只有在环里才可能发生；它是老面孔还是新面孔，下一帧查集合见分晓。' : '')
+            : '<code>cur = cur.next</code>：' + name(prev) + ' 的 next 是 <b>None</b>——指针冲出了链尾！',
+          do: draw({vis: visited.slice(), st: cur ? {[cur]: 'active'} : {},
+                    ptr: cur ? [{key: cur, text: '▼ cur', cls: 'mi'}] : [],
+                    vars: {cur: name(cur), visited: visited.length + ' 个'}})});
+      }
+
+      F.push({hl: [5], no: 5, tag: 'while 结束', cls: 't-red',
+        msg: 'cur 变成了 <b>None</b> → <code>while cur</code> 不成立，循环结束。<b>这一步就是"无环"的证据</b>：' +
+             '有环的链表指针永远困在环里走不到 None；能一路走到头，说明链真的有尽头。' +
+             '此刻 visited 存了 ' + visited.length + ' 个节点——无环时也要登记完整条链，这正是 O(n) 空间花掉的地方。',
+        do: draw({vis: visited.slice(), st: {}, ptr: [], vars: {cur: 'None', visited: visited.length + ' 个'}})});
+
+      F.push({hl: [10], tag: '返回 False', cls: 't-dark',
+        msg: '🎉 <code>return False</code>：从 ' + name('n0') + ' 一路走到 None 都没撞见重复 → <b>无环</b>。' +
+             '复盘：时间 O(n)、空间 O(n)。哈希法是"最直白的正确"，解法一的快慢指针是"最省的正确"（O(1) 空间）——面试里两版都要会讲。',
+        do: draw({vis: visited.slice(), st: {}, ptr: [], vars: {cur: 'None', visited: visited.length + ' 个'}, res: false})});
+
+      return F;
+    }
+  }
+});
+</script>
+</body>
+</html>

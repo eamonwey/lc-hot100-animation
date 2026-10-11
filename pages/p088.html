@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P088 · 分割等和子集 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/progress.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 88, num: 416, title: '分割等和子集', diff: '中等', cat: '动态规划',
+  method: 'canPartition',
+
+  lede: '题目：把 <span class="var r">nums</span> 拆成两个子集，让两边的和<b>一样多</b>（每个数只能进其中一边），能拆返回 true。' +
+        '破题就一句话：总和 total 若能平分，问题就变成"<b>能否从 nums 里凑出 total ÷ 2</b>"——标准的 0-1 背包判定。' +
+        '动画里 <span class="var o">dp[j]</span> 表示"能否凑出和 j"，每拿来一个数 <span class="var i">x</span>，' +
+        '让 j 从 target <b>倒着</b>扫到 x，逐格问一句："凑出 j−x 的方案有了吗？有了，加上 x 就能凑出 j。"',
+
+  roles: [
+    {c:'orange', code:'x',      text:'正在考虑"选不选它"的数'},
+    {c:'orange', code:'j',      text:'正在更新的格子 dp[j]'},
+    {c:'blue',   code:'j−x',    text:'被参考的格子：凑出 j−x 再加上 x 就是 j'},
+    {c:'green',  code:'✓',      text:'已经能凑出的和'},
+    {c:'violet', code:'target', text:'总和的一半，点亮它就赢'}
+  ],
+
+  codeTitle: '跟着高亮读代码——if dp[j−x] 变<span style="color:var(--green)">绿</span>＝加上 x 能点亮新和 j；变<span style="color:var(--red)">红</span>＝j−x 都凑不出，这格不动。',
+
+  legend: [
+    {c:'orange', text:'dp[j] 正在更新'},
+    {c:'blue',   text:'dp[j−x] 被参考的格子'},
+    {c:'green',  text:'能凑出（✓）'},
+    {c:'violet', text:'dp[target] 命中'}
+  ],
+
+  idea: 'target = 总和一半就是背包容量：dp[j] = dp[j] 或 dp[j−x]，j 从大到小倒序更新——倒序保证每个数只用一次。',
+
+  qa: [
+    {q:'为什么先看总和的奇偶？',
+     a:'两个相等整数之和必然是偶数。total 是奇数时连试都不用试，直接 false——这是白送的快速出口。total = 22 时，两半各 11，问题就缩成"能否凑出 11"。'},
+    {q:'内层为什么必须从大到小（倒序）扫 j？',
+     a:'正序的话，j 从小到大更新时 dp[j−x] 可能刚被这一轮的 x 点亮——相当于 x 被<b>用了两次</b>（变成完全背包）。倒序保证算 dp[j] 时，dp[j−x] 还是"没考虑过 x"的旧值：每个数只有"选 / 不选"两种命运。'},
+    {q:'dp[j] = dp[j] or dp[j−x] 是什么意思？',
+     a:'凑出 j 有两条路：<b>不选 x</b>（dp[j] 本来就 ✓，保持）或<b>选 x</b>（dp[j−x] 得先 ✓）。两条任一通就 ✓。所以代码里 if dp[j−x]: dp[j] = True 就够了。'},
+    {q:'复杂度？',
+     a:'每个数扫一遍 target 长的表：时间 O(n × target)；一维滚动表空间 O(target)。比开二维"前 i 个数能否凑出 j"省一半内存。'}
+  ],
+
+  complexity: '时间 O(n × target)　·　空间 O(target)（一维滚动 dp 表）',
+
+  form: [
+    {key:'nums', label:'nums', type:'arr', def:[1,5,11,5], itemMin:1, maxLength:30, maxSum:400}
+  ],
+  presets: [
+    {label:'[1,5,11,5] → true', values:{nums:[1,5,11,5]}},
+    {label:'[1,2,3,5] → false（总和奇数）', values:{nums:[1,2,3,5]}},
+    {label:'[2,2,3,5] → false（凑不出一半）', values:{nums:[2,2,3,5]}},
+    {label:'[1,2,3,4] → true', values:{nums:[1,2,3,4]}}
+  ],
+
+  code: `class Solution:
+    def canPartition(self, nums):
+        total = sum(nums)
+        if total % 2 == 1:                # 总和是奇数, 平分不了
+            return False
+        target = total // 2               # 目标: 凑出总和的一半
+        dp = [False] * (target + 1)       # dp[j]: 能否从 nums 凑出和 j
+        dp[0] = True                      # 什么都不选, 先凑出 0
+        for x in nums:                    # 逐个考虑每个数
+            for j in range(target, x - 1, -1):   # j 倒着扫, 防止 x 重复用
+                if dp[j - x]:             # 凑出 j-x 的方案有了吗?
+                    dp[j] = True          # 有: 加上 x 就凑出 j
+            if dp[target]:                # 凑出 target 就提前收工
+                return True
+        return dp[target]
+`,
+
+  sol(input){
+    const nums = (input.nums || []).map(Number);
+    const total = nums.reduce((a, b) => a + b, 0);
+    if(total % 2 === 1) return false;
+    const target = total / 2;
+    const dp = new Array(target + 1).fill(false);
+    dp[0] = true;
+    for(const x of nums)
+      for(let j = target; j >= x; j--)
+        if(dp[j - x]) dp[j] = true;
+    return !!dp[target];
+  },
+  expected: true,
+
+  quiz: [
+    {q:'内层循环为什么必须让 j 从 target 倒着扫到 x,正着扫不行吗?',
+     options:['倒序只是为了省内存,正序也一样','正序时 dp[j−x] 可能刚被本轮这枚 x 点亮——等于一枚 x 当两枚用;倒序保证算 dp[j] 时 dp[j−x] 还是"没考虑过 x"的旧值','倒序算出来的可达和更多,答案更容易是 true'],
+     answer:1,
+     explain:'0-1 背包每个数只有"选/不选"两种命运。正序扫时,比如 x=5 这轮:j=5 先点亮 dp[5],扫到 j=10 时查 dp[10−5]=dp[5] 是刚点亮的 → dp[10] 也亮了,一枚 5 凭空凑出 5+5。倒着扫则 dp[j] 从大到小更新,读到的 dp[j−x] 一定还是上一轮(没考虑 x)的旧值——每个数严格只用一次。这与省内存无关:一维滚动表正序倒序都只开 O(target)。',
+     jumpTo:17},
+    {q:'nums = [3,4,5],总和 12 是偶数。能平分成两个和为 6 的子集吗?',
+     options:['能——总和是偶数就必然能平分','不能——可达的和只有 0、3、4、5(3+4=7、3+5=8、4+5=9…),没有任何子集恰好凑出 6','能——把 3+4=7 里"匀"一点给另一边就行'],
+     answer:1,
+     explain:'偶数只是"入场券",能不能平分还得看数字凑不凑得出一半:dp 表最终点亮的只有 dp[0]、dp[3]、dp[4]、dp[5],dp[6] 到最后一格还是 ✗。子集只有 {3},{4},{5},{3,4}=7,{3,5}=8,{4,5}=9,{3,4,5}=12——全部跨过了 6,没有正中。"子集和"是离散的,不能像水一样匀来匀去;预设 [2,2,3,5](总和 12)是同类反例。另外提醒:算出一半即收工——总和固定,凑出 target 的子集定了,剩下的数自动是另一半,不用再检查。',
+     jumpTo:25},
+    {q:'把内层改成 j 从 x 正着扫到 target,nums = [2,2,3,5](正确答案 false)会被算成什么?',
+     options:['还是 false——扫描方向不影响判定结果','true——第一枚 2 正着扫:dp[2] 刚点亮,扫到 j=4 查 dp[2] 命中,dp[4] 被同一枚 2 点亮;第二枚 2 再接 dp[4]→dp[6],一枚当两枚用,凭空凑出 6','结果不确定,取决于数组顺序'],
+     answer:1,
+     explain:'正序演示一遍:第一枚 2 → j=2:dp[0]✓ 点亮 dp[2];j=4:查 dp[2] 是本轮刚亮的 → dp[4] 亮(同一枚 2 被用了两次);j=6:查 dp[4] 又亮 → dp[6] 亮,提前 return true。真实答案却是 false——倒序时算 dp[4] 读到的 dp[2] 还是本轮旧值 ✗,一枚 2 只能点亮 dp[2],两枚 2 最多凑到 4,6 凑不出。这个"false 被算成 true"正是正序丢失 0-1 语义的铁证。',
+     jumpTo:4},
+  ],
+
+  steps(input){
+    const F = [];
+    const nums = (input.nums || []).map(Number);
+    const total = nums.reduce((a, b) => a + b, 0);
+    const odd = total % 2 === 1;
+    const target = odd ? 0 : total / 2;
+    const fmt = b => b ? '✓' : '✗';
+
+    // 真实跑一遍（与 Python 同逻辑）：dp 随帧生成逐格点亮
+    const dp = new Array(target + 1).fill(false);
+    dp[0] = true;
+
+    // 终版表（仅供收尾回查一个子集用，不参与动画）
+    const dpF = new Array(target + 1).fill(false);
+    dpF[0] = true;
+    for(const x of nums)
+      for(let j = target; j >= x; j--)
+        if(dpF[j - x]) dpF[j] = true;
+
+    // 回查一个凑出 target 的子集（真实查终版表）
+    const subset = [];
+    (function walk(j, k){
+      if(j === 0) return;
+      for(let t = k; t >= 0; t--){
+        if(j - nums[t] >= 0 && dpF[j - nums[t]]){ subset.push(nums[t]); walk(j - nums[t], t - 1); return; }
+      }
+    })(target, nums.length - 1);
+
+    // 画面最多画 14 格（target 更大时 msg 说明）
+    const shown = Math.min(target, 13);
+    const disp = () => { const a = []; for(let j = 0; j <= shown; j++) a.push(fmt(dp[j])); return a; };
+
+    /* ---- 绘制（o 全是帧生成那一刻的快照，铁律 5） ---- */
+    const draw = (o) => (v) => {
+      v.arr('nums', nums, {
+        label:'数组 <code>nums</code>　·　<code>total = ' + o.total + '</code>' + (o.tgt >= 0 ? '　·　<code>target = ' + o.tgt + '</code>' : ''),
+        states:o.nst || {}, markers:o.nmk || [], idxCls:o.nix || {}
+      });
+      if(o.disp) v.arr('dp', o.disp, {
+        label:'DP 表 <code>dp</code>　·　<code>dp[j]</code> = 能否从 nums 里凑出和 j',
+        cw:36, states:o.st || {}, markers:o.mk || [], idxCls:o.ix || {}
+      });
+      if(o.vars) v.vars('vars', o.vars, {label:'当前变量', hl:o.hlv || []});
+      if(o.res !== undefined) v.result(o.res, {label:'返回结果'});
+    };
+    // dp 表状态：✓ 格 done（target 命中后变 target 紫），当前格 active，参考格 in/muted
+    const dstates = (cur, src, can, hit) => {
+      const st = {};
+      for(let j = 0; j <= shown; j++) if(dp[j]) st[j] = (hit && j === target) ? 'target' : 'done';
+      if(cur != null) st[cur] = 'active';
+      if(src != null) st[src] = can ? 'in' : 'muted';
+      return st;
+    };
+    const nm = xi => ({name:'x', idx:xi, cls:'mi', text:'▲ x'});
+
+    F.push({hl:[1,2,3], tag:'求总和', cls:'t-grey',
+      msg:'想把 nums（' + nums.join(', ') + '）拆成和相等的两半，先算总账：' + (nums.length ? nums.join(' + ') + ' = <b>' + total + '</b>' : '空数组，total = <b>0</b>') +
+          '。关键的翻译：若能平分，每一半都恰好是 total ÷ 2——于是"能否两等分"等价于"<b>能否从 nums 里挑一个子集、凑出总和的一半</b>"，这是标准的 0-1 背包判定题（每个数只有选/不选两种命运）。先把这层转化想通，题就解了一半。',
+      do: draw({total:total, tgt:-1, disp:null, vars:{total:total}})});
+
+    if(odd){
+      F.push({hl:[4,5], ok:4, tag:'奇偶检查', cls:'t-red',
+        msg:'读数：total = ' + total + '，是<b>奇数</b>。两个相等的整数之和必然是偶数，奇数连平分的资格都没有 → 第 5 行 <code>return False</code>，DP 表都不用开——这是白送的快速出口。（想看完整流程，切回默认用例或偶数总和的预设）',
+        do: draw({total:total, tgt:-1, disp:null, res:false})});
+      return F;
+    }
+
+    F.push({hl:[4,5], no:4, tag:'奇偶检查', cls:'t-green',
+      msg:'total = ' + total + ' 是偶数，有戏！目标锁定 <b>target = ' + total + ' ÷ 2 = ' + target + '</b>。为什么只盯一半？因为全部数的总和是定值：若某子集恰好凑出 target，剩下的数加起来必然是 ' + total + ' − ' + target + ' = ' + target + '，自动就是另一半——所以只需回答"能否凑出 target"这一个问题。',
+      do: draw({total:total, tgt:target, disp:disp(), st:dstates(null, null, null, false),
+                vars:{total:total, target:target}})});
+
+    F.push({hl:[6,7,8], tag:'开表', cls:'t-grey',
+      msg:'开一张长 ' + (target + 1) + ' 格的布尔表：<code>dp[j]</code> = 能否用已考虑过的数凑出和 j。先发 <code>dp[0] = ✓</code>——一个数都不选，凑出 0，它是所有转移的基石（后面每次"选 x"都要从某个 ✓ 格跳过来）；其余全是 ✗，等着被逐格点亮。',
+      do: draw({total:total, tgt:target, disp:disp(), st:dstates(null, null, null, false),
+                mk:[{name:'base', idx:0, cls:'mg', text:'▲ 基石'}],
+                vars:{target:target, 'dp[0]':'✓', 其余:'✗'}})});
+
+    for(let xi = 0; xi < nums.length; xi++){
+      const x = nums[xi];
+      F.push({hl:[9], tag:'考虑 x=' + x, cls:'t-orange',
+        msg:'轮到考虑数字 <b>x = ' + x + '</b>：它要么进子集、要么不进。让 j 从 target = ' + target + ' <b>倒着</b>扫到 x，逐格问"选上 x 能点亮哪些新和"。倒序是 0-1 背包的灵魂——若正着扫，dp[' + x + '] 会被这枚 x 先点亮' +
+            (2 * x <= target
+              ? '，扫到 j = ' + (2 * x) + ' 时查到的 dp[' + x + '] 是刚点亮的，等于一枚 x 当两枚用、凭空凑出 ' + (2 * x) + '（反例！）'
+              : '，再往后扫就可能查到刚被它点亮的格子，等于一枚 x 当两枚用') +
+            '；倒着扫则算 dp[j] 时 dp[j−x] 还是"没考虑 x"的旧值，每枚数严格只用一次。',
+        do: draw({total:total, tgt:target, disp:disp(), st:dstates(null, null, null, dp[target]),
+                  nst:{[xi]:'active'}, nmk:[nm(xi)], nix:{[xi]:'on-i'},
+                  vars:{x:x, j:'从 ' + target + ' 倒扫到 ' + x, 'dp[target]':fmt(dp[target])}})});
+
+      for(let j = target; j >= x; j--){
+        const src = j - x;
+        const had = dp[j], can = dp[src];
+        if(can) dp[j] = true;                       // 真实更新，后续帧的 disp() 才对
+        const changed = can && !had;
+        F.push({hl: can ? [10,11,12] : [10,11], ok: can ? 11 : undefined, no: can ? undefined : 11,
+          tag:'j=' + j, cls: changed ? 't-green' : (can ? 't-ink' : 't-red'),
+          msg: can
+            ? (had
+                ? '读数：dp[j−x] = dp[' + src + '] = ✓——凑出 ' + src + ' 的方案加上 x 就能凑出 ' + j + '，但 dp[' + j + '] 本来已是 ✓（不选 x 的路早就通了），保持不动。凑出 j 的两条路"不选 x / 选 x"任一通即可。'
+                : '读数：dp[j−x] = dp[' + src + '] = ✓（' + src + ' 能凑出），"选上 x"这条路通了：' + src + ' + ' + x + ' = ' + j + ' → <b>dp[' + j + '] 点亮为 ✓！</b>画面上 ▲j−x 指着的参考格刚把 ▲j 格点亮。')
+            : '读数：dp[j−x] = dp[' + src + '] = ✗——连 ' + src + ' 都凑不出来，加上 x 也到不了 ' + j + ' → dp[' + j + '] 保持 ✗。注意 ✗ 只是"暂时不能"，后面来新数还可能点亮它。',
+          do: draw({total:total, tgt:target, disp:disp(),
+                    st:dstates(j, src, can, dp[target]),
+                    mk:[{name:'j', idx:j, cls:'mi', text:'▲ j'}, {name:'jx', idx:src, cls:'mr', text:'▲ j−x'}],
+                    ix:{[j]:'on-i', [src]:'on-r'},
+                    nst:{[xi]:'active'}, nmk:[nm(xi)],
+                    vars:{x:x, j:j, 'dp[j−x]':fmt(can), 'dp[j]':fmt(dp[j])},
+                    hlv: changed ? ['dp[j]'] : []})});
+      }
+
+      const got = dp[target];
+      F.push({hl:[13], ok: got ? 13 : undefined, no: got ? undefined : 13, tag:'查 target', cls: got ? 't-green' : 't-grey',
+        msg: got
+          ? '这轮结束查 <code>dp[target]</code>：dp[' + target + '] = <b>✓</b>！和为 ' + target + ' 的子集已经凑出来了 → <b>命中即真、提前收工</b>——还没考虑的数不用再看，答案已定。'
+          : '这轮结束查 <code>dp[target]</code>：dp[' + target + '] = ✗，考虑完 x = ' + x + ' 还是凑不出 ' + target + ' → 继续把下一个数拉进来试。',
+        do: draw({total:total, tgt:target, disp:disp(), st:dstates(null, null, null, got),
+                  mk: got ? [{name:'ans', idx:shown, cls:'mg', text:'▲ target'}] : [],
+                  vars:{x:x, 'dp[target]':fmt(got)}})});
+      if(got){
+        F.push({hl:[14], tag:'返回', cls:'t-dark',
+          msg:'<code>return True</code> 🎉 例如 <b>' + (subset.length ? subset.join(' + ') : String(target)) + ' = ' + target + '</b>，这些数进 A 组；剩下没被选的数之和必然也是 ' + target + '，自动组成 B 组——两边和相等，平分成功。',
+          do: draw({total:total, tgt:target, disp:disp(), st:dstates(null, null, null, true),
+                    mk:[{name:'ans', idx:shown, cls:'mg', text:'▲ target'}],
+                    vars:{'dp[target]':'✓'}, res:true})});
+        F.push({hl:[13,14,15], tag:'总结', cls:'t-dark',
+          msg:'复盘这套流程：① 总和为奇数直接 false；② 问题转化为"能否凑出 total/2"的 0-1 背包判定；③ 一维表 j <b>倒序</b>更新，保证每个数只用一次（正序会退化成"每个数随便用"的完全背包）。如果全部数字考虑完 dp[target] 还是 ✗，第 15 行就会 <code>return False</code>——预设 [2,2,3,5] 走的就是那条路。',
+          do: draw({total:total, tgt:target, disp:disp(), st:dstates(null, null, null, true),
+                    mk:[{name:'ans', idx:shown, cls:'mg', text:'▲ target'}], res:true})});
+        return F;
+      }
+    }
+
+    F.push({hl:[15], tag:'返回', cls:'t-red',
+      msg:'所有数都考虑完了，dp[' + target + '] 仍是 ✗ → <code>return dp[target] = False</code>：每个数都只有选/不选两条路，全部组合试遍也凑不出 ' + target + '，说明总和的一半被卡死，平分无解。',
+      do: draw({total:total, tgt:target, disp:disp(), st:dstates(null, null, null, false),
+                mk:[{name:'ans', idx:shown, cls:'mq', text:'▲ target'}],
+                vars:{'dp[target]':'✗'}, res:false})});
+    return F;
+  },
+
+  /* ========= 解法二：教科书 · 二维 DP 表 ========= */
+  alt: {
+    label: '教科书 · 二维 DP 表',
+    method: 'canPartition',
+
+    lede: '题目同前：把 <span class="var r">nums</span> 拆成两个和相等的子集，等价于"<b>能否凑出 total ÷ 2</b>"。' +
+          '这一版回到教科书最直白的写法：开一张 <b>(n+1)×(target+1) 的二维表</b>，' +
+          '<span class="var o">dp[i][j]</span> = 前 i 个数能否凑出和 j。填每格只抬头看上一行的两个来源：' +
+          '<b>正上方</b> = 不选第 i 个数（直接抄）、<b>左上</b> = 选第 i 个数（凑出 j−x 再摞上 x），任一 ✓ 本格就 ✓。' +
+          '主解法的一维倒序，正是这张表的滚动压缩。',
+
+    roles: [
+      {c:'orange', code:'(i,j)',     text:'正在填的格子 dp[i][j]'},
+      {c:'blue',   code:'正上方',    text:'来源一：不选 x，从上一行抄'},
+      {c:'violet', code:'左上',      text:'来源二：选 x（紫框格）'},
+      {c:'green',  code:'✓',         text:'已经能凑出的和'},
+      {c:'violet', code:'target 列', text:'答案列：点亮即 true'}
+    ],
+
+    codeTitle: '跟着高亮读代码——第 14 行变<span style="color:var(--green)">绿</span>＝左上（选 x）这条路通、dp[i][j] 被点亮；变<span style="color:var(--red)">红</span>＝两条路都不通，保持 ✗。',
+
+    legend: [
+      {c:'orange', text:'正在填的 dp[i][j]'},
+      {c:'blue',   text:'正上方来源（不选 x）'},
+      {c:'violet', text:'左上来源（选 x，紫框）'},
+      {c:'green',  text:'能凑出（✓）'},
+      {c:'violet', text:'target 列命中（紫格）'}
+    ],
+
+    idea: 'dp[i][j] = dp[i−1][j]（不选 x）或 dp[i−1][j−x]（选 x）——每格只看上一行、逐格填完整张表；一维倒序就是它的滚动压缩。',
+
+    qa: [
+      {q:'这张二维表和主解法的一维表是什么关系？',
+       a:'一维版就是这张表的<b>滚动压缩</b>：第 i 行只依赖第 i−1 行，旧行用完即扔，滚着留一行就够——省掉"行"这一维，空间从 O(n×target) 降到 O(target)。但压缩是有代价的："上一行的旧值"和"本行的新值"挤进了同一个数组，必须让 <b>j 倒序</b>扫才能保证读到的 dp[j−x] 还是旧值；二维表两行分明，正着倒着都不会错。'},
+      {q:'正上方、左上两个来源各代表什么？',
+       a:'正上方 dp[i−1][j]：<b>不选</b>第 i 个数——前 i−1 个数本来就能凑出 j，直接抄下来；左上 dp[i−1][j−x]：<b>选</b>第 i 个数 x——先用前 i−1 个数凑出 j−x，再把 x 摞上去。凑出 j 走哪条路都行，所以任一来源 ✓ 本格就 ✓（代码里"先抄上方、左上通了再覆盖"）。'},
+      {q:'第 0 行、第 0 列为什么特殊？',
+       a:'它们是全表的地基：第 0 列 j = 0，一个数都不选就凑出来了 → 整列 ✓；第 0 行一个数都没给，除了 0 什么都凑不出 → 除 dp[0][0] 外全 ✗。后面每个格子都站在这圈地基上往上长。'},
+      {q:'面试该写哪一版？',
+       a:'先写二维：定义、转移、边界一一对应，最不容易错；写完主动补一句"第 i 行只依赖第 i−1 行，可滚动压缩成一维、j 倒序扫"——压缩过程本身就是"为什么必须倒序"的最佳证明，是标准加分项。'}
+    ],
+
+    complexity: '时间 O(n × target)　·　空间 O(n × target)（整张二维表；一维版是它的滚动压缩）',
+
+    code: `class Solution:
+    def canPartition(self, nums):
+        total = sum(nums)
+        if total % 2 == 1:              # 总和是奇数, 平分不了
+            return False
+        target = total // 2
+        n = len(nums)
+        dp = [[False] * (target + 1) for _ in range(n + 1)]   # dp[i][j]: 前 i 个数能否凑出 j
+        for i in range(n + 1):
+            dp[i][0] = True             # 地基: 什么都不选, 和 0 总能凑出
+        for i in range(1, n + 1):       # 逐行引入第 i 个数
+            for j in range(1, target + 1):
+                dp[i][j] = dp[i - 1][j]     # 不选 nums[i-1]: 正上方直接抄
+                if j >= nums[i - 1] and dp[i - 1][j - nums[i - 1]]:
+                    dp[i][j] = True         # 选 nums[i-1]: 左上能凑 j-x 就能凑 j
+        return dp[n][target]
+`,
+
+    sol(input){
+      const nums = (input.nums || []).map(Number);
+      const total = nums.reduce((a, b) => a + b, 0);
+      if(total % 2 === 1) return false;
+      const target = total / 2;
+      const n = nums.length;
+      const dp = [];
+      for(let i = 0; i <= n; i++) dp.push(new Array(target + 1).fill(false));
+      for(let i = 0; i <= n; i++) dp[i][0] = true;
+      for(let i = 1; i <= n; i++)
+        for(let j = 1; j <= target; j++){
+          dp[i][j] = dp[i - 1][j];
+          if(j >= nums[i - 1] && dp[i - 1][j - nums[i - 1]]) dp[i][j] = true;
+        }
+      return !!dp[n][target];
+    },
+    expected: true,
+
+    steps(input){
+      const F = [];
+      const nums = (input.nums || []).map(Number);
+      const total = nums.reduce((a, b) => a + b, 0);
+      const odd = total % 2 === 1;
+      const target = odd ? 0 : total / 2;
+      const n = nums.length;
+      const fmt = b => b ? '✓' : '✗';
+
+      // 真实跑一遍（与 Python 同逻辑）：二维表随帧逐格点亮
+      const dp = [];
+      for(let i = 0; i <= n; i++) dp.push(new Array(target + 1).fill(false));
+      for(let i = 0; i <= n; i++) dp[i][0] = true;
+
+      // 画面最多画 14 列（target 更大时 msg 说明，答案以输出徽章为准）
+      const shown = Math.min(target, 13);
+      const trunc = target > shown;
+      const disp = () => dp.map(row => row.slice(0, shown + 1).map(fmt));
+
+      /* ---- 绘制（o 全是帧生成那一刻的快照，铁律 5） ---- */
+      const draw = (o) => (v) => {
+        v.arr('nums', nums, {
+          label:'数组 <code>nums</code>　·　<code>total = ' + o.total + '</code>' + (o.tgt >= 0 ? '　·　<code>target = ' + o.tgt + '</code>' : ''),
+          states:o.nst || {}, markers:o.nmk || [], idxCls:o.nix || {}
+        });
+        if(o.mat) v.grid('dp', o.mat, {
+          label:'二维 DP 表 <code>dp[i][j]</code>　·　行 = 前 i 个数，列 = 想凑的和 j　·　' + o.note,
+          cw:34, states:o.st || {}
+        });
+        if(o.vars) v.vars('vars', o.vars, {label:'当前变量', hl:o.hlv || []});
+        if(o.res !== undefined) v.result(o.res, {label:'返回结果'});
+      };
+
+      // 已点亮 ✓ 格的基础状态（答案列命中后整列转紫）
+      const stOf = (hit) => {
+        const st = {};
+        for(let i = 0; i <= n; i++)
+          for(let j = 0; j <= shown; j++)
+            if(dp[i][j]) st[i + ',' + j] = (hit && j === target) ? 'target' : 'done';
+        return st;
+      };
+      const xMark = xi => [{name:'x', idx:xi, cls:'mi', text:'▲ x'}];
+
+      F.push({hl:[1,2,3], tag:'求总和', cls:'t-grey',
+        msg:'想把 nums（' + (nums.length ? nums.join(', ') : '空数组') + '）拆成和相等的两半，先算总账：total = <b>' + total + '</b>。转化口诀不变：若能平分，每一半恰是 total ÷ 2，问题等价于"<b>能否从 nums 里凑出 target</b>"。这一版不玩一维滚动，回到教科书最直白的定义——开一张二维表，<code>dp[i][j]</code> = 前 i 个数能否凑出和 j，整张画出来逐格填。',
+        do: draw({total:total, tgt:-1, mat:null, vars:{total:total}})});
+
+      if(odd){
+        F.push({hl:[4,5], ok:4, tag:'奇偶检查', cls:'t-red',
+          msg:'total = ' + total + ' 是<b>奇数</b>——两个相等整数之和必为偶数，奇数连平分的资格都没有 → 第 5 行直接 <code>return False</code>，二维表都不用开。这是白送的快速出口。（想看完整流程，切到偶数总和的预设）',
+          do: draw({total:total, tgt:-1, mat:null, res:false})});
+        return F;
+      }
+
+      F.push({hl:[4,6], no:4, tag:'奇偶检查', cls:'t-green',
+        msg:'total = ' + total + ' 是偶数，有戏！目标锁定 <b>target = ' + total + ' ÷ 2 = ' + target + '</b>。为什么只盯一半：总和是定值，凑出 target 的子集定了，剩下的数之和自动也是 ' + target + '——所以整张表只为回答一个问题：<b>dp[n][' + target + '] 是 ✓ 还是 ✗</b>。',
+        do: draw({total:total, tgt:target, mat:null, vars:{total:total, target:target}})});
+
+      F.push({hl:[7,8,9,10], tag:'建表 · 铺地基', cls:'t-grey',
+        msg:'开一张 <b>(' + (n + 1) + ') × (' + (target + 1) + ')</b> 的表：行下标 i = "只考虑前 i 个数"，列下标 j = "想凑出的和"。第 9~10 行先把<b>第 0 列整列点亮 ✓</b>——目标是 0 时一个数都不选就凑出来了；第 0 行除 dp[0][0] 外全是 ✗——一个数都不给，连 1 都凑不出，这圈地基是后面每个转移的垫脚石。' + (trunc ? '（target = ' + target + ' 太宽，画面只画前 14 列，更右的列照样在算）' : '') + '最右一列 j = ' + target + ' 是<b>答案列</b>：它何时点亮，答案就何时确定。',
+        do: draw({total:total, tgt:target, mat:disp(), note:'第 0 列 = 地基（全 ✓）',
+                  st:stOf(false), vars:{'表大小':(n + 1) + '×' + (target + 1), 'dp[*][0]':'全 ✓', 'dp[0][j>0]':'✗'}})});
+
+      let hit = false;
+      for(let i = 1; i <= n; i++){
+        const x = nums[i - 1];
+        F.push({hl:[11], tag:'第 ' + i + ' 行 · 引入 x=' + x, cls:'t-orange',
+          msg:'第 ' + i + ' 行开工：把第 ' + i + ' 个数 <b>x = ' + x + '</b> 拉进考虑范围（数组上 ▲x 所指）。本行逐格回答"前 ' + i + ' 个数能否凑出 j"——对每个 j，x 都面临<b>选 / 不选</b>两条路，而两路的答案都躺在<b>上一行</b>（前 i−1 个数的世界）里，抬头就能抄。',
+          do: draw({total:total, tgt:target, mat:disp(), note:'已填好 ' + (i - 1) + ' 行，正填第 ' + i + ' 行',
+                    st:stOf(hit), nst:{[i - 1]:'active'}, nmk:xMark(i - 1), nix:{[i - 1]:'on-i'},
+                    vars:{i:i, x:x, 任务:'填第 ' + i + ' 行'}})});
+
+        for(let j = 1; j <= target; j++){
+          const up = dp[i - 1][j];                          // 正上方：不选 x
+          const canPick = j >= x;
+          const ul = canPick ? dp[i - 1][j - x] : false;    // 左上：选 x
+          dp[i][j] = up || ul;                              // 真实更新（后续帧的 disp() 才对）
+          const firstHit = (j === target && dp[i][j] && !hit);
+          if(j === target && dp[i][j]) hit = true;
+          if(j > shown) continue;                           // 画面外的列照算但不画
+
+          const picked = canPick && ul;                     // "选 x"这条路是否走通
+          const st = stOf(hit);
+          st[i + ',' + j] = 'active';
+          st[(i - 1) + ',' + j] = 'in';                     // 正上方来源（蓝）
+          if(canPick) st[(i - 1) + ',' + (j - x)] = 'pivot';// 左上来源（紫框）
+          const srcTxt = canPick
+            ? '正上方 dp[' + (i - 1) + '][' + j + '] = ' + fmt(up) + '（<b>不选</b> x 的世界），左上 dp[' + (i - 1) + '][' + (j - x) + '] = ' + fmt(ul) + '（<b>选</b> x：先凑出 ' + (j - x) + ' 再摞上 ' + x + '）'
+            : '正上方 dp[' + (i - 1) + '][' + j + '] = ' + fmt(up) + '（<b>不选</b> x 的世界）；j = ' + j + ' 比 x = ' + x + ' 还小，摞不上 x，"选"这条路压根不存在';
+          F.push({hl: picked ? [12,13,14,15] : [12,13,14],
+                  ok: dp[i][j] ? (picked ? 14 : 13) : undefined, no: dp[i][j] ? undefined : 14,
+                  tag:'填 (' + i + ',' + j + ')', cls: dp[i][j] ? (picked ? 't-green' : 't-blue') : 't-red',
+                  msg: dp[i][j]
+                    ? '填格 dp[' + i + '][' + j + ']（橙格）：' + srcTxt + '。两条路任一通就算数 → <b>dp[' + i + '][' + j + '] = ✓</b>' +
+                      (picked ? '——这格是"选 x"点亮的：' + (j - x) + ' + ' + x + ' = ' + j + '。' : '——从正上方直接继承：不选 x 也凑得出 ' + j + '。') +
+                      '画面上蓝格 = 上方来源，紫框 = 左上来源，橙格 = 刚填好的本格。'
+                    : '填格 dp[' + i + '][' + j + ']（橙格）：' + srcTxt + '。两条路都不通 → dp[' + i + '][' + j + '] 保持 ✗。别灰心：✗ 只是"前 ' + i + ' 个数凑不出 ' + j + '"，后面来新数还可能点亮它。',
+                  do: draw({total:total, tgt:target, mat:disp(), note:'正填第 ' + i + ' 行：j = ' + j,
+                            st:st, nst:{[i - 1]:'active'}, nmk:xMark(i - 1), nix:{[i - 1]:'on-i'},
+                            vars:{i:i, x:x, j:j, 'dp[i-1][j]':fmt(up), 'dp[i-1][j-x]':canPick ? fmt(ul) : '—', 'dp[i][j]':fmt(dp[i][j])},
+                            hlv: dp[i][j] ? ['dp[i][j]'] : []})});
+
+          if(firstHit){
+            F.push({hl:[15], tag:'命中答案列！', cls:'t-green',
+              msg:'🎉 dp[' + i + '][' + target + '] 点亮——<b>前 ' + i + ' 个数就能凑出 target = ' + target + '</b>，答案已是 true！教科书版继续把剩下的行填完；主解法一维版在这里就 <code>return True</code> 提前收工——命中即真，还没考虑的数不用再看。画面上答案列整列转紫。',
+              do: draw({total:total, tgt:target, mat:disp(), note:'答案列命中（紫格）',
+                        st:stOf(true), nst:{[i - 1]:'active'}, nmk:xMark(i - 1),
+                        vars:{i:i, x:x, 'dp[i][target]':'✓', 结论:'true'}, hlv:['dp[i][target]']})});
+          }
+        }
+      }
+
+      // 从表上回查一个凑出 target 的子集（真实查终版表）
+      const picks = [];
+      if(dp[n][target]){
+        (function walk(i, j){
+          if(i === 0 || j === 0) return;
+          if(dp[i - 1][j]){ walk(i - 1, j); return; }              // 不选 nums[i-1] 也够
+          picks.push(nums[i - 1]); walk(i - 1, j - nums[i - 1]);   // 必然选了 nums[i-1]
+        })(n, target);
+      }
+
+      const ans = dp[n][target];
+      const endSt = stOf(ans);
+      if(!ans) endSt[n + ',' + target] = 'block';
+      F.push({hl:[16], ok:ans ? 16 : undefined, no:ans ? undefined : 16, tag:'返回', cls:ans ? 't-dark' : 't-red',
+        msg: ans
+          ? '整张表填完，右下角 <code>dp[n][target] = dp[' + n + '][' + target + '] = ✓</code> → <code>return True</code> 🎉 沿表倒着走还能抓出一个方案：<b>' + (picks.length ? picks.join(' + ') : String(target)) + ' = ' + target + '</b> 进 A 组，剩下的数之和自动也是 ' + target + '，B 组成立——两边相等。'
+          : '整张表填完，右下角 <code>dp[n][target] = dp[' + n + '][' + target + '] = ✗</code> → <code>return False</code>：每个数只有选/不选两条路，全部组合试遍也凑不出 ' + target + '——总和的一半被卡死，平分无解（红框 = 到死也没点亮的答案格）。',
+        do: draw({total:total, tgt:target, mat:disp(), note:ans ? '答案格 ✓（紫）' : '答案格 ✗（红框）',
+                  st:endSt, vars:{'dp[n][target]':fmt(ans)}, res:ans})});
+
+      F.push({hl:[11,12,13], tag:'总结 · 二维 vs 一维', cls:'t-dark',
+        msg:'复盘：① 总和为奇数直接 false；② 二维转移 dp[i][j] = dp[i−1][j]（不选）∨ dp[i−1][j−x]（选），逐行逐格填，每格只看<b>上一行</b>；③ 右下角 dp[n][target] 即答案。再看主解法的一维倒序：既然第 i 行只依赖第 i−1 行，旧行可以滚掉、压成一行 dp[j]——空间省一半；但两代值挤进同一数组后，必须 <b>j 从大到小</b>扫才能保证读到的 dp[j−x] 还是上一行的旧值。二维表，就是"为什么必须倒序"的最好证明。',
+        do: draw({total:total, tgt:target, mat:disp(), note:ans ? '答案格 ✓（紫）' : '答案格 ✗（红框）',
+                  st:endSt, res:ans})});
+
+      return F;
+    }
+  }
+});
+</script>
+</body>
+</html>

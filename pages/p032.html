@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P032 · 随机链表的复制 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/progress.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 32, num: 138, title: '随机链表的复制', diff: '中等', cat: '链表',
+  method: 'copyRandomList',
+
+  lede: '题目：深拷贝一条特殊的链表——每个节点除了 <span class="var r">next</span> 还有一个 <span class="var v">random</span> 指针，' +
+        '可以指向链表里任何节点或 null（输入 [[7,null],[13,0],…] 的第二个数字就是 random 指向的下标）。' +
+        '难点：建到某个新节点时，它 random 指向的节点可能<b>还没建出来</b>。三步法不用查表：' +
+        '① 每个节点后面<b>穿插一个复制品</b>；② 复制品的 random 跟着主人走（<code>cur.random.next</code> 就是目标的复制品）；③ 把复制品<b>拆</b>成新链。' +
+        '动画里复制品显示为 <code>7′</code> 这样的带撇节点，random 关系用下标在解说里写明。',
+
+  roles: [
+    {c:'orange', code:'cur',      text:'正在处理的原节点'},
+    {c:'blue',   code:"cur.next", text:'刚插入的复制品（7′ 这种带撇的）'},
+    {c:'violet', code:'random',   text:'random 目标（用下标说明，不画箭头）'}
+  ],
+
+  codeTitle: '跟着高亮读代码——三趟各干一件事：<code>while cur</code> 循环一遍穿插复制、一遍补 random、一遍拆链。第②步 <code>if cur.random</code> 变<span style="color:var(--green)">绿</span>＝random 有目标要补，变<span style="color:var(--red)">红</span>＝null 保持 null。',
+
+  legend: [
+    {c:'orange', text:'cur 原节点'},
+    {c:'blue', text:'带撇 7′＝复制品'},
+    {c:'violet', text:'random 目标（下标对照）'},
+    {c:'green', text:'已处理完'}
+  ],
+
+  idea: '把复制品穿插进原链，"某个节点的复制品"就变成了 O(1) 可达——主人.next；于是 random 也能一步抄到位：cur.next.random = cur.random.next，最后把带撇的节点串起来拆走。',
+
+  qa: [
+    {q:'为什么不能一边遍历一边建新链？',
+     a:'可以建，但补 random 时会抓瞎：建到节点 x 时，x.random 指向的节点可能在很后面，还没建出来，只能先记着回头再找——那就得用哈希表存"原节点 → 新节点"的映射（O(n) 空间）。穿插法让"任何节点的复制品"就在主人旁边，一步拿到。'},
+    {q:'第②步 cur.next.random = cur.random.next 到底在干嘛？',
+     a:'拆开看：<code>cur.random</code> 是 random 指向的<b>原节点</b>；它的 <code>.next</code> 正好是它的<b>复制品</b>（第①步穿插的结果）；赋给 <code>cur.next.random</code>——cur 的复制品。整句就是"我的复制品的 random，抄 random 目标的复制品"。'},
+    {q:'第③步拆链会不会把原链弄丢？',
+     a:'不会。每一轮先 <code>tail.next = cur.next</code> 把复制品接到新链上，再 <code>cur.next = cur.next.next</code> 让主人跨过复制品连回原链——两个 next 各改各的，两条链都完好。'},
+    {q:'哈希表解法对比？',
+     a:'两趟遍历：第一趟建新节点并存 Map（原→新），第二趟补 next/random。好想也好写，但要 O(n) 额外空间；穿插三步法把额外空间降到 O(1)，面试里是加分项。'}
+  ],
+
+  complexity: '时间 O(n)（三趟扫描）　·　空间 O(1)（不算返回的新链本身）',
+
+  form: [
+    {key:'head', label:'head', type:'randlist', def:[[7,null],[13,0],[11,4],[10,2],[1,0]]}
+  ],
+  presets: [
+    {label:'官方例1（JSON 可改）', values:{head:[[7,null],[13,0],[11,4],[10,2],[1,0]]}},
+    {label:'官方例2：[[1,1],[2,1]]', values:{head:[[1,1],[2,1]]}},
+    {label:'单节点 [[3,null]]', values:{head:[[3,null]]}},
+    {label:'空链表 []', values:{head:[]}}
+  ],
+
+  code: `class Solution:
+    def copyRandomList(self, head):
+        if not head: return None
+        cur = head
+        while cur:                    # ① 每个节点后面插一个复制品
+            dup = Node(cur.val)       # Node 是力扣判题环境自带的节点类
+            dup.next = cur.next
+            cur.next = dup
+            cur = dup.next
+        cur = head                    # 回到开头, 第二遍补 random
+        while cur:                    # ② 复制品的 random 跟着主人走
+            if cur.random:
+                cur.next.random = cur.random.next
+            cur = cur.next.next
+        dummy = Node(0)               # ③ 把复制品拆成新链
+        tail, cur = dummy, head
+        while cur:
+            tail.next = cur.next
+            tail = tail.next
+            cur.next = cur.next.next
+            cur = cur.next
+        return dummy.next
+`,
+
+  sol(input){
+    const arr = (input.head || []).map(p => Array.isArray(p) ? p : [p, null]);
+    const n = arr.length;
+    if(!n) return [];
+    const ridx = i => { const r = arr[i][1]; return (r != null && r >= 0 && r < n) ? r : null; };
+    // 数组模拟链表：orig[i] = 原节点
+    const orig = arr.map((p, i) => ({val:p[0], random:ridx(i), next:null, cp:null}));
+    for(let i = 0; i + 1 < n; i++) orig[i].next = orig[i + 1];
+    // ① 穿插复制（cp 记录主人对应的复制品，等价于主人.next）
+    for(let c = orig[0]; c;){
+      const d = {val:c.val, next:c.next, random:null};
+      c.cp = d; c.next = d;
+      c = d.next;
+    }
+    // ② 补 random
+    for(let c = orig[0]; c; c = c.next.next){
+      if(c.random != null) c.next.random = orig[c.random].next;
+    }
+    // ③ 拆链
+    const head0 = {next:orig[0]}; let t = head0;
+    for(let c = orig[0]; c; c = c.next){
+      t.next = c.next; t = t.next;
+      c.next = c.next.next;
+    }
+    // 序列化：复制品 → 主人下标
+    const owner = new Map();
+    orig.forEach((o, i) => owner.set(o.cp, i));
+    const out = [];
+    for(let c = head0.next; c; c = c.next){
+      out.push([c.val, c.random == null ? null : owner.get(c.random)]);
+    }
+    return out;
+  },
+  expected: [[7,null],[13,0],[11,4],[10,2],[1,0]],
+
+  quiz: [
+    {q:'这道题的难点到底是什么？为什么不能「一边遍历一边建新链」？',
+     options:['链表太长，一次遍历内存装不下','建到节点 x 时，x.random 指向的节点可能在很后面、还没建出来，random 线接不上——想回头补就得用哈希表存「原节点 → 新节点」映射（O(n) 空间）；穿插法让「任何节点的复制品 = 主人.next」，O(1) 步可达','random 指针是只读的，建完链没法补'],
+     answer:1,
+     explain:'next 是顺藤摸瓜的顺序结构，边走边建没问题；random 却能乱指（指前、指后、指自己、指 null）。若按顺序建新链，建到 x 时 x.random 的目标可能还没出生，只能先记账、回头再补——那本账就是哈希表，O(n) 空间。三步法的破局点在第①步：把复制品插在主人旁边，「目标的复制品」= 目标.next，一步拿到，完全不用查表。',
+     jumpTo:1},
+    {q:'输入 [[1,1],[2,1]]（节点 1 的 random 指向节点 2，节点 2 的 random 指向自己）：第①步穿插完成后链表长什么样？第②步补完 random，1′ 和 2′ 的 random 各指向谁？',
+     options:['链表变成 1→1′→2→2′；1′.random → 2′，2′.random → 2′（指向自己）','链表变成 1→2→1′→2′；1′.random → 2，2′.random → 2（指向原节点）','链表变成 1→1′→2→2′；1′.random → 1，2′.random → 2（和主人指同一个对象）'],
+     answer:0,
+     explain:'第①步在每个主人后面插复制品，得到 1→1′→2→2′。第②步公式 cur.next.random = cur.random.next：右边是「random 目标.next」——穿插后恰好是目标的复制品。节点 1 的 random 是节点 2 → 1′.random 指向 2′；节点 2 的 random 指向自己 → 2′.random 指向 2′ 自己。误选指向原节点的，是忘了深拷贝要求整条新链独立——所有指针都必须落在复制品上，混进原节点就不是独立副本了。',
+     jumpTo:16},
+    {q:'第③步拆链时，为什么必须先 tail.next = cur.next 摘复制品、再 cur.next = cur.next.next 把原链接回去？顺序反了会怎样？',
+     options:['顺序无所谓，两步互不影响','反过来会先把复制品的入口覆盖掉：主人的 next 改指下家后，tail 再也接不到它，复制品从两条链上同时消失','因为 tail 必须最后一个移动'],
+     answer:1,
+     explain:'cur.next 是复制品唯一的「挂号地址」。若先执行 cur.next = cur.next.next，主人跨过复制品直连下家，复制品的地址当场作废——tail 无从接起，它成了无人认领的孤儿，新链从这里断开。先摘后缝：tail 先把复制品接走、地址移交完毕，主人才放心改 next。这和反转、交换链表的教训一脉相承：覆盖指针前，先救出它指向的东西。',
+     jumpTo:28},
+  ],
+
+  steps(input){
+    const F = [];
+    const arr = (input.head || []).map(p => Array.isArray(p)
+      ? [p[0], (p[1] != null && p[1] >= 0 && p[1] < (input.head || []).length) ? p[1] : null]
+      : [p, null]);
+    const n = arr.length;
+    if(!n){
+      F.push({hl:[1,2,3], ok:3, tag:'空链表', cls:'t-grey',
+        msg:'head 是空的 → 第一行 <code>if not head</code> 就成立，直接返回 None。空链表的深拷贝还是空，一个出口就把边界情况挡掉了——动手遍历前先想清楚空输入，是个好习惯。',
+        do: (v) => { v.list('MIX', [], {label:'链表'}); }});
+      F.push({hl:[3], tag:'返回', cls:'t-dark',
+        msg:'<code>return None</code> → 返回空链表 []。后面三条 while 一次都没进，什么节点都不用建。',
+        do: (v) => { v.list('MIX', [], {label:'链表'}); v.result([], {label:'返回结果'}); }});
+      return F;
+    }
+    const vals = arr.map(p => p[0]);
+    const rands = arr.map(p => p[1]);
+    const created = new Array(n).fill(false);
+    const extracted = new Array(n).fill(false);
+
+    /* ★ 快照原则：mixNodes()/copyNodes()/pointers/vars 全部在 F.push 那一刻现算 */
+    const mixNodes = () => {
+      const a = [];
+      for(let i = 0; i < n; i++){
+        a.push({key:'o' + i, val:vals[i]});
+        if(created[i] && !extracted[i]) a.push({key:'d' + i, val:vals[i] + "'"});
+      }
+      return a;
+    };
+    const copyNodes = () => {
+      const a = [];
+      for(let i = 0; i < n; i++) if(extracted[i]) a.push({key:'d' + i, val:vals[i] + "'"});
+      return a;
+    };
+    const ptr = (key, text, cls) => ({key:key, text:text, cls:cls});
+    const drawMix = (o) => (v) => {
+      v.list('MIX', mixNodes(), {label:'链表　·　带撇 <code>7′</code> 是复制品，random 用下标写在变量面板',
+        states:o.states || {}, pointers:o.ptrs || [],
+        headTag:{key:'o0', text:'head', cls:'mq'}});
+      v.vars('V', o.vars, {label:'变量'});
+      if(o.result) v.result(o.result, {label:'返回结果'});
+    };
+    const drawSplit = (o) => (v) => {
+      v.list('MIX', mixNodes(), {label:'原链（复制品正被一个个拆走）',
+        states:o.states || {}, pointers:o.ptrs || [],
+        headTag:{key:'o0', text:'head', cls:'mq'}});
+      v.list('COPY', copyNodes(), {label:'新链 <code>dummy.next</code>（深拷贝，节点全是新建的）',
+        dummy:true, states:o.cStates || {}, pointers:o.cPtrs || [],
+        headTag:{key:'__dummy', text:'dummy', cls:'mq'}});
+      v.vars('V', o.vars, {label:'变量'});
+      if(o.result) v.result(o.result, {label:'返回结果'});
+    };
+
+    F.push({hl:[1,2,3,4], no:3, tag:'初始化', cls:'t-grey',
+      msg:'先认题：每个节点有 <code>next</code> 和 <code>random</code> 两个指针——next 串成一条链，random 却能乱指：指后面、指前面、指自己，甚至 null。' +
+          (rands[1] != null
+            ? '比如节点 <b>' + LCesc(vals[1]) + '</b> 的 random 指向下标 ' + rands[1] + '（节点 ' + LCesc(vals[rands[1]]) + '），这种跨节点乱线正是难点：建到某个新节点时，它 random 指向的节点可能<b>还没建出来</b>。'
+            : '本题 ' + n + ' 个节点，random 关系用下标写在变量面板；难点在于建到某个新节点时，它 random 指向的节点可能<b>还没建出来</b>。') +
+          '深拷贝 = 造出一条<b>全新</b>的链，next 和 random 的关系一模一样。三步走：①每个节点后面穿插复制品 → ②复制品的 random 跟主人抄 → ③把复制品拆成新链。',
+      do: drawMix({states:{['o0']:'active'}, ptrs:[ptr('o0','▼ cur','mi')],
+                   vars:{cur:'节点 ' + vals[0] + '（下标 0）', '计划':'①穿插 ②补random ③拆链'}})});
+
+    /* ---------- ① 穿插复制 ---------- */
+    for(let i = 0; i < n; i++){
+      created[i] = true;
+      F.push({hl:[5,6,7,8], tag:'① 穿插复制', cls:'t-blue',
+        msg:'第①遍轮到下标 ' + i + '：在节点 <b>' + LCesc(vals[i]) + '</b> 后面插入它的复制品 <b>' + LCesc(vals[i]) + '′</b>——' +
+            '先 <code>dup.next = cur.next</code> 让 ' + LCesc(vals[i]) + '′ 接住原来的下一个节点' + (i + 1 < n ? ' <b>' + LCesc(vals[i + 1]) + '</b>' : '（null）') +
+            '，再 <code>cur.next = dup</code> 让主人改指 ' + LCesc(vals[i]) + '′。' +
+            '为什么插在中间？这样"任何节点的复制品"就等于 <code>主人.next</code>，O(1) 步可达，第②步抄 random 全靠这层铺垫。画面上带撇的新节点已经混进队伍。',
+        do: drawMix({states:{['o' + i]:'active', ['d' + i]:'peek'}, ptrs:[ptr('o' + i, '▼ cur', 'mi')],
+                     vars:{cur:'节点 ' + vals[i] + '（下标 ' + i + '）', '已插入':(i + 1) + ' 个复制品'}})});
+
+      const ncur = i + 1 < n;
+      F.push({hl:[9], tag:'cur 跨到下家', cls:'t-ink',
+        msg:'<code>cur = dup.next</code>：复制品的 next 存的就是原先的下一个节点——一步跨过 ' + LCesc(vals[i]) + '′，来到 ' +
+            (ncur ? '下标 ' + (i + 1) + ' 的节点 <b>' + LCesc(vals[i + 1]) + '</b>。注意只能落在"原节点"上：要是落到复制品上，下一轮会在复制品后面再插复制品，链表越插越长，永远走不完。'
+                  : 'null——<b>穿插完毕</b>！原链变成了 原节点、复制品 交错的一条长链，每个主人的 next 都指向自己的复制品。'),
+        do: drawMix({states: Object.assign({['d' + i]:'in'}, ncur ? {['o' + (i + 1)]:'active'} : {}),
+                     ptrs: ncur ? [ptr('o' + (i + 1), '▼ cur', 'mi')] : [],
+                     vars:{cur: ncur ? '节点 ' + vals[i + 1] + '（下标 ' + (i + 1) + '）' : 'null', '已插入':n + ' 个复制品'}})});
+    }
+
+    /* ---------- ② 补 random ---------- */
+    F.push({hl:[10], tag:'② 准备补 random', cls:'t-violet',
+      msg:'第①遍结束，cur 拨回 <code>head</code> 从头再来。第二遍只干一件事：给每个复制品补上 random。' +
+          '巧门全在第①步——复制品就插在主人旁边，所以"<b>主人的复制品 = 主人.next</b>"，于是"random 目标的复制品" = <code>cur.random.next</code>，一条表达式就能抄到，完全不用哈希表存映射。',
+      do: drawMix({states:{['o0']:'active'}, ptrs:[ptr('o0','▼ cur','mi')],
+                   vars:{cur:'节点 ' + vals[0] + '（下标 0）', '本轮任务':'补 random'}})});
+
+    for(let i = 0; i < n; i++){
+      const r = rands[i];
+      const has = r != null;
+      F.push({hl:[11,12], ok: has ? 13 : undefined, no: has ? undefined : 13,
+        tag:'看 random', cls: has ? 't-green' : 't-red',
+        msg:'cur = 节点 <b>' + LCesc(vals[i]) + '</b>（下标 ' + i + '）：它的 random ' + (has
+          ? '指向<b>下标 ' + r + '（节点 ' + LCesc(vals[r]) + '）</b>，不是 null → 深拷贝要求这根线也照样画：复制品 ' + LCesc(vals[i]) + '′ 的 random 该指向节点 ' + LCesc(vals[r]) + ' 的复制品 ' + LCesc(vals[r]) + '′，先把目标认准（画面上目标节点标紫）。'
+          : '是 <b>null</b> → null 也要照抄：复制品的 random 保持 null，这轮直接跳过、什么都不补。把 null 补成乱指，就是深浅拷贝的经典踩坑。'),
+        do: drawMix({states: has ? {['o' + i]:'active', ['o' + r]:'target', ['d' + i]:'in'}
+                                  : {['o' + i]:'active', ['d' + i]:'in'},
+                     ptrs:[ptr('o' + i, '▼ cur', 'mi')],
+                     vars:{cur:'节点 ' + vals[i] + '（下标 ' + i + '）',
+                           'cur.random': has ? '→ 下标 ' + r + '（节点 ' + vals[r] + '）' : 'null',
+                           'cur.next.random': has ? '待补' : '保持 null'}})});
+
+      if(has){
+        F.push({hl:[13], tag:'补 random', cls:'t-violet',
+          msg:'<code>cur.next.random = cur.random.next</code>——拆成两半读：等号左边 cur.next 是主人的复制品 <b>' + LCesc(vals[i]) + '′</b>（要补线的人）；' +
+              '等号右边 cur.random 是目标 <b>' + LCesc(vals[r]) + '</b>，它的 .next 正好是目标自己的复制品 <b>' + LCesc(vals[r]) + '′</b>。' +
+              '整句就是"我的复制品的 random = 目标的复制品"，一步抄到位、<b>不查任何表</b>——第①步穿插的红利此刻兑现。',
+          do: drawMix({states:{['d' + i]:'in', ['d' + r]:'target'},
+                       ptrs:[ptr('o' + i, '▼ cur', 'mi')],
+                       vars:{cur:'节点 ' + vals[i] + '（下标 ' + i + '）',
+                             'cur.random':'→ 下标 ' + r + '（节点 ' + vals[r] + '）',
+                             'cur.next.random':'→ ' + vals[r] + '′（下标 ' + r + ' 的复制品）'}})});
+      }
+
+      const ncur = i + 1 < n;
+      F.push({hl:[14], tag:'cur 跳两位', cls:'t-ink',
+        msg:'<code>cur = cur.next.next</code>：从主人 ' + LCesc(vals[i]) + ' 跨过复制品 ' + LCesc(vals[i]) + '′，跳到下一个<b>原节点</b>' +
+            (ncur ? ' <b>' + LCesc(vals[i + 1]) + '</b>。为什么跳两位？这一遍只处理"主人"，复制品的 random 是刚才等号左边被赋值的，不用单独访问；只跳一位就会站到复制品上，把补线逻辑全打乱。'
+                  : '。走到 null，<b>random 全部补完</b>：每个带撇节点都知道该指谁了。'),
+        do: drawMix({states:{['o' + i]:'done'},
+                     ptrs: ncur ? [ptr('o' + (i + 1), '▼ cur', 'mi')] : [],
+                     vars:{cur: ncur ? '节点 ' + vals[i + 1] + '（下标 ' + (i + 1) + '）' : 'null'}})});
+    }
+
+    /* ---------- ③ 拆链 ---------- */
+    F.push({hl:[15,16], tag:'③ 准备拆链', cls:'t-orange',
+      msg:'random 全补完，第三遍把带撇的复制品一个个<b>拆</b>下来串成新链：<code>tail</code> 从新链的 dummy 出发，cur 回到 head——画面下半部分出现了空的新链。' +
+          '为什么不能直接 return head.next 了事？那样复制品还插在原链里、两条链缠在一起，谁都不是独立的深拷贝，主人也得各自归位。' +
+          '每轮两步：复制品接到 tail 后面，主人跨过复制品连回原链。',
+      do: drawSplit({states:{['o0']:'active'}, ptrs:[ptr('o0','▼ cur','mi')], cPtrs:[],
+                     vars:{cur:'节点 ' + vals[0] + '（下标 0）', '已拆出':0}})});
+
+    for(let i = 0; i < n; i++){
+      extracted[i] = true;
+      F.push({hl:[17,18,19], tag:'摘下复制品', cls:'t-orange',
+        msg:'每轮两刀，顺序不能反：先 <code>tail.next = cur.next</code> 把复制品 <b>' + LCesc(vals[i]) + '′</b> 摘下来接到新链尾部，tail 右移；' +
+            '再 <code>cur.next = cur.next.next</code> 让主人 ' + LCesc(vals[i]) + ' 跨过 ' + LCesc(vals[i]) + '′，' +
+            (i + 1 < n ? '直连节点 <b>' + LCesc(vals[i + 1]) + '</b>' : '指向 <b>null</b>') + '，<b>原链无缝闭合</b>。' +
+            '为什么先摘再缝？先把 ' + LCesc(vals[i]) + '′ 的入口移交给 tail，主人才能放心改 next；反过来复制品的入口会先被覆盖，它就从两条链上同时消失了。',
+        do: drawSplit({states:{['o' + i]:'active'}, ptrs:[ptr('o' + i, '▼ cur', 'mi')],
+                       cStates:{['d' + i]:'just'}, cPtrs:[ptr('d' + i, '▼ tail', 'mg')],
+                       vars:{cur:'节点 ' + vals[i] + '（下标 ' + i + '）', '已拆出':(i + 1) + ' 个'}})});
+
+      const ncur = i + 1 < n;
+      F.push({hl:[20,21], tag:'cur 前进', cls:'t-ink',
+        msg:'<code>cur = cur.next</code>：' + (ncur
+          ? '拆完 ' + LCesc(vals[i]) + '′，cur 来到下一个原节点 <b>' + LCesc(vals[i + 1]) + '</b>，继续摘下一个复制品。注意这里只跳一位——主人改完 next 后已经直连下一个主人了。'
+          : '主链走完，复制品也全部拆完：上面的原链恢复原样，下面的新链是一条独立的深拷贝，两条链两清！'),
+        do: drawSplit({states:{['o' + i]:'done'}, ptrs: ncur ? [ptr('o' + (i + 1), '▼ cur', 'mi')] : [],
+                       cStates:{['d' + i]:'in'}, cPtrs:[ptr('d' + i, '▼ tail', 'mg')],
+                       vars:{cur: ncur ? '节点 ' + vals[i + 1] + '（下标 ' + (i + 1) + '）' : 'null', '已拆出':(i + 1) + ' 个'}})});
+    }
+
+    const res = arr.map((p, i) => [p[0], rands[i]]);
+    const doneS = {}; for(let i = 0; i < n; i++) doneS['o' + i] = 'done';
+    F.push({hl:[22], tag:'返回', cls:'t-dark',
+      msg:'<code>return dummy.next</code> 🎉 新链 <b>' + vals.map(x => LCesc(x) + '′').join('→') +
+          '</b>：节点全是新建的（带撇只是画出来区分），next 顺序、random 关系与原链一一对应。' +
+          '复盘三步法：穿插让"复制品"变成 O(1) 可达，random 才能不查表抄到位，最后拆开两清——时间 O(n)、额外空间 O(1)，这就是它比哈希表解法（O(n) 空间）高明的地方。',
+      do: drawSplit({states:doneS, ptrs:[], cStates:{}, cPtrs:[], result:res,
+                     vars:{'三步法':'①穿插 ②补random ③拆链'}})});
+
+    return F;
+  },
+
+  /* ========== 解法二：力扣官方方法一 · 哈希表 ========== */
+
+  alt: {
+    label: '官方 · 哈希表',
+    method: 'copyRandomList',
+
+    lede: '题目不变：深拷贝一条带 random 的链表。解法一的穿插法把空间压到 O(1)；' +
+          '这一版是力扣官方方法一——<b>哈希表</b>：第一遍逐节点造复制品，登记 <span class="var b">原节点 → 新节点</span> 的映射；' +
+          '第二遍照着字典把每个复制品的 next 和 random 逐一接线。直白、不易错，面试先讲它。',
+
+    roles: [
+      {c:'orange', code:'cur',   text:'当前指针：两遍各扫一遍原链'},
+      {c:'blue',   code:'dic',   text:'哈希表：原节点 → 新节点 的映射'},
+      {c:'green',  code:'新节点', text:'dic 里新建的复制品（带撇，先孤岛后接线）'}
+    ],
+    legend: [
+      {c:'orange', text:'cur 当前节点'},
+      {c:'blue',   text:'dic 里已登记的映射'},
+      {c:'green',  text:'新链节点（next 接好用箭头连出）'}
+    ],
+
+    codeTitle: '跟着高亮读代码——第 7 行登记映射，第 11-12 行照表接线；<code>dic.get</code> 查不到（包括 None）就返回 None，空指针天然安全。',
+
+    idea: 'random 能乱指，边建边接会扑空；先把所有复制品建完、用哈希表记账「原 → 新」，第二遍接线时任何目标都能 O(1) 查到。时间 O(n)、空间 O(n)——直白版的正确。',
+
+    complexity: '时间 O(n) · 两遍各扫一次；空间 O(n) · dic 存 n 对映射。对比解法一：穿插法 O(1) 空间但技巧性强，哈希法 O(n) 空间但一眼写对——面试先讲这版。',
+
+    qa: [
+      {q:'为什么用 <code>dic.get(cur.next)</code> 而不是 <code>dic[cur.next]</code>？',
+       a:'<code>cur.next</code> 走到尾会是 <code>None</code>，<code>dic[None]</code> 直接 KeyError；<code>.get</code> 对任何查不到的键（包括 None）返回 None，恰好就是「没有下一个 / 没有 random」的正确语义，一处特判都不用写。'},
+      {q:'为什么第一遍要把所有复制品都建完，而不是边建边接线？',
+       a:'random 可能指向「还没出生」的节点（指前、指后都合法）。先把 n 个复制品全部建好、账本齐全，第二遍接线时任何目标都在字典里——这正是本题的核心难点：<b>先记账，后结账</b>。'}
+    ],
+
+    code: `class Solution:
+    def copyRandomList(self, head):
+        if not head: return None
+        dic = {}                          # 原节点 → 新节点 的映射表
+        cur = head
+        while cur:                        # ① 第一遍: 复制各节点, 登记映射
+            dic[cur] = Node(cur.val)
+            cur = cur.next
+        cur = head                        # 回到开头, 第二遍照表接线
+        while cur:                        # ② 补 next 和 random
+            dic[cur].next = dic.get(cur.next)
+            dic[cur].random = dic.get(cur.random)
+            cur = cur.next
+        return dic[head]                  # ③ 新链表的头节点
+`,
+
+    sol(input){
+      const arr = (input.head || []).map(p => Array.isArray(p) ? p : [p, null]);
+      const n = arr.length;
+      if(!n) return [];
+      const ridx = i => { const r = arr[i][1]; return (r != null && r >= 0 && r < n) ? r : null; };
+      // 哈希表法（与展示代码同构）：dic[原下标] = 新节点
+      const dic = new Map();
+      for(let i = 0; i < n; i++) dic.set(i, {val:arr[i][0], next:null, random:null});
+      for(let i = 0; i < n; i++){
+        dic.get(i).next = (i + 1 < n) ? dic.get(i + 1) : null;
+        const r = ridx(i);
+        dic.get(i).random = (r == null) ? null : dic.get(r);
+      }
+      const owner = new Map();
+      dic.forEach((nd, i) => owner.set(nd, i));
+      const out = [];
+      for(let c = dic.get(0); c; c = c.next){
+        out.push([c.val, c.random == null ? null : owner.get(c.random)]);
+      }
+      return out;
+    },
+    expected: [[7,null],[13,0],[11,4],[10,2],[1,0]],
+
+    steps(input){
+      const F = [];
+      const arr = (input.head || []).map(p => Array.isArray(p)
+        ? [p[0], (p[1] != null && p[1] >= 0 && p[1] < (input.head || []).length) ? p[1] : null]
+        : [p, null]);
+      const n = arr.length;
+      if(!n){
+        F.push({hl:[2,3], ok:3, tag:'空链表', cls:'t-grey',
+          msg:'head 为空 → <code>if not head</code> 成立，直接 <code>return None</code>：空链的深拷贝还是空。',
+          do: (v) => { v.list('L', [], {label:'原链表'}); }});
+        F.push({hl:[14], tag:'返回', cls:'t-dark',
+          msg:'<code>dic</code> 里什么都没有——第 3 行就把空输入挡掉了，返回 []，后面两遍一次都不用走。',
+          do: (v) => { v.list('L', [], {label:'原链表'}); v.result([], {label:'返回结果'}); }});
+        return F;
+      }
+      const vals = arr.map(p => p[0]);
+      const rands = arr.map(p => p[1]);
+      /* ★ 快照原则：所有画面数据在 F.push 那一刻现算 */
+      const origNodes = () => vals.map((val, i) => ({key:'o' + i, val:val}));
+      const newNodes = (cnt) => { const a = []; for(let i = 0; i < cnt; i++) a.push({key:'d' + i, val:vals[i] + "'"}); return a; };
+      const dicPairs = (cnt) => { const a = []; for(let i = 0; i < cnt; i++) a.push([vals[i] + '(#' + i + ')', vals[i] + '′']); return a; };
+      const headTag = {key:'o0', text:'head', cls:'mq'};
+
+      const drawP1 = (o) => (v) => {
+        v.list('L', origNodes(), {label:'原链表', states:o.states || {}, pointers:o.ptrs || [], headTag:headTag});
+        v.list('NEW', newNodes(o.built), {label:'已建的新节点（孤岛，第②遍才接线）'});
+        v.map('DIC', dicPairs(o.built), {label:'dic　·　原节点 → 新节点'});
+        v.vars('V', o.vars, {label:'变量'});
+      };
+      const drawP2 = (o) => (v) => {
+        const edges = [];
+        for(let i = 0; i < o.wired && i + 1 < n; i++) edges.push(['d' + i, 'd' + (i + 1)]);
+        v.list('L', origNodes(), {label:'原链表', states:o.states || {}, pointers:o.ptrs || [], headTag:headTag});
+        v.list('NEW', newNodes(n), {label:'新链（next 一根根接上，random 记在变量面板）',
+          dummy:o.wired > 0, edges:edges, headTag:o.wired > 0 ? {key:'__dummy', text:'dic[head]', cls:'mq'} : undefined});
+        v.map('DIC', dicPairs(n), {label:'dic　·　原节点 → 新节点'});
+        v.vars('V', o.vars, {label:'变量'});
+        if(o.result) v.result(o.result, {label:'返回结果'});
+      };
+
+      F.push({hl:[1,2,3,4,5], tag:'初始化', cls:'t-grey',
+        msg:'先认题：每个节点有 next 和 random 两条线，random 能乱指——指前、指后、指自己甚至 null' +
+            (rands[1] != null ? '（比如下标 1 的 random 指向下标 ' + rands[1] + '）' : '') +
+            '。这版的策略是<b>先记账、后结账</b>：<code>dic = {}</code> 空字典就位，第一遍把 n 个复制品全部造出来登记进 dic，' +
+            '第二遍照着字典接线。为什么要两遍？接线时 random 的目标必须<b>已经存在</b>——先建完，谁都逃不掉。',
+        do: drawP1({states:{['o0']:'active'}, ptrs:[{key:'o0', text:'▼ cur', cls:'mi'}], built:0,
+                    vars:{cur:'节点 ' + vals[0] + '（下标 0）', dic:'{} 空字典', '计划':'①建+登记 ②接线 ③返回'}})});
+
+      /* ---------- ① 建复制品 + 登记 ---------- */
+      for(let i = 0; i < n; i++){
+        F.push({hl:[6,7,8], tag:'① 建复制品·登记', cls:'t-blue',
+          msg:'第①遍走到下标 ' + i + '：<code>dic[cur] = Node(cur.val)</code>——给节点 <b>' + LCesc(vals[i]) + '</b> 造一个复制品 <b>' + LCesc(vals[i]) + '′</b>，' +
+              '以「原节点」为键登记进 dic。此刻 ' + LCesc(vals[i]) + '′ 还是<b>孤岛</b>：next、random 都空着，只完成了「出生 + 上户口」。' +
+              '（演示里键写成「' + vals[i] + '(#' + i + ')」，真实 Python 里键就是<b>节点对象本身</b>，哈希表按对象身份查。）目前 dic 有 ' + (i + 1) + ' 对映射。',
+          do: drawP1({states:{['o' + i]:'active'}, ptrs:[{key:'o' + i, text:'▼ cur', cls:'mi'}], built:i + 1,
+                      vars:{cur:'节点 ' + vals[i] + '（下标 ' + i + '）', dic:(i + 1) + ' 对映射', '新登记':vals[i] + ' → ' + vals[i] + '′'}})});
+      }
+
+      /* ---------- ② 照表接线 ---------- */
+      for(let i = 0; i < n; i++){
+        const r = rands[i];
+        F.push({hl:i === 0 ? [9,10,11] : [10,11], tag:'② 接 next', cls:'t-ink',
+          msg:(i === 0 ? '第②遍开始，第 9 行先让 <code>cur</code> 回到开头——第一遍只建不接，第二遍才照表接线。' : '') +
+              '第②遍走到下标 ' + i + '：<code>dic[cur].next = dic.get(cur.next)</code>——左边从字典取出复制品 <b>' + LCesc(vals[i]) + '′</b>，' +
+              '右边查「原 next」' + (i + 1 < n ? '节点 ' + LCesc(vals[i + 1]) + '(#' + (i + 1) + ') 对应的复制品 <b>' + LCesc(vals[i + 1]) + '′</b>' : '是 <b>None</b> → <code>dic.get(None)</code> 返回 None，不用特判') +
+              '。原链的 next 顺藤摸瓜，新链的 next 照葫芦画瓢——<b>键查的是原节点，值接的是新节点</b>，别混。',
+          do: drawP2({states:{['o' + i]:'active'}, ptrs:[{key:'o' + i, text:'▼ cur', cls:'mi'}], wired:i + 1,
+                      vars:{cur:'节点 ' + vals[i] + '（下标 ' + i + '）', dic:n + ' 对映射', '接线进度':'next ' + (i + 1) + '/' + n}})});
+        F.push({hl:[12,13], tag:'② 接 random', cls:'t-orange',
+          msg:'重头戏：<code>dic[cur].random = dic.get(cur.random)</code>。' + (r != null
+            ? '节点 ' + LCesc(vals[i]) + ' 的 random 指向<b>下标 ' + r + '</b>（节点 ' + LCesc(vals[r]) + '）→ 字典里一查，它的复制品 <b>' + LCesc(vals[r]) + '′</b> 现成的！这就是第①遍先记账的意义：任何 random 目标此刻都已在册。'
+            : '节点 ' + LCesc(vals[i]) + ' 的 random 是 <b>None</b> → <code>dic.get(None)</code> 返回 <b>None</b>，random 就该是空，一行搞定。') +
+            ' 假如不记账（没有 dic），这一步就得临时翻整条链找目标——O(n²)；记账之后一切 O(1)。',
+          do: drawP2({states:{['o' + i]:'active', ['d' + i]:'peek'}, ptrs:[{key:'o' + i, text:'▼ cur', cls:'mi'}], wired:i + 1,
+                      vars:{cur:'节点 ' + vals[i] + '（下标 ' + i + '）', 'cur.random':r != null ? '下标 ' + r + '（节点 ' + vals[r] + '）' : 'None', 'random 接到':r != null ? vals[r] + '′（下标 ' + r + '）' : 'None', '接线进度':'random ' + (i + 1) + '/' + n}})});
+      }
+
+      /* ---------- ③ 返回 ---------- */
+      const res = arr.map(p => [p[0], p[1]]);
+      F.push({hl:[14], tag:'返回', cls:'t-dark',
+        msg:'🎉 <code>return dic[head]</code>：新链的头就是「原头节点的复制品」。复盘：两遍遍历 O(n) 时间；dic 存 n 对映射，O(n) 空间。' +
+            '和解法一的穿插法对比——穿插法让「目标的复制品 = 目标.next」省掉整张表（O(1) 空间），哈希法多花一个字典换来<b>直白不易错</b>：' +
+            '面试先讲这版，再优化成 O(1)，就是满分答案。',
+        do: drawP2({states:{}, ptrs:[], wired:n, result:res,
+                    vars:{dic:n + ' 对映射', '新链头':'节点 ' + vals[0] + '′（下标 0）', '复盘':'时间 O(n) · 空间 O(n)'}})});
+      return F;
+    }
+  }
+});
+
+</script>
+</body>
+</html>

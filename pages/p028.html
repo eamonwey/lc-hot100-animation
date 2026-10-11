@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P028 · 两数相加 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/progress.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 28, num: 2, title: '两数相加', diff: '中等', cat: '链表',
+  method: 'addTwoNumbers',
+
+  lede: '题目：两个非空链表各存一个大数，<b>每一位数字逆序存放</b>（个位在最前面）：2→4→3 就是 342。' +
+        '求两数之和，同样用逆序链表返回。先别慌着翻转——个位在头反而是<b>送分</b>：' +
+        '从头开始加正好就是从个位加起，和列竖式一模一样。动画里 <span class="var r">l1</span>、<span class="var v">l2</span> 的指针逐位右移，' +
+        '<span class="var i">cur</span> 守着第三条结果链的尾巴，<span class="var o">carry</span> 记住该进位的 1。',
+
+  roles: [
+    {c:'blue',   code:'l1',    text:'第一条链的当前位'},
+    {c:'violet', code:'l2',    text:'第二条链的当前位'},
+    {c:'orange', code:'cur',   text:'结果链的尾巴（新节点挂在这）'},
+    {c:'green',  code:'carry', text:'进位：满 10 就带到下一位'}
+  ],
+
+  codeTitle: '跟着高亮读代码——<code>if l1</code> 行变<span style="color:var(--red)">红</span>＝这条链已经走完（这一位补 0）；while 变<span style="color:var(--green)">绿</span>＝还有位没加（哪怕只剩进位也要加）。',
+
+  legend: [
+    {c:'blue', text:'l1 当前位'},
+    {c:'violet', text:'l2 当前位'},
+    {c:'orange', text:'cur 结果链尾巴'},
+    {c:'green', text:'新长出的结果位'}
+  ],
+
+  idea: '逆序存储 = 个位在头：两条链同步右移逐位相加，s = carry + 两边的位，本位留 s%10，进位 s//10 带给下一位；链走完但 carry 还有 1 时，while 的 or carry 会多跑一轮把它挂上去。',
+
+  qa: [
+    {q:'为什么不用先把链表翻转成正序？',
+     a:'很多人第一反应是先翻转再相加，其实完全不用。题目故意把<b>个位放在链表头部</b>，而我们做加法本来就是从个位开始的——从头遍历链表 = 从个位开始加，顺序刚刚好。'},
+    {q:'最后还有进位怎么办？比如 5+5？',
+     a:'这就是 while 条件写成 <b>l1 or l2 or carry</b> 的原因：两条链都走完、但 carry = 1 时，条件仍成立，循环会多跑一轮——两位数字都不加（if 跳过），只把进位 1 挂成新节点。所以 5+5 得到 0→1。'},
+    {q:'两条链不一样长怎么对齐？',
+     a:'不用对齐。短的那条先走完，之后每一轮 <code>if l1</code> / <code>if l2</code> 检查失败就跳过，等价于这一位补 0。比如 342 + 4655，前几轮 l1 就"缺席"了。'},
+    {q:'复杂度是多少？',
+     a:'时间 O(max(m,n))：两条链各走一遍，长的那条决定轮数。空间 O(1)（不算必须返回的结果链本身，那只新开 max(m,n)+1 个节点）。'}
+  ],
+
+  complexity: '时间 O(max(m,n))　·　空间 O(1)（结果链是必须返回的输出，不计）',
+
+  form: [
+    {key:'l1', label:'l1', type:'list', def:[2,4,3]},
+    {key:'l2', label:'l2', type:'list', def:[5,6,4]}
+  ],
+  presets: [
+    {label:'342 + 465', values:{l1:[2,4,3], l2:[5,6,4]}},
+    {label:'5 + 5（末位进位）', values:{l1:[5], l2:[5]}},
+    {label:'0 + 0（边界）', values:{l1:[0], l2:[0]}},
+    {label:'9999999 + 9999（连环进位）', values:{l1:[9,9,9,9,9,9,9], l2:[9,9,9,9]}}
+  ],
+
+  code: `class Solution:
+    def addTwoNumbers(self, l1, l2):
+        dummy = ListNode(0)              # 结果链的哑节点占位
+        cur, carry = dummy, 0            # cur 是结果链尾巴, carry 是进位
+        while l1 or l2 or carry:         # 还有位没加(或还挂着进位)
+            s = carry                    # 先把上一位的进位带来
+            if l1:
+                s += l1.val              # 加上 l1 这一位
+                l1 = l1.next
+            if l2:
+                s += l2.val              # 加上 l2 这一位
+                l2 = l2.next
+            carry = s // 10              # 满 10 进 1
+            cur.next = ListNode(s % 10)  # 本位数字挂到结果链
+            cur = cur.next               # 结果链长一格
+        return dummy.next
+`,
+
+  sol(input){
+    const a = (input.l1 || []).filter(x => x != null);
+    const b = (input.l2 || []).filter(x => x != null);
+    const out = [];
+    let i = 0, j = 0, carry = 0;
+    while(i < a.length || j < b.length || carry){
+      let s = carry;
+      if(i < a.length){ s += a[i]; i++; }
+      if(j < b.length){ s += b[j]; j++; }
+      carry = Math.floor(s / 10);
+      out.push(s % 10);
+    }
+    return out;
+  },
+  expected: [7,0,8],
+
+  quiz: [
+    {q:'链表是逆序存的（个位在头），做加法前要先翻转成正序吗？',
+     options:['要——列竖式从高位算起，必须先翻转让高位在头','不用——做加法本来就是从个位加起，个位恰好就在链表头上，从头遍历正好从个位开始，顺序刚刚好','无所谓，翻不翻转结果都一样，翻转只是为了好看'],
+     answer:1,
+     explain:'列竖式加法从个位算起、进位往高位传；逆序链表个位在头，从头同步遍历两条链正是从个位逐位往高位走，carry 也自然向右（高位）传——完全不用翻转。题目把个位放头部就是「送分设计」。误选第一个是把竖式的方向记反了：竖式从个位写起、往高位进位。',
+     jumpTo:1},
+    {q:'l1 = 3→7（表示 73）、l2 = 4→6（表示 64）：结果链是什么？最高位那一位是哪来的？',
+     options:['7→3：最高位的进位丢了——循环条件只看 l1 or l2','7→3→1：前两位 3+4=7、7+6=13（写 3 进 1），两条链都走完后 while 的 or carry 再跑一轮，把进位 1 挂成最高位','1→3→7：结果按正序存放'],
+     answer:1,
+     explain:'逐位加：第 1 位 3+4=7，无进位；第 2 位 7+6=13 → 本位写 3、carry = 1。此刻两条链都走完了，但 while 条件是 l1 or l2 or carry——carry 还是 1，条件仍成立，循环多跑一轮：两个 if 都跳过（等价补 0），只把 s = 1 挂成新节点。结果 7→3→1，即 73 + 64 = 137。误选 7→3 就是漏了 or carry 这个兜底；误选 1→3→7 是忘了返回结果同样逆序存。',
+     jumpTo:23},
+    {q:'每轮把新数字挂上结果链后，为什么必须执行 cur = cur.next 右移？',
+     options:['为了释放 dummy 占的内存','cur 不前移的话，下一位还会挂在同一个位置，把刚写的数字覆盖掉——结果链永远只有一格','只是代码习惯，不移结果也对'],
+     answer:1,
+     explain:'cur 是结果链的「尾巴岗哨」，新节点永远挂在 cur.next 上。若 cur 原地不动，下一轮还是写 cur.next——上一个数字被顶掉，结果链始终只有一个节点。cur 右移到刚长出的节点上，链才一格一格向右生长。dummy 的作用同源：给第一个真实节点一个前驱，最后 return dummy.next 跳过它。',
+     jumpTo:8},
+  ],
+
+  steps(input){
+    const F = [];
+    const v1 = (input.l1 || []).filter(x => x != null);
+    const v2 = (input.l2 || []).filter(x => x != null);
+    const n1 = v1.length, n2 = v2.length;
+    const nodes1 = v1.map((x, i) => ({key:'a' + i, val:x}));
+    const nodes2 = v2.map((x, i) => ({key:'b' + i, val:x}));
+    const toNum = arr => arr.reduce((s, v, i) => s + v * Math.pow(10, i), 0);
+    const N1 = toNum(v1), N2 = toNum(v2);
+
+    let i1 = 0, i2 = 0, carry = 0;
+    const out = [];                     // 结果链的数字（逐步追加）
+
+    /* ★ 快照原则：pA/pB/pC/outN 都在 F.push 那一刻调用求值，绝不在 do() 里读外层变量 */
+    const ptrA = () => i1 < n1 ? [{key:'a' + i1, text:'▼ l1', cls:'mr'}] : [];
+    const ptrB = () => i2 < n2 ? [{key:'b' + i2, text:'▼ l2', cls:'mv'}] : [];
+    const ptrC = len => [{key: len > 0 ? 'r' + (len - 1) : '__dummy', text:'▼ cur', cls:'mi'}];
+    const outNodes = () => out.map((x, i) => ({key:'r' + i, val:x}));
+
+    const draw = (o) => (v) => {
+      v.list('A', nodes1, {label:'链表 <code>l1</code>（个位在头，代表 ' + N1 + '）',
+        states:o.sA || {}, pointers:o.pA || [], headTag:n1 ? {key:'a0', text:'l1', cls:'mq'} : null});
+      v.list('B', nodes2, {label:'链表 <code>l2</code>（个位在头，代表 ' + N2 + '）',
+        states:o.sB || {}, pointers:o.pB || [], headTag:n2 ? {key:'b0', text:'l2', cls:'mq'} : null});
+      v.list('C', o.outN, {label:'结果链（在 <code>dummy</code> 后面逐位长出）',
+        dummy:true, states:o.sC || {}, pointers:o.pC || [], headTag:{key:'__dummy', text:'dummy', cls:'mq'}});
+      v.vars('V', o.vars, {label:'变量'});
+      if(o.result) v.result(o.result, {label:'返回结果'});
+    };
+
+    F.push({hl:[1,2,3,4], tag:'初始化', cls:'t-grey',
+      msg:'l1 存 <b>' + N1 + '</b>（链 ' + LCesc(v1.join('→') || '(空)') + '，个位在最前），l2 存 <b>' + N2 + '</b>。列竖式加法从<b>个位</b>加起，而个位恰好就在链表头上——逆序存储是送分设计，完全不用先翻转！' +
+          '<code>dummy</code> 给结果链占个位（虚线格），<code>cur</code> 守在结果链尾巴，<code>carry</code> 清零待命。',
+      do: draw({outN: outNodes(), pA: ptrA(), pB: ptrB(), pC: ptrC(0),
+                vars:{s:'—', carry:0}})});
+
+    while(i1 < n1 || i2 < n2 || carry > 0){
+      const has1 = i1 < n1, has2 = i2 < n2;
+      const d1 = has1 ? v1[i1] : null, d2 = has2 ? v2[i2] : null;
+
+      F.push({hl:[5], ok:5, tag:'while 检查', cls:'t-blue',
+        msg:'<code>while l1 or l2 or carry</code>：还有活干吗？' + (has1 ? 'l1 还剩 ' + (n1 - i1) + ' 位，' : 'l1 走完了，') +
+            (has2 ? 'l2 还剩 ' + (n2 - i2) + ' 位，' : 'l2 也走完了，') +
+            'carry = ' + carry + ' → <b>条件成立</b>，来加这一位。注意条件末尾挂着 <code>or carry</code>：就算两条链都走完，只要还欠着进位 1，也得再跑一轮把它挂成最高位（想想 5+5）。',
+        do: draw({outN: outNodes(), pA: ptrA(), pB: ptrB(), pC: ptrC(out.length),
+                  sA: has1 ? {['a' + i1]:'active'} : {}, sB: has2 ? {['b' + i2]:'active'} : {},
+                  vars:{s:'—', carry:carry}})});
+
+      let s = carry;
+      F.push({hl:[6], tag:'带来进位', cls:'t-blue',
+        msg:'<code>s = carry = ' + carry + '</code>：先把上一位欠下的进位拿在手里，一会儿和这一位的两个数字一起加。像竖式里先在角落写下"进 1"，免得加着加着忘了它。',
+        do: draw({outN: outNodes(), pA: ptrA(), pB: ptrB(), pC: ptrC(out.length),
+                  sA: has1 ? {['a' + i1]:'active'} : {}, sB: has2 ? {['b' + i2]:'active'} : {},
+                  vars:{s:s, carry:carry}})});
+
+      if(has1){
+        s += d1;
+        F.push({hl:[7,8,9], ok:7, tag:'加 l1 这一位', cls:'t-ink',
+          msg:'l1 这一位是 <b>' + d1 + '</b>：<code>s = ' + (s - d1) + ' + ' + d1 + ' = ' + s + '</code>，累加完成。' +
+              '随后 l1 右移一格（蓝名牌前移），下次轮到' + (i1 + 1 < n1 ? '数字 ' + v1[i1 + 1] : '空') + '。每个位被读一次就走、绝不回头——单链表的规矩。',
+          do: draw({outN: outNodes(), pA: ptrA(), pB: ptrB(), pC: ptrC(out.length),
+                    sA:{['a' + i1]:'active'}, sB: has2 ? {['b' + i2]:'active'} : {},
+                    vars:{s:s, carry:carry}})});
+        i1++;
+      } else {
+        F.push({hl:[7], no:7, tag:'l1 已走完', cls:'t-red',
+          msg:'l1 已经走完 → <code>if l1</code> 不成立（该行标红），这一位<b>当作补 0 跳过</b>——短链不用先补齐长度，if 判空天然完成了"补 0"。画面上 l1 的名牌已撤下，本位只剩 l2 的数字和进位参与相加。',
+          do: draw({outN: outNodes(), pA: [], pB: ptrB(), pC: ptrC(out.length),
+                    sB: has2 ? {['b' + i2]:'active'} : {}, vars:{s:s, carry:carry}})});
+      }
+
+      if(has2){
+        s += d2;
+        F.push({hl:[10,11,12], ok:10, tag:'加 l2 这一位', cls:'t-ink',
+          msg:'l2 这一位是 <b>' + d2 + '</b>：<code>s = ' + (s - d2) + ' + ' + d2 + ' = ' + s + '</code>，累加完成。' +
+              '随后 l2 右移一格（紫名牌前移）——进位、l1 位、l2 位三方到齐，这一位的竖式加法就凑齐了。',
+          do: draw({outN: outNodes(), pA: ptrA(), pB: ptrB(), pC: ptrC(out.length),
+                    sA: has1 ? {['a' + i1]:'muted'} : {}, sB:{['b' + i2]:'active'},
+                    vars:{s:s, carry:carry}})});
+        i2++;
+      } else {
+        F.push({hl:[10], no:10, tag:'l2 已走完', cls:'t-red',
+          msg:'l2 也走完了 → <code>if l2</code> 不成立，这一位只由 l1 的数字（和手里的进位）决定，l2 当作补 0 跳过。两条链长短不齐不要紧——短的那边此后每轮都自动补 0。',
+          do: draw({outN: outNodes(), pA: ptrA(), pB: [], pC: ptrC(out.length),
+                    sA: has1 ? {['a' + i1]:'active'} : {}, vars:{s:s, carry:carry}})});
+      }
+
+      const newCarry = Math.floor(s / 10), digit = s % 10;
+      carry = newCarry;
+      F.push({hl:[13], tag:'算进位', cls:'t-orange',
+        msg:'<code>s = ' + s + '</code>：竖式收尾——本位只留个位数 <b>' + digit + '</b>（s % 10），进位 <code>carry = s // 10 = ' + newCarry + '</code>' +
+            (newCarry ? '（满 10 进 1，下一位必须先加上它）' : '（没满 10，不用进位）') + '。和小学竖式完全同款：写个位、进十位。',
+        do: draw({outN: outNodes(), pA: ptrA(), pB: ptrB(), pC: ptrC(out.length),
+                  sA: has1 ? {['a' + i1]:'muted'} : {}, sB: has2 ? {['b' + i2]:'muted'} : {},
+                  vars:{s:s, carry:newCarry}})});
+
+      out.push(digit);
+      F.push({hl:[14], tag:'挂上新节点', cls:'t-green',
+        msg:'<code>cur.next = ListNode(' + digit + ')</code>：结果链的尾巴后面长出新节点 <b>' + digit + '</b>（画面里闪绿的那个）——第三条链就是这样一位一位长出来的。新节点总挂在 cur 身后，链的顺序天然就是从个位到高位。',
+        do: draw({outN: outNodes(), pA: ptrA(), pB: ptrB(), pC: ptrC(out.length - 1),
+                  sC:{['r' + (out.length - 1)]:'peek'}, vars:{s:s, carry:newCarry}})});
+
+      F.push({hl:[15], tag:'cur 右移', cls:'t-ink',
+        msg:'<code>cur = cur.next</code>：cur 挪到刚长出的 ' + digit + ' 上（橙色名牌跟着走），继续当结果链的尾巴。这一步不能省——cur 不前移的话，下一位会挂在同一个位置、把刚写的数字覆盖掉。',
+        do: draw({outN: outNodes(), pA: ptrA(), pB: ptrB(), pC: ptrC(out.length),
+                  sC:{['r' + (out.length - 1)]:'just'}, vars:{s:s, carry:newCarry}})});
+    }
+
+    F.push({hl:[5], no:5, tag:'while 结束', cls:'t-red',
+      msg:'l1、l2 都走完，carry 也是 0 → while 三个条件全空，<b>没有位要加了</b>，循环结束。反过来说：只要最后 carry 还是 1（比如 5+5），<code>or carry</code> 就会让循环多跑一轮、把进位挂成最高位——这正是它存在的意义。',
+      do: draw({outN: outNodes(), pA: [], pB: [], pC: ptrC(out.length),
+                vars:{s:'—', carry:0}})});
+
+    const res = out.slice();
+    F.push({hl:[16], tag:'返回', cls:'t-dark',
+      msg:'<code>return dummy.next</code> 🎉 结果链 ' + (res.length ? res.join('→') : '（空）') +
+          '，按"个位在头"的规则读出来就是 <b>' + toNum(res) + '</b>，正好 = ' + N1 + ' + ' + N2 + '。复盘：每一位进循环加一次，时间 O(max(m,n))；长短不齐靠 if 判空补 0，末尾进位靠 <code>or carry</code> 兜底——两个易错点都被代码天然防住。',
+      do: draw({outN: outNodes(), pA: [], pB: [], pC: ptrC(out.length),
+                result:res, vars:{s:'—', carry:0}})});
+
+    return F;
+  }
+});
+</script>
+</body>
+</html>

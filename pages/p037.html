@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P037 · 翻转二叉树 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/progress.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+/* 本地工具：标准 LeetCode 层序(+null)解析与树布局。
+   注：assets/viz.js 的 Viz.parseTree 在"左孩子为 null、右孩子非 null"时会把右孩子错挂到左边，
+   这里按与校验器 _build_tree 相同的标准规则在页内实现（不改 assets）。
+   翻转动画需要"结构可变 + 布局随结构重算"，所以自己维护 left/right 并每次重算坐标。 */
+function parseLC(arr){
+  arr = arr || [];
+  const nodes = [];
+  if(!arr.length || arr[0] == null) return {root:null, nodes};
+  nodes.push({key:0, val:arr[0], left:null, right:null});
+  let nk = 1, k = 1;
+  const q = [0];
+  while(k < arr.length && q.length){
+    const pk = q.shift();
+    [0,1].forEach(slot => {
+      if(k >= arr.length) return;
+      const v = arr[k++];
+      if(v != null){
+        const c = {key:nk++, val:v, left:null, right:null};
+        nodes.push(c);
+        if(slot === 0) nodes[pk].left = c.key; else nodes[pk].right = c.key;
+        q.push(c.key);
+      }
+    });
+  }
+  return {root:0, nodes};
+}
+function layoutLC(T){
+  const CELLW = 46, GAPX = 24, ROWH = 74, pad = 6;
+  const byKey = {}; T.nodes.forEach(n => byKey[n.key] = n);
+  const nodes = [], edges = [];
+  if(T.root == null) return {nodes, edges, w:120, h:60};
+  let maxD = 0, counter = 0;
+  (function rec(k, d){
+    const nd = byKey[k];
+    if(nd.left != null) rec(nd.left, d + 1);
+    nodes.push({key:k, val:nd.val, x: pad + counter * (CELLW + GAPX), y: pad + d * ROWH,
+                leaf: nd.left == null && nd.right == null});
+    counter++; maxD = Math.max(maxD, d);
+    if(nd.right != null) rec(nd.right, d + 1);
+  })(T.root, 0);
+  T.nodes.forEach(n => {
+    if(n.left != null) edges.push([n.key, n.left]);
+    if(n.right != null) edges.push([n.key, n.right]);
+  });
+  return {
+    nodes, edges,
+    w: Math.max(120, pad * 2 + T.nodes.length * (CELLW + GAPX) - GAPX),
+    h: Math.max(60, pad * 2 + (maxD + 1) * ROWH)
+  };
+}
+
+LC.register({
+  order: 37, num: 226, title: '翻转二叉树', diff: '简单', cat: '二叉树',
+  method: 'invertTree',
+
+  lede: '题目：把二叉树<b>左右镜像</b>：每个节点的左子树和右子树<b>整棵互换</b>。' +
+        '[4,2,7,1,3,6,9] 翻完层序变成 [4,7,2,9,6,3,1]。' +
+        '动画里每次交换，你会看到<span class="var o">两棵子树带着箭头整体滑到对面</span>；' +
+        '右侧调用栈记录递归进度，绿色 = 已经镜像完毕的子树。递归只要三行：' +
+        '<span class="var r">交换</span> → 翻左 → 翻右。',
+
+  roles: [
+    {c:'orange', code:'active', text:'正在处理的节点（它的左右正要被换）'},
+    {c:'blue',   code:'in',     text:'递归路径上的祖先'},
+    {c:'green',  code:'done',   text:'内部已镜像完毕的子树'},
+    {c:'ink',    code:'stack',  text:'右侧竖条 = 递归调用栈'}
+  ],
+
+  codeTitle: '跟着高亮读代码——<code>if</code> 行变<span style="color:var(--green)">绿</span>＝空位（递归出口），变<span style="color:var(--red)">红</span>＝节点存在。第 5 行是灵魂：一行元组赋值完成左右互换，子树内部之后各自递归处理。',
+
+  idea: '每个节点只做一件事：左右指针互换；左右子树"内部怎么翻"交给递归——三层交换下来整棵树就是镜像。',
+
+  qa: [
+    {q:'为什么"先交换、再递归"和"先递归、再交换"都对？',
+     a:'两种顺序都行：先交换再递归，递归进入的是"新的"左右子树；先递归再交换，递归处理的是"旧的"左右子树，回来后再整体互换。最终整棵树的镜像一样——因为每个节点最终都恰好交换了一次左右指针。'},
+    {q:'root.left, root.right = root.right, root.left 在干嘛？',
+     a:'Python 的元组赋值：右边先打包成 (旧右, 旧左)，再依次拆给左边，所以不需要临时变量。等价于三行：t = left; left = right; right = t。这一步只改两个指针，两棵子树<b>内部</b>原封不动，内部翻转交给下面两行递归。'},
+    {q:'这题为什么出名？',
+     a:'Homebrew 作者 Max Howell 面试 Google 被这道题挂掉的推文让它出了名。它考的不是难度而是"递归信任"：相信子问题会被正确解决，你只管处理当前层。'},
+    {q:'不用递归行吗？',
+     a:'行：层序遍历（BFS）出队一个节点就交换它的左右孩子，或者用显式栈做迭代版 DFS。核心动作一模一样——每个节点交换一次左右指针。'}
+  ],
+
+  complexity: '时间 O(n)（每个节点访问一次、交换一次）　·　空间 O(h)（递归栈，h 为树高）',
+
+  form: [
+    {key:'root', label:'root', type:'tree', def:[4,2,7,1,3,6,9]}
+  ],
+  presets: [
+    {label:'[4,2,7,1,3,6,9]', values:{root:[4,2,7,1,3,6,9]}},
+    {label:'三节点 [3,1,2]', values:{root:[3,1,2]}},
+    {label:'单节点 [1]', values:{root:[1]}},
+    {label:'空树 []', values:{root:[]}}
+  ],
+
+  code: `class Solution:
+    def invertTree(self, root):
+        if not root:                   # 递归出口: 空树
+            return None
+        root.left, root.right = root.right, root.left   # 左右整棵互换
+        self.invertTree(root.left)     # 翻转(新的)左子树
+        self.invertTree(root.right)    # 翻转(新的)右子树
+        return root                    # 返回当前子树的根
+`,
+
+  sol(input){
+    const T = parseLC(input.root || []);
+    const byKey = {}; T.nodes.forEach(n => byKey[n.key] = n);
+    (function inv(k){
+      if(k == null) return;
+      const t = byKey[k].left; byKey[k].left = byKey[k].right; byKey[k].right = t;
+      inv(byKey[k].left);
+      inv(byKey[k].right);
+    })(T.root);
+    const out = [];
+    if(T.root != null){
+      const q = [T.root];
+      while(q.length){
+        const k = q.shift();
+        if(k == null){ out.push(null); continue; }   // 与校验器 _ser 同序: null 占位也排队
+        out.push(byKey[k].val);
+        q.push(byKey[k].left);
+        q.push(byKey[k].right);
+      }
+      while(out.length && out[out.length - 1] == null) out.pop();
+    }
+    return out;
+  },
+  expected: [4,7,2,9,6,3,1],
+
+  quiz: [
+    {q:'执行完 root.left, root.right = root.right, root.left 之后,两棵子树的「内部」翻好了吗?',
+     options:['翻好了,这一行会递归地把子树里每个节点都换一遍','只翻了叶子节点,内部节点要等 return 时才翻','没有——这行只换了两根指针,子树内部一个节点都没动;内部镜像交给接下来两行递归'],
+     answer:2,
+     explain:'交换的只是当前节点手里的两根箭头:原来指左子树根的指针改指右子树根,反之亦然,子树内部的父子关系原封不动。所以下面还要 invertTree(root.left)、invertTree(root.right) 把"搬完家"的两棵子树各自翻好。职责分离:每个节点只管自己的本职,别的交给递归。',
+     jumpTo:3},
+    {q:'把输入换成三节点树 [3,1,2]（根 3、左孩子 1、右孩子 2）,翻转后的层序序列是?',
+     options:['3,2,1','3,1,2','1,2,3'],
+     answer:0,
+     explain:'翻转只动指针、不动值,根 3 原地不动:左孩子 1 整棵滑到右边,右孩子 2 滑到左边 → 层序 [3,2,1]。注意区分:1,2,3 是"把值排序"的结果,和镜像毫无关系;翻转改变的是结构,不是给值排队。',
+     jumpTo:38},
+    {q:'把代码改成「先递归翻左右子树,等它们返回后再交换当前节点的左右」,结果还对吗?',
+     options:['对——两种顺序都正确,关键不变式是每个节点最终恰好交换一次左右指针','不对,必须先交换才能递归','只有满二叉树才对,链状树会出错'],
+     answer:0,
+     explain:'先交换再递归:递归进的是"新的"左右子树;先递归再交换:递归处理的是"旧的"左右子树,回来后整棵互换。两种次序下每个节点都被恰好交换一次,最终指针状态完全相同。镜像的定义就是"每个节点左右各换一次",与先后无关。',
+     jumpTo:37},
+  ],
+
+  steps(input){
+    const F = [];
+    const T = parseLC(input.root || []);
+    const byKey = {}; T.nodes.forEach(n => byKey[n.key] = n);
+    const valOf = k => k == null ? '空' : LCesc(String(byKey[k].val));
+    const origLayout = layoutLC(T);        // 原树布局（翻转前，只算这一次）
+    const done = new Set();
+    let seq = 0;
+    const snapDone = () => Array.from(done);
+
+    /* ★ 快照原则：layout() 在 push 时按当前结构重算出一份全新坐标快照；
+       path/done/stack 同样在 push 时定死。do() 只读快照，不回读外层变量 */
+    const draw = o => (v) => {
+      const states = {};
+      (o.path || []).forEach(k => { states[k] = 'in'; });
+      if(o.cur != null) states[o.cur] = 'active';
+      (o.peek || []).forEach(k => { if(states[k] == null) states[k] = 'peek'; });
+      (o.done || []).forEach(k => { if(states[k] == null) states[k] = 'done'; });
+      const tags = {};
+      Object.entries(o.tags || {}).forEach(([k, tg]) => { tags[k] = tg; });
+      v.tree('T', o.layout, {label:'当前树　·　交换后节点会滑到对面', states, tags});
+      if(o.orig) v.tree('T0', o.orig, {label:'原树（翻转前）', states:{}, tags:{}});
+      const stack = o.stack || [];
+      if(stack.length) v.stack('S', stack, {
+        label:'递归调用栈　·　越往下越新',
+        states: {[stack[stack.length - 1].key]:'active'},
+        topTag:'栈顶'
+      });
+      if(o.result != null) v.result(o.result, {label:'翻转结果（层序）'});
+    };
+
+    function visit(k, frames, path){
+      const id = 'c' + (++seq);
+      const stack = frames.concat([{key:id, val:'invert(' + (k == null ? '空' : valOf(k)) + ')'}]);
+      if(k == null){
+        F.push({hl:[3,4], ok:3, tag:'递归出口', cls:'t-grey',
+          msg:'调用 <code>invert(空)</code>：递归摸到了一个空位，<code>not root</code> 成立 → <b>return None</b>。为什么必须有这个出口：叶子总有缺口，要是不在这里停住，递归会一直追问"你的孩子呢"，无限叠栈爆掉。空子树没东西可翻，返回后上一层就能安心记下"这一边是空的"——栈顶的 invert(空) 帧马上弹走。',
+          do: draw({layout: layoutLC(T), stack, path, done: snapDone()})});
+        return;
+      }
+      const nd = byKey[k];
+      F.push({hl:[3], no:3, tag:'进入函数', cls:'t-blue',
+        msg:'调用 <b>invert(节点 ' + valOf(k) + ')</b>：节点存在 → 递归的分工是"每个节点只管自己的本职"：把<b>它自己的</b>左右子树整棵互换，内部翻转交给下一层。此刻它头顶变橙、右侧栈顶压入一帧——递归每深入一层，栈就多一截，方便你看清"现在轮到谁干活"。',
+        do: draw({layout: layoutLC(T), stack, cur:k, path: path.concat(k), done: snapDone()})});
+
+      const oldL = nd.left, oldR = nd.right;
+      nd.left = oldR; nd.right = oldL;
+      const hasKids = nd.left != null || nd.right != null;
+      const swapTags = {};
+      if(nd.left != null) swapTags[nd.left] = {text:'现在在左', cls:'mi'};
+      if(nd.right != null) swapTags[nd.right] = {text:'现在在右', cls:'mr'};
+      F.push({hl:[5], tag:'交换', cls:'t-orange',
+        msg: hasKids
+          ? '<code>root.left, root.right = root.right, root.left</code>：元组赋值一行完成互换——右边先打包成 (旧右, 旧左) 再拆给左边，不需要临时变量。节点 ' + valOf(k) + ' 的两棵子树<b>整棵搬家</b>：左边现在是 ' + valOf(nd.left) + '、右边是 ' + valOf(nd.right) + '，箭头重连、节点滑到对面（「现在在左 / 现在在右」名牌就是刚搬过去的）。注意只换了两根指针，子树<b>内部</b>一个节点都没动——内部镜像交给接下来的两行递归。'
+          : '节点 ' + valOf(k) + ' 是叶子，左右都是空 → 互换后依然左右都是空。形状看着没变，但这行每个节点都要执行一次——镜像的定义就是"每个节点的左右都换过"，漏掉谁谁那儿就不对称。',
+        do: draw({layout: layoutLC(T), stack, cur:k, path: path.concat(k),
+                  peek: [nd.left, nd.right].filter(x => x != null),
+                  tags: swapTags, done: snapDone()})});
+
+      visit(nd.left, stack, path.concat(k));
+      F.push({hl:[6], tag:'左子树翻好', cls:'t-green',
+        msg: nd.left != null
+          ? '节点 ' + valOf(k) + ' 的左子树递归返回：以 ' + valOf(nd.left) + ' 为根的子树<b>内部已镜像完毕</b>，整块标绿。这就是"递归信任"——你把左半边整个托付出去，回来时它保证已经翻好，你一行都不用检查。接着翻右子树。'
+          : '左孩子是空 → 递归碰到出口立刻返回 None，没东西可翻。节点 ' + valOf(k) + ' 确认左边完工，接着翻右子树。',
+        do: draw({layout: layoutLC(T), stack, cur:k, path: path.concat(k), done: snapDone()})});
+
+      visit(nd.right, stack, path.concat(k));
+      done.add(k);
+      F.push({hl:[7,8], tag:'本层返回', cls:'t-dark',
+        msg:'右子树也翻好了 → <b>invert(节点 ' + valOf(k) + ')</b> 执行 return root：自己换过左右、左右子树内部也都镜像完毕，以 ' + valOf(k) + ' 为根的整棵子树就是原树这一块的镜像，标绿出栈。上层拿到返回值只是把它当左/右孩子接上，自己不用再改任何指针——一层层往上交，最后交回的就是整棵树的根。',
+        do: draw({layout: layoutLC(T), stack: frames, path, done: snapDone()})});
+    }
+
+    F.push({hl:[1,2], tag:'初始化', cls:'t-grey',
+      msg: T.root == null
+        ? '空树：<code>invertTree(None)</code> 一进来就命中递归出口（第 3 行），直接返回 None。'
+        : '目标：把整棵树翻成自己的<b>镜像</b>——每个节点的左右子树<b>整棵互换</b>，根本身不动。递归套路只有三行：先做本职（交换当前节点的左右），再把"新的"左、右子树分别交给递归去翻。根是节点 ' + valOf(T.root) + '；绿色代表"这棵子树内部已镜像完毕"，现在还一个都没有。盯住每次交换时子树带着箭头整体滑到对面。',
+      do: draw({layout: origLayout, stack: [], done: []})});
+
+    visit(T.root, [], []);
+
+    const lev = [];
+    if(T.root != null){
+      const q = [T.root];
+      while(q.length){
+        const k = q.shift();
+        if(k == null){ lev.push(null); continue; }
+        lev.push(byKey[k].val);
+        q.push(byKey[k].left);
+        q.push(byKey[k].right);
+      }
+      while(lev.length && lev[lev.length - 1] == null) lev.pop();
+    }
+    F.push({hl:[8], tag:'翻转完成', cls:'t-dark',
+      msg: T.root == null
+        ? '🎉 空树翻转还是空树，返回 None——出口一行就收工。'
+        : '🎉 整棵树翻好了！左图是原树、右图是镜像——对比看：每个节点的左右子树都换了边，根 ' + valOf(T.root) + ' 原地不动。层序输出 <b>' +
+          lev.map(x => x == null ? 'null' : LCesc(String(x))).join(',') + '</b>。复盘：每个节点恰好交换一次左右指针，时间 O(n)；递归栈深等于树高，空间 O(h)。',
+      do: draw({layout: layoutLC(T), orig: origLayout, stack: [], done: snapDone(), result: lev.slice()})});
+
+    return F;
+  }
+});
+</script>
+</body>
+</html>

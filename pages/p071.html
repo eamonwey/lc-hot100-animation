@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P071 · 每日温度 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/progress.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 71, num: 739, title: '每日温度', diff: '中等', cat: '栈',
+  method: 'dailyTemperatures',
+
+  lede: '题目：每天给你一个气温，<b>ans[i]</b> 要填"几天之后会比今天热"——等不到就是 0。' +
+        '暴力要回头扫，O(n²)；聪明法子是<span class="var o">单调栈</span>：栈里存的是<b>还没等到更热天</b>的那些下标，' +
+        '<span class="var i">i</span> 天的气温一旦比栈顶热，就把栈里所有比它冷的天<b>一次性结账</b>（ans = i − j）。' +
+        '动画里上半是气温数组，中间的栈越压越矮（温度从底到顶递减），下半的 ans 在结算那一刻点亮。',
+
+  roles: [
+    {c:'orange', code:'i',      text:'今天（正在看的气温）'},
+    {c:'blue',   code:'st',     text:'栈：还没等到更热天的下标'},
+    {c:'red',    code:'j',      text:'被弹出结算的天（等到了！）'},
+    {c:'green',  code:'ans[j]', text:'刚算出答案的格子'}
+  ],
+
+  codeTitle: '跟着高亮读代码——while 那行变<span style="color:var(--green)">绿</span>＝今天比栈顶热，要弹出结账；变<span style="color:var(--red)">红</span>＝栈顶比今天还热（或栈空），排队结束。',
+
+  legend: [
+    {c:'orange', text:'i 今天'},
+    {c:'blue',   text:'栈里排队等答案的天'},
+    {c:'red',    text:'被弹出结算的天 j'},
+    {c:'green',  text:'ans 里已点亮的答案'}
+  ],
+
+  idea: '单调栈存"还在等更热天"的下标：更热的天一来，就把栈里所有比它冷的天一次结清（ans[j] = i − j），然后自己进栈继续等。每个下标进栈一次、出栈一次，总共 O(n)。',
+
+  qa: [
+    {q:'栈里为什么存下标，不直接存温度？',
+     a:'因为答案要算<b>隔了几天</b>：ans[j] = i − j，两个都是下标。只存温度的话，结算时既不知道它排在哪天，也没法往 ans 的正确格子里写。温度可以随时用 temperatures[j] 查回来。'},
+    {q:'"单调"到底单在哪？',
+     a:'从栈底到栈顶，对应的温度<b>严格递减</b>。原因很简单：假如栈里靠上的天比靠下的冷都不成立……换句话说，任何"更冷还更晚"的天早就被某个更热的天弹出去了。所以一旦今天比栈顶热，底下只会更热，结算立刻停止。'},
+    {q:'等温（比如 30° 对 30°）算"更热"吗？',
+     a:'不算。条件是严格大于 <b>T[i] > T[st[-1]]</b>，相等不弹栈——题目要的是"更暖和"，温度持平的日子还得继续等。'},
+    {q:'为什么是 O(n) 而不是 O(n²)？',
+     a:'每个下标<b>只进栈一次、也只被弹出一次</b>。虽然 while 里面套着 while，但弹栈总量撑死 n 次，加上 n 次进栈，总步数是 2n——这叫均摊分析。'}
+  ],
+
+  complexity: '时间 O(n)（每个下标至多进栈/出栈各一次）　·　空间 O(n)（栈最坏存满递减序列）',
+
+  form: [
+    {key:'temperatures', label:'temperatures', type:'arr', def:[73,74,75,71,69,72,76,73]}
+  ],
+  presets: [
+    {label:'官方用例 8 天', values:{temperatures:[73,74,75,71,69,72,76,73]}},
+    {label:'一路降温 5,4,3,2,1', values:{temperatures:[5,4,3,2,1]}},
+    {label:'全天等温 30×4', values:{temperatures:[30,30,30,30]}},
+    {label:'过山车 10 天', values:{temperatures:[89,62,70,58,47,47,46,76,100,70]}}
+  ],
+
+  code: `class Solution:
+    def dailyTemperatures(self, temperatures):
+        n = len(temperatures)
+        ans = [0] * n                # 默认 0: 后面没有更热的天
+        st = []                      # 单调栈: 存"还没等到更热天"的下标
+        for i in range(n):
+            while st and temperatures[i] > temperatures[st[-1]]:
+                j = st.pop()         # 栈顶那天等到了答案
+                ans[j] = i - j       # 隔了几天
+            st.append(i)             # 自己也进栈接着等
+        return ans
+`,
+
+  sol(input){
+    const T = input.temperatures || [];
+    const n = T.length;
+    const ans = new Array(n).fill(0);
+    const st = [];
+    for(let i = 0; i < n; i++){
+      while(st.length && T[i] > T[st[st.length - 1]]){
+        const j = st.pop();
+        ans[j] = i - j;
+      }
+      st.push(i);
+    }
+    return ans;
+  },
+  expected: [1, 1, 4, 2, 1, 1, 0, 0],
+
+  quiz: [
+    {q:'「排队结束」那步:T[i] 比栈顶还冷(或持平)就停,为什么敢保证底下也没有天需要结账?',
+     options:['底下可能还有更冷的,只是偷懒不结算','栈内温度从底到顶严格递减,栈顶已是最冷的一个——连它都不比今天冷,底下更热的天更轮不到今天来结账','因为每次进栈前都把整个栈按温度排过序'],
+     answer:1,
+     explain:'不变式:栈里从底到顶温度严格递减。这个顺序不是排出来的,而是弹出来的——任何"更冷还更晚"的天,早在更热的天进门那天就被弹走了。于是栈顶永远是全栈最冷:它都 ≥ T[i],底下只会更热,while 立刻停是安全的。这一条也正是"只跟栈顶比一次"能省掉暴扫的底气。',
+     jumpTo:18},
+    {q:'temperatures = [34,35,33,33,36],ans 是多少?',
+     options:['[1,3,2,2,0]','[1,3,2,1,0]','[1,1,2,1,0]'],
+     answer:1,
+     explain:'逐日推:34 进栈;35 热过 34,ans[0]=1;33 ≤ 35 进栈;第二个 33 与栈顶 33 持平——题目要"更热",相等不弹,进栈;36 一进门把 33、33、35 连弹三个:ans[3]=1、ans[2]=2、ans[1]=3。结果 [1,3,2,1,0]。选 [1,3,2,2,0] 的同学是把"持平"当成了"更热"(严格大于才弹);选 [1,1,2,1,0] 的是只跟前一天的比、漏了隔天结算。',
+     jumpTo:24},
+    {q:'while 里套着 while,最坏岂不是 O(n²)?为什么敢说整个算法是 O(n)?',
+     options:['因为气温最高只有 100,循环次数被压住了','因为每个下标至多进栈一次、出栈一次,弹栈总量撑死 n 次,加上 n 次进栈总共约 2n——均摊分析','因为内层 while 平均只转半圈,折半算就是 O(n log n)'],
+     answer:1,
+     explain:'别被嵌套循环吓到:内层 while 每转一圈就有一个下标永久出栈,而每个下标一生只进栈一次,所以弹栈全程累计 ≤ n。n 次进栈 + ≤ n 次出栈 ≈ 2n 步,均摊到每个元素是 O(1)。真正 O(n²) 的是暴力法——每天都回头去找更热的天。',
+     jumpTo:44},
+  ],
+
+  steps(input){
+    const F = [];
+    const T = input.temperatures || [];
+    const n = T.length;
+    const ans = new Array(n).fill(0);
+    const st = [];    // 栈 items {key:'j'+下标, val:温度, fx:'#下标'}
+
+    /* ---- 快照绘制（铁律 5） ---- */
+    const draw = (o) => (v) => {
+      v.arr('T', T, {
+        label:'每日气温 <code>temperatures</code>（°）',
+        states:o.tst || {}, markers:o.mk || [], idxCls:o.idxCls || {}
+      });
+      v.stack('st', o.stk, {label:'单调栈 <code>st</code>　·　存下标，温度从底到顶递减',
+        states:o.sst || {}, topTag:o.stk.length ? '栈顶' : null});
+      v.arr('ans', o.ans, {
+        label:'答案 <code>ans</code>　·　几天后更热',
+        states:o.ast || {}
+      });
+      v.vars('vars', {i:o.i, 'T[i]':o.ti, j:o.j, 'ans[j]':o.ansj},
+        {label:'当前状态', hl:o.hlv || []});
+      if(o.res !== undefined) v.result(o.res, {label:'返回结果'});
+    };
+    const snap = (i, extra) => Object.assign({
+      tst: i == null ? {} : {[i]:'active'},
+      mk: i == null ? [] : [{name:'i', idx:i, cls:'mi', text:'▲ i'}],
+      stk: st.slice(), sst:{}, ast:{},
+      ans: ans.slice(),
+      i: i == null ? '—' : i, ti: i == null ? '—' : T[i],
+      j:'—', ansj:'—', hlv:[]
+    }, extra);
+    const ansStates = (litJ) => {
+      const a = {};
+      for(let k = 0; k < n; k++) a[k] = 'muted';
+      for(let k = 0; k < n; k++) if(ans[k] !== 0) a[k] = 'done';
+      if(litJ != null) a[litJ] = 'just';
+      return a;
+    };
+
+    F.push({hl:[1,2,3,4,5], tag:'开始', cls:'t-grey',
+      msg:'ans 先全填 0——0 不是随手占位，含义是"等不到更热的天"，最后没被结算的天就让它留着。栈里存的是<b>下标</b>（不是温度！）：温度随时能用 temperatures[j] 查回来，可"隔几天"必须靠两个下标相减才算得出。规矩预告：新来的天更热，就把栈里所有比它冷的天<b>一次结清</b>（ans[j] = i − j），然后自己进栈接着等。',
+      do: draw(snap(null, {ast:ansStates(null)}))});
+
+    for(let i = 0; i < n; i++){
+      F.push({hl:[6], tag:'第 ' + i + ' 天', cls:'t-ink',
+        msg:'今天 i = ' + i + '，气温 <b>' + T[i] + '°</b>。先别急着进栈：栈里压着的全是"还没等到更热天"的往日（从底到顶温度递减，栈顶最冷），今天若是它们盼来的热天，就得先挨个结账。',
+        do: draw(snap(i, {ast:ansStates(null)}))});
+
+      while(st.length && T[i] > T[+st[st.length - 1].key.slice(1)]){
+        const jk = st[st.length - 1].key;
+        const j = +jk.slice(1);
+        F.push({hl:[7], ok:7, tag:'今天更热', cls:'t-green',
+          msg:'<code>T[' + i + '] = ' + T[i] + '°</code> &gt; 栈顶那天(j=' + j + ')的 <code>' + T[j] + '°</code> → j=' + j +
+              ' 那天<b>等到答案了</b>！为什么只跟栈顶比就够？栈从底到顶温度严格递减，栈顶已是最冷的一个——它都被今天热过了，底下更热的天更轮不到今天来结账。所以每弹一个，下一轮继续只看新栈顶。',
+          do: draw(snap(i, {ast:ansStates(null),
+            tst:{[i]:'active', [j]:'target'},
+            mk:[{name:'i', idx:i, cls:'mi', text:'▲ i'}, {name:'j', idx:j, cls:'mr', text:'▲ 栈顶 j'}],
+            sst:{[jk]:'active'}, j:j}))});
+
+        st.pop();
+        F.push({hl:[8], tag:'弹出 j=' + j, cls:'t-red',
+          msg:'<code>j = st.pop()</code>：下标 ' + j + '（' + T[j] + '°）出栈，它的等待结束了。注意出栈的是<b>下标</b>不是温度——马上要算"隔了几天"、要往 ans 的第 ' + j + ' 格写数，下标没了就什么都干不成（温度倒可以随时查回来）。',
+          do: draw(snap(i, {ast:ansStates(null), j:j}))});
+
+        ans[j] = i - j;
+        F.push({hl:[9], tag:'写答案', cls:'t-green',
+          msg:'<code>ans[' + j + '] = ' + i + ' − ' + j + ' = <b>' + (i - j) + '</b></code>：答案就是<b>两个下标之差</b>——第 ' + j + ' 天等了 ' + (i - j) + ' 天，才等到更热的第 ' + i + ' 天。ans 第 ' + j + ' 格亮起绿色；若栈里存的只是温度，此刻既不知道它是第几天，也没有格子可写。',
+          do: draw(snap(i, {ast:ansStates(j), j:j, ansj:(i - j), hlv:['ans[j]']}))});
+      }
+
+      if(st.length){
+        const jk = st[st.length - 1].key;
+        const j = +jk.slice(1);
+        F.push({hl:[7], no:7, tag:'排队结束', cls:'t-red',
+          msg:'<code>T[' + i + '] = ' + T[i] + '°</code> ≤ 栈顶那天(j=' + j + ')的 <code>' + T[j] + '°</code> → while 停。栈顶是全栈<b>最冷</b>的，连它都不比今天冷，底下更热的天更轮不到——今天谁也结不了账。注意条件带等号（≤）：温度持平不算"更热"（题目要的是更暖和），持平的天继续互相等。',
+          do: draw(snap(i, {ast:ansStates(null), sst:{[jk]:'active'}}))});
+      } else {
+        F.push({hl:[7], no:7, tag:'栈空', cls:'t-red',
+          msg:'栈空 → 前面没有欠账的天，while 直接跳过。今天比栈里任何"幸存者"都冷（或持平），只能先记下标进栈排队——"史上最冷梯队"再添一员。',
+          do: draw(snap(i, {ast:ansStates(null)}))});
+      }
+
+      st.push({key:'j' + i, val:T[i], fx:'#' + i});
+      F.push({hl:[10], tag:'i 进栈', cls:'t-blue',
+        msg:'<code>st.append(' + i + ')</code>：今天 ' + T[i] + '° 也进栈排队——它的答案得等未来的热天来结。入栈后不变式依旧成立：栈内温度从底到顶严格递减（比栈顶热的刚才全被弹光了）。每个下标进栈一次、出栈一次，全程 O(n)。',
+        do: draw(snap(i, {ast:ansStates(null), sst:{['j' + i]:'just'}}))});
+    }
+
+    F.push({hl:[11], tag:'返回', cls:'t-dark',
+      msg:'所有天过完，' + (st.length ? '还压在栈里的第 ' + st.map(it => it.key.slice(1)).join('、第 ') + ' 天' : '没有留在栈里的天') + '<b>始终没等到更热天</b>——它们当初默认填的 0 就是最终答案，没人来改 → <b>return ' + LCesc(JSON.stringify(ans)) + '</b> 🎉 复盘：每个下标至多进栈、出栈各一次，n 天总计约 2n 次操作，比暴力 O(n²) 快一个量级。',
+      do: draw(snap(null, {ast:ansStates(null), res:ans.slice()}))});
+
+    return F;
+  }
+});
+</script>
+</body>
+</html>

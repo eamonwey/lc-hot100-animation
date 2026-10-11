@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P049 · 二叉树中的最大路径和 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/progress.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 49, num: 124, title: '二叉树中的最大路径和', diff: '困难', cat: '二叉树',
+  method: 'maxPathSum',
+
+  lede: '题目：在二叉树里找一条<b>路径</b>（沿着父子相连、可以任选起点终点，但每个节点只走一次），' +
+        '使节点值之和最大。难点：路径可以在任意节点"拐弯"（左子树下来 → 我 → 右子树上去）。' +
+        '动画的诀窍是把两件事分开：<span class="var o">gain(节点)</span> 只算<b>单边贡献</b>——' +
+        '"从我这往下扎一条路，最多能带多少正数上来"（负的砍成 0）；' +
+        '而在每个节点处顺手算一次<span class="var r">弯路</span> = 左贡献 + 右贡献 + 自己，' +
+        '全局 <span class="var v">ans</span> 只认最大的那个。',
+
+  roles: [
+    {c:'orange', code:'active', text:'当前在算 gain 的节点'},
+    {c:'blue',   code:'in',     text:'递归路径上的祖先'},
+    {c:'green',  code:'done',   text:'贡献已算好（树上的绿色标签）'},
+    {c:'violet', code:'ans',    text:'全局最大路径和'}
+  ],
+
+  codeTitle: '跟着高亮读代码——第 5 行变<span style="color:var(--green)">绿</span>＝空节点返回 0；' +
+             '第 9 行是"弯路结算"：ans 有没有被打破，看这里。',
+
+  idea: '每个节点给上面只带一条边：gain = max(左, 右) + 自己（负的砍成 0）；弯路 l+r+自己 只在当地结算进 ans。',
+
+  qa: [
+    {q:'为什么往上报只能带一边？',
+     a:'路径进了当前节点后只能"顺着一条链"延伸——如果左右两边都带上，路径就分叉了，' +
+       '走过节点的父亲还得再走一次，不合法。所以给上面的"贡献"必须二选一：max(l, r) + 自己。'},
+    {q:'弯路和单边贡献到底差在哪？',
+     a:'弯路 = 左贡献 + 自己 + 右贡献，是"<b>经过</b>我"的最优路径，只能发生在"我"这一站，' +
+       '所以当场和 ans 比一次；单边贡献 = max(左,右) + 自己，是"<b>从我出发往上</b>"能提供的值，' +
+       '是父亲拼弯路时用的原料。一个对全局结账，一个对上面供货。'},
+    {q:'负贡献为什么要砍成 0？',
+     a:'砍成 0 的意思是"这条边我不走了"。带着负数只会让路径和变小，还不如路径就从当前节点开始。' +
+       'max(gain, 0) 一行就实现了这个取舍。'},
+    {q:'全是负数怎么办？',
+     a:'答案就是值最大的那个单节点：所有 l、r 都被砍成 0，每个节点的弯路 = 0+0+自己，' +
+       'ans 一路比下来自然留下最大的节点值。所以 ans 初值必须是 -∞ 而不是 0。'}
+  ],
+
+  complexity: '时间 O(n)（每个节点访问一次）　·　空间 O(h)（递归栈，h 为树高）',
+
+  form: [
+    {key:'root', label:'root', type:'tree', def:[-10,9,20,null,null,15,7]}
+  ],
+  presets: [
+    {label:'经典例 → 42', values:{root:[-10,9,20,null,null,15,7]}},
+    {label:'负贡献被砍 [2,-1,-2] → 2', values:{root:[2,-1,-2]}},
+    {label:'全负数 [-3,-2,-4] → -2', values:{root:[-3,-2,-4]}},
+    {label:'左链 [1,2,null,3] → 6', values:{root:[1,2,null,3]}}
+  ],
+
+  code: `class Solution:
+    def maxPathSum(self, root):
+        self.ans = float('-inf')
+        def gain(node):                       # 单边最大贡献(负的砍成 0)
+            if not node:
+                return 0
+            l = max(gain(node.left), 0)       # 左边贡献, 负的不要
+            r = max(gain(node.right), 0)      # 右边贡献, 负的不要
+            self.ans = max(self.ans, l + r + node.val)   # 弯路: 左+右+自己
+            return max(l, r) + node.val       # 给上面用的: 只能选一边
+        gain(root)
+        return self.ans
+`,
+
+  sol(input){
+    const T = Viz.parseTree(input.root || []);
+    const byKey = {}; T.nodes.forEach(n => byKey[n.key] = n);
+    let ans = -Infinity;
+    function gain(k){
+      if(k == null) return 0;
+      const nd = byKey[k];
+      const l = Math.max(gain(nd.left), 0);
+      const r = Math.max(gain(nd.right), 0);
+      ans = Math.max(ans, l + r + nd.val);
+      return Math.max(l, r) + nd.val;
+    }
+    gain(T.root);
+    return ans;
+  },
+  expected: 42,
+
+  quiz: [
+    {q:'节点算完左右贡献后,给父亲上报的为什么是 max(l, r) + 自己,而不是 l + r + 自己?',
+     options:['写 l + r + 自己也对,只是答案会偏大一点','因为路径穿过本节点后还要往父亲延伸,左右都带就分叉了——父亲会被经过两次,不合法;所以供货只能二选一','因为递归函数只能返回一个数,l + r 会超出返回类型'],
+     answer:1,
+     explain:'"上下贯通的路径"在每个节点只能走一条链。l + r + 自己是"经过我"的弯路形状——它的最高点就是我,只能在弯路结算那一步对全局记一次账;而返回给父亲的是"从我出发往上"的单边贡献,是父亲拼弯路的原料。两条账各走各的:弃掉的那一边已经在本地弯路里结算过,一点不吃亏。',
+     jumpTo:43},
+    {q:'把输入换成左链 [1,2,null,3]（1 的左孩子是 2,2 的左孩子是 3）,最大路径和是?',
+     options:['3','5','6'],
+     answer:2,
+     explain:'整条链 3→2→1 本身就是一条合法路径(从叶子 3 出发、不拐弯),和 = 6。过程:gain(3):弯路 3,贡献 3;gain(2):l=3、r=0,弯路 3+0+2=5,上报 3+2=5;gain(1):l=5,弯路 5+0+1=6 → ans=6。左链是弯路公式的特例:最高点在链顶,另一侧贡献为 0,公式照样适用。',
+     jumpTo:42},
+    {q:'若整棵树全是负数(如 [-3,-2,-4]),ans 的初值为什么必须是 -∞ 而不能是 0?',
+     options:['初值多少都行,反正后面会被覆盖','因为 -∞ 不是数字,比较时会报错','全负时最优路径就是"单个负节点":所有贡献被砍成 0、弯路 = 0+0+自己;初值 0 永远不被打破,会错误地返回 0——但空路径不是合法答案'],
+     answer:2,
+     explain:'max(·, 0) 让每个节点都倾向"不接负边",于是全负树的弯路退化成 0+0+自己,ans 应该一路比出最大的那个单节点值(如 -2)。若初值是 0,max(0, −2) 永远选 0——但路径至少要含一个节点,0 是不存在的路径。-∞ 保证第一个真实节点一定能写入 ans。',
+     jumpTo:1},
+  ],
+
+  steps(input){
+    const F = [];
+    const T = Viz.parseTree(input.root || []);
+    const t = Viz.treeLayout(input.root || []);
+    const byKey = {}; T.nodes.forEach(n => byKey[n.key] = n);
+    let callSeq = 0;
+    let ans = -Infinity;                 // 全局答案（生成期变量, push 时读快照）
+    const gains = new Map();             // key -> 已算出的单边贡献
+    const vName = k => k == null ? 'null' : LCesc(String(byKey[k].val));
+    const fmtAns = () => ans === -Infinity ? '-∞' : ans;   // 面板里 -∞ 比文字好看
+    const snapTags = () => { const o = {}; gains.forEach((g, k) => o[k] = {text:'贡献 ' + g, cls:'mg'}); return o; };
+
+    const draw = (o) => (v) => {
+      const states = {};
+      (o.path || []).forEach(k => { states[k] = 'in'; });
+      if(o.cur != null) states[o.cur] = 'active';
+      const tags = {};
+      Object.keys(o.tags || {}).forEach(k => { tags[k] = o.tags[k]; });
+      v.tree('T', t, {label:'二叉树　·　绿色标签 = 该节点算出的单边贡献', states, tags, edgeStates:o.edgeStates || {}});
+      const stack = o.stack || [];
+      v.stack('S', stack, {
+        label:'递归调用栈　·　越往下越新',
+        states: stack.length ? {[stack[stack.length - 1].key]:'active'} : {},
+        topTag:'栈顶'
+      });
+      if(o.vars) v.vars('vars', o.vars, {label:'当前函数的变量', hl:o.hlAns ? ['ans'] : []});
+      if(o.result != null) v.result(o.result, {label:'最大路径和'});
+    };
+
+    /* ★ 快照原则：vars/edgeStates/tags/stack 全部在 F.push 那一刻定死 */
+    function visit(k, frames, path){
+      const id = 'c' + (++callSeq);
+      const stack = frames.concat([{key:id, val:'gain(' + vName(k) + ')'}]);
+      if(k == null){
+        F.push({hl:[5,6], ok:5, tag:'空节点', cls:'t-grey',
+          msg:'递归走到了空处：<code>gain(null)</code> 直接返回 <b>0</b>——这是递归出口。空子树没有任何节点、谈不上贡献；返回 0 还能保证父亲那边 <code>max(gain, 0)</code> 不吃亏。栈顶这帧拿到结果立刻弹出。',
+          do: draw({stack, path})});
+        return 0;
+      }
+      F.push({hl:[5], no:5, tag:'进入函数', cls:'t-blue',
+        msg:'进入 <b>gain(节点 ' + vName(k) + ')</b>（橙 = 当前节点，蓝 = 递归路径上的祖先）。gain 的任务：算出"从我这里往下扎一条单边路，最多能给上面带多少正贡献"。它是后序遍历——先递归问完左右两个孩子，最后才轮到自己结算。',
+        do: draw({stack, cur:k, path: path.concat(k), tags: snapTags()})});
+
+      const nd = byKey[k];
+      F.push({hl:[7], tag:'问左边', cls:'t-blue',
+        msg:'第 7 行：先问左边——递归调用 gain(' + (nd.left != null ? '节点 ' + vName(nd.left) : 'null') + ')，把左子树整棵的贡献算出来。为什么先问孩子？因为"我给上面的贡献" = 自己 + 左右两边里较好的那个，孩子不报数我就没法填——信息自底向上汇。',
+        do: draw({stack, cur:k, path: path.concat(k), tags: snapTags()})});
+      const lg = visit(nd.left, stack, path.concat(k));
+      const l = Math.max(lg, 0);
+      F.push({hl:[7], tag:'左边返回', cls: nd.left == null ? 't-grey' : (lg <= 0 ? 't-red' : 't-green'),
+        msg: nd.left == null
+          ? '左边是空子树：gain(null) = 0 → <code>l = max(0, 0) = 0</code>。没有左孩子就没有左边的路可接，记 0 即可，不影响后面。'
+          : (lg <= 0
+          ? '左子树交上来的贡献是 <b>' + lg + '</b>，≤ 0 → <code>l = max(' + lg + ', 0) = 0</code>，砍成 0。含义是"<b>这条左边的路不走了</b>"：接一个负数只会让经过本节点的路径变小，还不如让路径就从本节点起头。'
+          : '左子树交上来的贡献是 <b>' + lg + '</b>，> 0 → <code>l = ' + l + '</code>。左边有正数可赚，这条绿边值得接——树上被打绿的就是"贡献已被采纳"的记号。'),
+        do: draw({stack, cur:k, path: path.concat(k), tags: snapTags(),
+                  edgeStates: lg > 0 ? {[k + '-' + nd.left]:'e-done'} : {},
+                  vars:{l:l, r:'…', ans:fmtAns()}})});
+
+      F.push({hl:[8], tag:'问右边', cls:'t-blue',
+        msg:'第 8 行：再问右边——递归调用 gain(' + (nd.right != null ? '节点 ' + vName(nd.right) : 'null') + ')。左边已经报数（l = ' + l + '），现在等右边，两边都齐了才能结算弯路。',
+        do: draw({stack, cur:k, path: path.concat(k), tags: snapTags(),
+                  edgeStates: lg > 0 ? {[k + '-' + nd.left]:'e-done'} : {},
+                  vars:{l:l, r:'…', ans:fmtAns()}})});
+      const rg = visit(nd.right, stack, path.concat(k));
+      const r = Math.max(rg, 0);
+      F.push({hl:[8], tag:'右边返回', cls: nd.right == null ? 't-grey' : (rg <= 0 ? 't-red' : 't-green'),
+        msg: nd.right == null
+          ? '右边也是空的：<code>r = max(0, 0) = 0</code>。左右两个"原料"都齐了，可以开始结算。'
+          : (rg <= 0
+          ? '右子树贡献 <b>' + rg + '</b> ≤ 0 → <code>r = max(' + rg + ', 0) = 0</code>，同样砍掉——理由同左边：背负数不如不接，路径大不了从别处起头。'
+          : '右子树贡献 <b>' + rg + '</b> > 0 → <code>r = ' + r + '</code>，这条绿边也值得接。'),
+        do: draw({stack, cur:k, path: path.concat(k), tags: snapTags(),
+                  edgeStates: Object.assign({},
+                    lg > 0 ? {[k + '-' + nd.left]:'e-done'} : {},
+                    rg > 0 ? {[k + '-' + nd.right]:'e-done'} : {}),
+                  vars:{l:l, r:r, ans:fmtAns()}})});
+
+      const bend = l + r + nd.val;
+      const improved = bend > ans;
+      if(improved) ans = bend;
+      F.push({hl:[9], ok: improved ? 9 : undefined, tag:'弯路结算', cls: improved ? 't-violet' : 't-ink',
+        msg:'结算<b>弯路</b>：一条"左子树下来 → 经过节点 ' + vName(k) + ' → 右子树上去"的路径，和 = <code>' + l + ' + ' + r + ' + ' + nd.val + ' = ' + bend +
+            '</code>。为什么必须在这里算？任何合法路径都有一个<b>最高点</b>，在最高点处恰好左右各带一条边——让每个节点都当一次最高点，就把所有可能的路径一条不漏地过了一遍。' + (improved
+              ? '它比原 ans 大 → <b>ans 刷新为 ' + bend + '</b>（变量面板 ans 高亮）！'
+              : '它没超过当前 ans = ' + ans + '，ans 不动——大多数节点都会落选，ans 只认全局最好的一次。'),
+        do: draw({stack, cur:k, path: path.concat(k), tags: snapTags(),
+                  edgeStates: Object.assign({},
+                    lg > 0 ? {[k + '-' + nd.left]:'e-done'} : {},
+                    rg > 0 ? {[k + '-' + nd.right]:'e-done'} : {}),
+                  vars:{l:l, r:r, 'l+r+val':bend, ans:fmtAns()},
+                  hlAns: improved})});
+
+      const g = Math.max(l, r) + nd.val;
+      gains.set(k, g);
+      F.push({hl:[10], tag:'汇报贡献', cls:'t-green',
+        msg:'<code>return max(' + l + ', ' + r + ') + ' + nd.val + ' = ' + g + '</code>——这是节点 ' + vName(k) + ' 给父亲报的<b>单边贡献</b>，挂成树上的绿色标签。为什么只带一边？路径进了本节点还要往父亲延伸，左右都带就分叉了：父亲得被经过两次，不合法。弃掉的那一边刚才已经在弯路里结算过，一点不吃亏。',
+        do: draw({stack: frames, path, tags: snapTags(),
+                  edgeStates: Object.assign({},
+                    lg > 0 ? {[k + '-' + nd.left]:'e-done'} : {},
+                    rg > 0 ? {[k + '-' + nd.right]:'e-done'} : {})})});
+      return g;
+    }
+
+    F.push({hl:[1,2,3,4], tag:'初始化', cls:'t-grey',
+      msg:'准备开工：辅助函数 <code>gain(node)</code> 只干一件事——算"从 node 往下扎一条单边路，最多能给上面带多少正贡献"；' +
+          '全局 <code>ans</code> 存最终答案，从 <b>-∞</b> 起步。为什么不是 0？节点值可以全是负数，真正的答案可能就是某个单节点（比如 -2），初值 0 会把它顶掉、错误地返回 0。绿色边 = 贡献被采纳的路。',
+      do: draw({stack:[], vars:{ans:'-∞'}})});
+
+    F.push({hl:[11], tag:'开始递归', cls:'t-blue',
+      msg:'第 11 行：<code>gain(根节点 ' + vName(T.root) + ')</code>，开工。记住每个节点的节奏：<b>先递归左、再递归右、最后自己结算</b>（后序遍历）——孩子不报数，父亲就算不出自己的贡献，信息只能自底向上汇。',
+      do: draw({stack:[], vars:{ans:fmtAns()}})});
+
+    if(T.root != null) visit(T.root, [], []);
+
+    F.push({hl:[12], tag:'返回答案', cls:'t-dark',
+      msg:'🎉 递归全部结束，<code>return ans = ' + ans + '</code>。复盘：ans 只在"弯路结算"那一步被刷新，而最优路径的最高点必然在某个节点处算过一次弯路——所以全局最大一定被 ans 抓到过，一解不漏。时间 O(n)：每个节点只进一次递归。',
+      do: draw({stack:[], tags: snapTags(), result: ans})});
+
+    return F;
+  }
+});
+</script>
+</body>
+</html>

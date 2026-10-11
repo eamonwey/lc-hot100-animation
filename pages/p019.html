@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P019 · 螺旋矩阵 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/progress.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 19, num: 54, title: '螺旋矩阵', diff: '中等', cat: '矩阵',
+  method: 'spiralOrder',
+
+  lede: '题目：把 m×n 矩阵按<b>顺时针螺旋</b>顺序（→ ↓ ← ↑ 一圈圈往里卷）把所有元素收进一个数组。' +
+        '动画维护四条边界 <span class="var r">top / bottom / left / right</span>，' +
+        '像拆相框一样：每圈吃掉四条边，然后边界向中间缩一格；' +
+        '蓝框 = 当前这一圈还没收的边，绿格 = 已经收进 <code>out</code> 的格子。',
+
+  roles: [
+    {c:'blue',   code:'边界',  text:'top/bottom/left/right 围住的当前圈'},
+    {c:'orange', code:'active', text:'正在收进 out 的格子'},
+    {c:'green',  code:'done',   text:'已收进 out 的格子'},
+    {c:'violet', code:'收缩',   text:'每圈结束边界内缩'}
+  ],
+
+  codeTitle: '跟着高亮读代码——四个方向各是一个小循环；两个 if 负责挡住"单行/单列残圈"，防止转角格子被收两次。',
+
+  legend: [
+    {c:'blue',   text:'当前圈的边'},
+    {c:'orange', text:'正在收的格子'},
+    {c:'green',  text:'已收进 out'},
+    {c:'violet', text:'边界内缩'}
+  ],
+
+  idea: '四条边界像相框一圈圈往里拆：→ ↓ ← ↑ 各收一条边，每圈收完 top+1、bottom−1、left+1、right−1，边界交错就停。',
+
+  qa: [
+    {q:'为什么右列从 top+1 开始、底行从 right−1 开始？',
+     a:'右上角 (top,right) 在收顶行时已经收过了，右列再收会重复——所以从下一行开始；' +
+       '同理右下角 (bottom,right) 已被右列收过，底行从 right−1 收到 left；' +
+       '左下角被底行收过，左列从 bottom−1 收到 top+1（不含 top）。四个方向各让出一个转角，不重不漏。'},
+    {q:'两个 if（top < bottom、left < right）防的是什么？',
+     a:'防<b>残圈重复</b>。当剩最后一行（top == bottom）时，"底行"就是刚收过的顶行；' +
+       '剩最后一列时，"左列"就是刚收过的右列。不加这两个 if，单行/单列矩阵会把转角收两遍。'},
+    {q:'循环条件为什么是 top <= bottom and left <= right？',
+     a:'它是"还有没收的地盘"的数学说法：只要上下边界交错（top > bottom）或左右交错（left > right），' +
+       '矩形就空了。每圈边界必向内缩一格，所以循环一定在 mn 步内结束。'},
+    {q:'复杂度？',
+     a:'每个格子恰好被收进 out 一次，时间 O(mn)；除了输出数组，只用了四个边界变量，空间 O(1)。'}
+  ],
+
+  complexity: '时间 O(mn)（每格收一次）　·　空间 O(1)（不算输出数组）',
+
+  form: [
+    {key:'matrix', label:'matrix（每行一行）', type:'grid', def:[[1,2,3],[4,5,6],[7,8,9]]}
+  ],
+  presets: [
+    {label:'3×3 方阵', values:{matrix:[[1,2,3],[4,5,6],[7,8,9]]}},
+    {label:'3×4 竖长方', values:{matrix:[[1,2,3,4],[5,6,7,8],[9,10,11,12]]}},
+    {label:'单行 1×4（边界）', values:{matrix:[[1,2,3,4]]}},
+    {label:'单列 4×1（边界）', values:{matrix:[[1],[2],[3],[4]]}}
+  ],
+
+  code: `class Solution:
+    def spiralOrder(self, matrix):
+        m, n = len(matrix), len(matrix[0])
+        top, bottom = 0, m - 1
+        left, right = 0, n - 1
+        out = []
+        while top <= bottom and left <= right:   # 还有没收的地盘
+            for j in range(left, right + 1):     # → 顶行
+                out.append(matrix[top][j])
+            for i in range(top + 1, bottom + 1): # ↓ 右列
+                out.append(matrix[i][right])
+            if top < bottom:                     # 底行别和顶行重合
+                for j in range(right - 1, left - 1, -1):   # ← 底行
+                    out.append(matrix[bottom][j])
+            if left < right:                     # 左列别和右列重合
+                for i in range(bottom - 1, top, -1):       # ↑ 左列
+                    out.append(matrix[i][left])
+            top += 1; bottom -= 1; left += 1; right -= 1   # 内缩一圈
+        return out
+`,
+
+  sol(input){
+    const m = input.matrix;
+    const R = m.length, C = R ? m[0].length : 0;
+    let top = 0, bottom = R - 1, left = 0, right = C - 1;
+    const out = [];
+    while(top <= bottom && left <= right){
+      for(let j = left; j <= right; j++) out.push(m[top][j]);
+      for(let i = top + 1; i <= bottom; i++) out.push(m[i][right]);
+      if(top < bottom)
+        for(let j = right - 1; j >= left; j--) out.push(m[bottom][j]);
+      if(left < right)
+        for(let i = bottom - 1; i >= top + 1; i--) out.push(m[i][left]);
+      top += 1; bottom -= 1; left += 1; right -= 1;
+    }
+    return out;
+  },
+  expected: [1,2,3,6,9,8,7,4,5],
+
+  quiz: [
+    {q:'矩阵 [[1,2,3],[4,5,6],[7,8,9],[10,11,12]]（4×3），螺旋顺序是？',
+     options:['[1,2,3,6,9,12,11,10,7,4,5,8]','[1,2,3,6,9,12,10,11,7,4,5,8]（底行先收 10 再收 11）','[1,2,3,4,5,6,7,8,9,10,11,12]（逐行读）'],
+     answer:0,
+     explain:'第一圈：→ 顶行收 1,2,3；↓ 右列从 top+1 起收 6,9,12（右上角 3 已被顶行收过）；← 底行从 right−1 倒收 11,10（右下角 12 已被右列收过）；↑ 左列从 bottom−1 收到 top+1，收 7,4（两个转角 10 和 1 都让了出去）。第二圈只剩 2×1 竖条：顶行收 5、右列收 8，底行的区间是空的、左列被 left==right 的闸门挡住。拼起来正是 [1,2,3,6,9,12,11,10,7,4,5,8]。误选第二个把底行收反了——底行要倒着走（right−1 → left）；误选第三个把「逐行扫描」当成了螺旋。',
+     jumpTo:22},
+    {q:'↓ 右列为什么从 top+1 开始收，而不是从 top 开始？← 底行同理为什么从 right−1 开始？',
+     options:['为了少收一格，节省时间','右上角 (top,right) 刚被顶行收过——转角归先到的边，右列再从 top 收就会重复；同理右下角已被右列收过，底行从 right−1 起收','因为下一行的值总是更大，跳过更安全'],
+     answer:1,
+     explain:'一圈四条边按 → ↓ ← ↑ 顺序接力，「转角归先到的边」：顶行把右上角收走后，右列只能从下一行开始；右列把右下角收走后，底行从 right−1 倒收到 left；底行收走左下角后，左列从 bottom−1 收到 top+1。四条边各让出一个转角，才做到不重不漏——每个格子恰好被收一次，这也是 O(mn) 上界成立的依据。',
+     jumpTo:7},
+    {q:'代码里两个 if——top < bottom 和 left < right——防的是什么？',
+     options:['防止数组下标变成负数','防「残圈重复」：只剩最后一行时，「底行」就是刚收过的顶行本体；只剩最后一列时，「左列」就是刚收过的右列本体，不加闸门会把整条边收两遍','控制循环最多跑两圈'],
+     answer:1,
+     explain:'当矩阵收得只剩单行（top == bottom）时，「底行」和顶行是同一行，再收一遍所有格子都重复；只剩单列（left == right）时同理。这两道闸把单行/单列两类残圈挡在门外。注意右列不需要单独的 if——top+1 > bottom 时收右列的区间为空，一次都不跑，自动跳过；真正危险的是「会跑且跑出重复」的底行和左列。',
+     jumpTo:18},
+  ],
+
+  steps(input){
+    const F = [];
+    const m = input.matrix.map(r => r.slice());
+    const R = m.length, C = m[0].length;
+    let top = 0, bottom = R - 1, left = 0, right = C - 1;
+    const out = [];
+    const visited = new Set();
+
+    /* ★ 快照原则：grid 的 states、out 的内容都在 push 时求值定死 */
+    const snap = () => m.map(r => r.slice());
+    const stOf = (curKey) => {
+      const o = {};
+      for(let r = 0; r < R; r++) for(let c = 0; c < C; c++){
+        const k = r + ',' + c;
+        if(visited.has(k)) o[k] = 'done';
+        else if(r >= top && r <= bottom && c >= left && c <= right &&
+                (r === top || r === bottom || c === left || c === right)) o[k] = 'in';
+      }
+      if(curKey) o[curKey] = 'active';
+      return o;
+    };
+    const outSnap = () => out.slice(0, 10);
+    const vs = () => ({top:top, bottom:bottom, left:left, right:right, 已收:out.length});
+
+    const draw = (o) => (v) => {
+      v.grid('G', o.mat, {label:'矩阵　·　蓝框 = 当前这一圈还没收的边', states:o.states});
+      v.arr('out', o.out, {label:'输出 <code>out</code>　·　已收 ' + o.outN + ' 个' + (o.outN > 10 ? '（图示前 10 个）' : '')});
+      if(o.vars) v.vars('vars', o.vars, {label:'四条边界'});
+      if(o.res !== undefined) v.result(o.res, {label:'返回结果'});
+    };
+
+    F.push({hl:[1,2], tag:'初始化', cls:'t-grey',
+      msg:R + '×' + C + ' 的矩阵，要按<b>顺时针螺旋</b>（→ ↓ ← ↑ 一圈圈往里卷）把 ' + (R * C) +
+          ' 个数收进 out。思路不是背方向表，而是<b>维护一个还没拆完的矩形</b>：每圈吃掉四条边，再把边界向中间缩一格。画面上蓝框是"这一圈还没收的边"，绿格是已收进 out 的。',
+      do: draw({mat:snap(), states:{}, out:[], outN:0})});
+
+    F.push({hl:[3,4,5,6], tag:'四条边界', cls:'t-grey',
+      msg:'四条边界初始化：top=0、bottom=' + bottom + '、left=0、right=' + right +
+          '，围住整个矩阵（看变量面板）。它们就是"还没拆的相框"的四个角：每圈按 <b>→ ↓ ← ↑</b> 吃掉四条边，收完各自向中间缩一格；循环条件 top ≤ bottom 且 left ≤ right 正是"相框还没拆完"。',
+      do: draw({mat:snap(), states:stOf(), out:[], outN:0, vars:vs()})});
+
+    while(top <= bottom && left <= right){
+      const ring = Math.min(top, left) + 1;
+      F.push({hl:[7], ok:7, tag:'开卷', cls:'t-blue',
+        msg:'循环条件成立（top=' + top + ' ≤ bottom=' + bottom + '，left=' + left + ' ≤ right=' + right +
+            '）→ 相框还有地盘，开卷第 <b>' + ring + '</b> 圈。这一圈按 → ↓ ← ↑ 收四条边，分配规则是"转角归先到的边"——四条边各让出该让的转角，才能不重不漏。',
+        do: draw({mat:snap(), states:stOf(), out:outSnap(), outN:out.length, vars:vs()})});
+
+      /* → 顶行 */
+      for(let j = left; j <= right; j++){
+        const val = m[top][j];
+        out.push(val); visited.add(top + ',' + j);
+        F.push({hl:[8,9], tag:'→ 顶行', cls:'t-orange',
+          msg:'顶行向右：<code>matrix[' + top + '][' + j + '] = ' + LCesc(val) + '</code> 收进 out（新绿格）' +
+              (j === right ? '，顶行收完。顶行是唯一"两个转角都归它"的边——右列、左列之后都会让出转角，所以它从 left 到 right 一格不落。' : '。顶行从 left 一路收到 right。'),
+          do: draw({mat:snap(), states:stOf(top + ',' + j), out:outSnap(), outN:out.length, vars:vs()})});
+      }
+
+      /* ↓ 右列 */
+      if(top + 1 <= bottom){
+        for(let i = top + 1; i <= bottom; i++){
+          const val = m[i][right];
+          out.push(val); visited.add(i + ',' + right);
+          F.push({hl:[10,11], tag:'↓ 右列', cls:'t-orange',
+            msg:'右列向下：<code>matrix[' + i + '][' + right + '] = ' + LCesc(val) + '</code> 收进 out（新绿格）。起点是 top+1=' + (top + 1) + ' 而不是 top——右上角刚被顶行收过，再收就重复，"各让一个转角"的规则在这里兑现。',
+            do: draw({mat:snap(), states:stOf(i + ',' + right), out:outSnap(), outN:out.length, vars:vs()})});
+        }
+      } else {
+        F.push({hl:[10], tag:'↓ 右列', cls:'t-grey',
+          msg:'top + 1 = ' + (top + 1) + ' &gt; bottom = ' + bottom +
+              '：右列从下一行到 bottom 是空区间，没有新格子（这圈只剩一行）→ 循环体一次都不跑，自动跳过，不用特判。',
+          do: draw({mat:snap(), states:stOf(), out:outSnap(), outN:out.length, vars:vs()})});
+      }
+
+      /* ← 底行 */
+      if(top < bottom){
+        F.push({hl:[12], ok:12, tag:'底行判定', cls:'t-green',
+          msg:'<code>top &lt; bottom</code>（' + top + ' &lt; ' + bottom + '）→ 底行和顶行不是同一行，值得收。' +
+              'j 从 right−1=' + (right - 1) + ' 倒收到 left=' + left +
+              (right - 1 < left ? '（空区间——这圈只剩一列，中间没有可收的格子）' : '，倒着走是因为螺旋走到下边要逆着列序回来；右下角刚被右列收过，让出一格。'),
+          do: draw({mat:snap(), states:stOf(), out:outSnap(), outN:out.length, vars:vs()})});
+        for(let j = right - 1; j >= left; j--){
+          const val = m[bottom][j];
+          out.push(val); visited.add(bottom + ',' + j);
+          F.push({hl:[13,14], tag:'← 底行', cls:'t-orange',
+            msg:'底行向左倒收：<code>matrix[' + bottom + '][' + j + '] = ' + LCesc(val) + '</code> 收进 out（新绿格）。方向 ← 与顶行的 → 相反——下边是螺旋的回头路，列序自然要倒着走。',
+            do: draw({mat:snap(), states:stOf(bottom + ',' + j), out:outSnap(), outN:out.length, vars:vs()})});
+        }
+      } else {
+        F.push({hl:[12], no:12, tag:'底行判定', cls:'t-red',
+          msg:'<code>top == bottom</code>（' + top + '）：只剩最后一行，"底行"就是刚收过的顶行本体，再收一遍所有格子都会重复 → <code>if</code> 红灯挡住，跳过。单行矩阵全靠这道闸不重复。',
+          do: draw({mat:snap(), states:stOf(), out:outSnap(), outN:out.length, vars:vs()})});
+      }
+
+      /* ↑ 左列 */
+      if(left < right){
+        F.push({hl:[15], ok:15, tag:'左列判定', cls:'t-green',
+          msg:'<code>left &lt; right</code>（' + left + ' &lt; ' + right + '）→ 左列是独立的一列，值得收。' +
+              'i 从 bottom−1=' + (bottom - 1) + ' 倒收到 top+1=' + (top + 1) +
+              (bottom - 1 < top + 1 ? '（空区间——这圈只剩一行/一列时，中间没有格子可收）' : '：左下角被底行收过、左上角被顶行收过，两个转角都让出去了，这条边只剩中段。'),
+          do: draw({mat:snap(), states:stOf(), out:outSnap(), outN:out.length, vars:vs()})});
+        for(let i = bottom - 1; i >= top + 1; i--){
+          const val = m[i][left];
+          out.push(val); visited.add(i + ',' + left);
+          F.push({hl:[16,17], tag:'↑ 左列', cls:'t-orange',
+            msg:'左列向上倒收：<code>matrix[' + i + '][' + left + '] = ' + LCesc(val) + '</code> 收进 out（新绿格）。↑ 是这一圈的最后一个方向，这格收完整圈闭合，等边界内缩后卷更里一层。',
+            do: draw({mat:snap(), states:stOf(i + ',' + left), out:outSnap(), outN:out.length, vars:vs()})});
+        }
+      } else {
+        F.push({hl:[15], no:15, tag:'左列判定', cls:'t-red',
+          msg:'<code>left == right</code>（' + left + '）：只剩最后一列，"左列"就是刚收过的右列本体，再收必重复 → <code>if</code> 红灯挡住。配合上面 top&lt;bottom 那道闸，单行/单列两类残圈都安全了。',
+          do: draw({mat:snap(), states:stOf(), out:outSnap(), outN:out.length, vars:vs()})});
+      }
+
+      top += 1; bottom -= 1; left += 1; right -= 1;
+      F.push({hl:[18], tag:'边界内缩', cls:'t-violet',
+        msg:'一圈卷完！四条边界各向中间缩一格：top→' + top + '、bottom→' + bottom + '、left→' + left + '、right→' + right +
+            '（变量面板同步更新）。画面上蓝框缩成更小的圈——最外层相框拆完，下一轮 while 接着拆里层。',
+        do: draw({mat:snap(), states:stOf(), out:outSnap(), outN:out.length, vars:vs()})});
+    }
+
+    F.push({hl:[7], no:7, tag:'出循环', cls:'t-red',
+      msg:'循环条件不再成立：top=' + top + '、bottom=' + bottom + '、left=' + left + '、right=' + right +
+          '——' + (top > bottom ? '上下边界交错（top &gt; bottom）' : '左右边界交错（left &gt; right）') + '，矩形空了 → while 退出。' +
+          out.length + ' 个格子全被收过、每个恰好一次——四条边各让出转角的分配，保证了不重不漏。',
+      do: draw({mat:snap(), states:stOf(), out:outSnap(), outN:out.length, vars:vs()})});
+
+    F.push({hl:[19], tag:'返回', cls:'t-dark',
+      msg:'<code>return out</code> 🎉 螺旋顺序：<b>[' + out.map(x => LCesc(x)).join(', ') + ']</b>。' +
+          '对照画面：绿格按收的先后正好是一条从外圈卷向中心的螺旋线，一格不多一格不少。复盘：每格恰好收一次，时间 O(mn)；除输出外只有四个边界变量，空间 O(1)。',
+      do: draw({mat:snap(), states:stOf(), out:outSnap(), outN:out.length, res:out.slice()})});
+    return F;
+  }
+});
+</script>
+</body>
+</html>

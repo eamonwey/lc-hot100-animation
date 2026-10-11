@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P017 · 缺失的第一个正数 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/progress.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 17, num: 41, title: '缺失的第一个正数', diff: '困难', cat: '普通数组',
+  method: 'firstMissingPositive',
+
+  lede: '题目：在<b>无序</b>数组里找第一个没出现的正整数（从 1 数起），还得做到 O(n) 时间、O(1) 空间。' +
+        '动画用<b>原地哈希</b>破解：值 x 的"家"就是下标 x−1。<span class="var i">i</span> 是正在审查的格子，' +
+        '<span class="var r">j</span> 是当前值该去的家：第一轮把 1~n 的数各自搬回家，' +
+        '第二轮从头验收——第一个没对上号的格子，下标 +1 就是答案。',
+
+  roles: [
+    {c:'orange', code:'i',    text:'正在审查的格子'},
+    {c:'blue',   code:'j',    text:'当前值 x 该去的家（下标 x−1）'},
+    {c:'green',  code:'done', text:'已对号入座（nums[k] = k+1）'},
+    {c:'red',    code:'bad',  text:'验收时对不上号的格子'}
+  ],
+
+  codeTitle: '跟着高亮读代码——while 那行变<span style="color:var(--green)">绿</span>＝该搬家；' +
+             '第二轮的 if 变<span style="color:var(--red)">红</span>＝这个位置对不上号，答案就是它的下标 +1。',
+
+  legend: [
+    {c:'green',  text:'对号入座的格子'},
+    {c:'orange', text:'i 当前审查'},
+    {c:'blue',   text:'j 值的家'},
+    {c:'red',    text:'验收不匹配'}
+  ],
+
+  idea: '把值 x 搬到下标 x−1 当"家"：搬完再从头验收，第一个 nums[i] ≠ i+1 的位置，答案就是 i+1。',
+
+  qa: [
+    {q:'为什么答案只可能是 1 ~ n+1？',
+     a:'数组一共 n 个格子。假如 1~n 这 n 个正数全都出现了，那最小缺失只能是 n+1；' +
+       '只要 1~n 里缺了一个，答案就是缺的那个——更大的数（如 n+5）出现与否<b>根本不影响</b>，' +
+       '因为 1~n 里必有缺口先被撞上。所以负数、0、超过 n 的数都可以无视。'},
+    {q:'while 里为什么换完不立刻 i++？',
+     a:'因为换到第 i 格的是<b>另一个没审过的数</b>，它可能也该搬家。把它留在原地继续审，' +
+       '直到这格住进"无家可归"的数为止。别担心死循环：每换一次至少送一个数回家，全程最多换 n 次。'},
+    {q:'while 条件里 nums[nums[i]-1] != nums[i] 防的是什么？',
+     a:'防<b>重复数</b>导致死循环。如果 x 的家里已经住着同款 x（比如 [1,1]），再换就是原地打转；' +
+       '这个条件等于"家里已经是它就别搬了"，顺便让重复数自然出局。'},
+    {q:'O(1) 空间体现在哪？',
+     a:'我们没有开哈希表——"值 x 出现过吗"这个信息，直接藏在<b>数组自己的位置</b>里：' +
+       '下标 x−1 住着 x 就是"出现过"。数组既是数据也是记号本。'}
+  ],
+
+  complexity: '时间 O(n)（每个数最多被换一次家）　·　空间 O(1)（原地交换，不开新表）',
+
+  form: [
+    {key:'nums', label:'nums', type:'arr', def:[3,4,-1,1]}
+  ],
+  presets: [
+    {label:'[3,4,-1,1] 经典例', values:{nums:[3,4,-1,1]}},
+    {label:'[1,2,0] → 答案 3', values:{nums:[1,2,0]}},
+    {label:'[7,8,9,11,12] → 答案 1', values:{nums:[7,8,9,11,12]}},
+    {label:'[2,1] 换一次家', values:{nums:[2,1]}},
+    {label:'[1] → 答案 2（边界）', values:{nums:[1]}}
+  ],
+
+  code: `class Solution:
+    def firstMissingPositive(self, nums):
+        n = len(nums)
+        for i in range(n):             # 第一轮: 把值搬回家
+            while 1 <= nums[i] <= n and nums[nums[i] - 1] != nums[i]:
+                j = nums[i] - 1        # nums[i] 的家
+                nums[i], nums[j] = nums[j], nums[i]   # 换过去
+        for i in range(n):             # 第二轮: 从头验收
+            if nums[i] != i + 1:       # 第一个对不上号的
+                return i + 1           # 缺的就是它
+        return n + 1                   # 1~n 全齐, 答案是 n+1
+`,
+
+  sol(input){
+    const nums = input.nums.slice();
+    const n = nums.length;
+    for(let i = 0; i < n; i++){
+      while(1 <= nums[i] && nums[i] <= n && nums[nums[i] - 1] !== nums[i]){
+        const j = nums[i] - 1;
+        const t = nums[i]; nums[i] = nums[j]; nums[j] = t;
+      }
+    }
+    for(let i = 0; i < n; i++){
+      if(nums[i] !== i + 1) return i + 1;
+    }
+    return n + 1;
+  },
+  expected: 2,
+
+  quiz: [
+    {q:'数组 [7,8,9,11,12]（n = 5），缺失的第一个正数是？',
+     options:['13（最大值 12 再加 1）','6（n + 1）','1','2（第二个没出现的正数）'],
+     answer:2,
+     explain:'答案只可能在 1 ~ n+1 里，而 1 从头就没出现——第一个缺口就是 1。误选 6 或 13 是把「1~n 全齐才返回 n+1」当成了无条件结论：n=5 个格子根本装不下 7~12 这些越界的大数，它们没有家、也不影响答案，第二轮验收第一格 nums[0] ≠ 1 就直接判 1。误选 2 则是没抓住「从 1 数起」。像 [5,4,3,2,1] 这种 1~5 全齐的，答案才会是 n+1 = 6。',
+     jumpTo:1},
+    {q:'输入 [5,4,3,2,1]（n = 5）：原地哈希搬完家后数组变成什么？最终返回多少？',
+     options:['数组恢复成 [1,2,3,4,5]，1~5 全部对号入座 → 返回 n+1 = 6','数组仍是 [5,4,3,2,1]，没人搬得动家 → 返回 1','数组变成 [1,4,3,2,5]，只有一部分回家 → 返回 2'],
+     answer:0,
+     explain:'5 的家在下标 4、4 的家在下标 3……每个数都有家，第一轮互换几下就把它们全部送回原位，数组恢复成 [1,2,3,4,5]。第二轮逐格验收全过，循环走完落到 return n + 1 = 6。误选「返回 1」是忘了判断依据是搬完家之后的数组，不是原始输入——原始数组里确实没有 6，可 1~5 一个不缺。',
+     jumpTo:19},
+    {q:'第一轮 while 里交换成功后，为什么不能立刻 i++？',
+     options:['为了省一次自增，跑得更快','因为换进第 i 格的是一个还没审查过的新数，它可能也要搬家，得留在原地继续审','因为 i++ 会导致数组越界'],
+     answer:1,
+     explain:'交换是把 nums[i] 送回家，换回来的是原来住在 j 的那个数——它从没被审查过，可能同样在 1~n 里且家里没住同款。把它留在第 i 格继续 while，直到这格住进「无家可归」的数才让 i 前进。不担心死循环：每换一次至少永久送一个数回家，全程最多换 n 次；而 while 条件里的 nums[nums[i]-1] != nums[i] 是另一道保险——没有它，[1,1] 这种重复数会原地换到天荒地老。',
+     jumpTo:5},
+  ],
+
+  steps(input){
+    const F = [];
+    const nums = input.nums.slice();
+    const n = nums.length;
+
+    /* ★ 快照原则：矩阵内容/状态对象/指针名牌全部在 F.push 那一刻求值 */
+    const snap = () => nums.slice();
+    const stOf = (extra) => {
+      const o = {};
+      for(let k = 0; k < n; k++) if(nums[k] === k + 1) o[k] = 'done';
+      if(extra) for(const k in extra) o[k] = extra[k];
+      return o;
+    };
+    const mki = (i) => ({name:'i', idx:i, cls:'mi', text:'▲ i'});
+    const mkj = (j) => ({name:'j', idx:j, cls:'mr', text:'▲ j'});
+
+    const draw = (o) => (v) => {
+      v.arr('nums', o.mat, {
+        label:'数组 <code>nums</code>　·　<code>n = ' + n + '</code>　·　值 x 的家 = 下标 x−1',
+        states:o.states, markers:o.markers || []
+      });
+      if(o.vars) v.vars('vars', o.vars, {label:'变量'});
+      if(o.res !== undefined) v.result(o.res, {label:'返回结果'});
+    };
+
+    F.push({hl:[1,2,3], tag:'初始化', cls:'t-grey',
+      msg:'n = <b>' + n + '</b>。先锁定答案范围：<b>答案只可能是 1 ~ ' + (n + 1) + '</b>——n 个格子若把 1~' + n +
+          ' 全住满，答案是 ' + (n + 1) + '；只要 1~' + n + ' 缺了一个，就是缺的那个。' +
+          '所以负数、0、超过 ' + n + ' 的数统统无视。策略是<b>原地哈希</b>：值 x 的"家"就是下标 x−1，第一轮把有家的数都送回家——数组自己当记号本、不开新表，这就是 O(1) 空间的秘密。',
+      do: draw({mat:snap(), states:stOf(), vars:{n:n, i:'—', x:'—'}})});
+
+    /* ---------- 第一轮：原地哈希 ---------- */
+    for(let i = 0; i < n; i++){
+      F.push({hl:[4], tag:'第一轮·就位', cls:'t-ink',
+        msg:'<code>i = ' + i + '</code>：审查第 ' + i + ' 格（橙格）。目标：只要它住的数在 1~' + n +
+            ' 且家里还没住同款，就不停往外送，直到这格换进来一个"没家可回"的数为止。',
+        do: draw({mat:snap(), states:stOf({[i]:'active'}), markers:[mki(i)], vars:{i:i, x:nums[i]}})});
+
+      while(1 <= nums[i] && nums[i] <= n && nums[nums[i] - 1] !== nums[i]){
+        const x = nums[i], j = x - 1;
+        F.push({hl:[5], ok:5, tag:'while 检查', cls:'t-green',
+          msg:'<code>nums[' + i + '] = ' + x + '</code>：在 1~' + n + ' 里 ✓；它的家（下标 <b>' + j +
+              '</b>，绿虚格）现在住着 ' + LCesc(nums[j]) + '，不是它 → <b>该搬家</b>。条件里"家里已是同款就不搬"是防死循环的保险——没有它，[1,1] 这种重复数会原地换到天荒地老。',
+          do: draw({mat:snap(), states:stOf({[i]:'active', [j]:'peek'}),
+                    markers:[mki(i), mkj(j)], vars:{i:i, x:x, j:j}})});
+        F.push({hl:[6], tag:'找到家', cls:'t-blue',
+          msg:'<code>j = nums[i] − 1 = ' + x + ' − 1 = ' + j + '</code>：值 ' + x +
+              ' 的家定在下标 ' + j + '。规律就一条：<b>家下标 = 值 − 1</b>（值 1 住 0 号、值 2 住 1 号……）——这样"值 x 出现过吗"就等价于"下标 x−1 住着 x 吗"。',
+          do: draw({mat:snap(), states:stOf({[i]:'active', [j]:'in'}),
+                    markers:[mki(i), mkj(j)], vars:{i:i, x:x, j:j}})});
+        nums[i] = nums[j]; nums[j] = x;
+        F.push({hl:[7], tag:'交换', cls:'t-orange',
+          msg:'换！<b>' + x + ' 搬进下标 ' + j + ' 的家</b>（闪蓝格），原来占着家的 ' + LCesc(nums[i]) + ' 被请到了第 ' + i +
+              ' 格。绿格 = 已对号入座。换进来的数还没审过，<b>所以这里不能 i++</b>——它可能也有家要回，下一轮 while 接着查它。别担心绕圈：每换一次就永久送一个数回家，全程最多换 n 次。',
+          do: draw({mat:snap(), states:stOf({[i]:'active', [j]:'just'}),
+                    markers:[mki(i), mkj(j)], vars:{i:i, x:nums[i], j:j}})});
+      }
+      const v0 = nums[i];
+      const home = (1 <= v0 && v0 <= n && nums[v0 - 1] === v0);
+      F.push({hl:[5], no:5, tag:'while 退出', cls:'t-red',
+        msg: home
+          ? '<code>nums[' + i + '] = ' + v0 + '</code>' +
+            (v0 - 1 === i
+              ? ' 本来就住在自己家（下标 ' + i + '），无需搬家，这格验收必过'
+              : '：它的家（下标 ' + (v0 - 1) + '）已住着同款——重复数没有第二个家，换不动') +
+            ' → while 停，i 右移。'
+          : '<code>nums[' + i + '] = ' + v0 + '</code>：不在 1~' + n +
+            ' 里（负数 / 0 / 超过 n 的数），它没有家、也不影响答案（答案只可能在 1~' + (n + 1) + '）→ while 停，i 右移。',
+        do: draw({mat:snap(), states:stOf({[i]:'active'}), markers:[mki(i)], vars:{i:i, x:v0}})});
+    }
+
+    /* ---------- 第二轮：验收 ---------- */
+    F.push({hl:[8], tag:'第二轮·验收', cls:'t-grey',
+      msg:'搬家结束，从头验收。判据一句话：<b>下标 k 住的若不是 k+1，说明值 k+1 从没被送回家——它压根没出现过</b>（第一轮已保证：出现过的 1~n 全都回了家）。第一个对不上号的位置，+1 就是答案。',
+      do: draw({mat:snap(), states:stOf(), vars:{i:'—', 规则:'nums[i] 应为 i+1'}})});
+
+    for(let i = 0; i < n; i++){
+      const bad = nums[i] !== i + 1;
+      F.push({hl:[9], ok: bad ? undefined : 9, no: bad ? 9 : undefined,
+        tag:'验收', cls: bad ? 't-red' : 't-green',
+        msg: bad
+          ? '下标 ' + i + ' 住的是 <code>' + LCesc(nums[i]) + '</code> ≠ ' + (i + 1) +
+            ' ✗ ——值 ' + (i + 1) + ' 的家（下标 ' + i + '）被别人占着，说明它压根没出现过。答案就是它！'
+          : '下标 ' + i + ' 住的是 <code>' + LCesc(nums[i]) + '</code> = ' + (i + 1) +
+            ' ✓ 对号入座——值 ' + (i + 1) + ' 出现过，比它小的暂时都齐，继续往后看。',
+        do: draw({mat:snap(), states:stOf({[i]: bad ? 'block' : 'active'}), markers:[mki(i)],
+                  vars:{i:i, 'nums[i]':nums[i], 应为:i + 1}})});
+      if(bad){
+        F.push({hl:[10], tag:'返回', cls:'t-dark',
+          msg:'🎉 <b>' + (i + 1) + '</b> 就是缺失的第一个正数：' + (i > 0 ? '前面 ' + i + ' 格全部验收通过——1~' + i + ' 都各就各位，' : '第一格就不是 1，') + '轮到 ' + (i + 1) +
+              ' 却缺席——比它小的正数一个不缺，它就是第一个缺口。',
+          do: draw({mat:snap(), states:stOf({[i]:'target'}), markers:[mki(i)], res:i + 1,
+                    vars:{i:i, 答案:i + 1}})});
+        F.push({hl:[11], tag:'出口一览', cls:'t-grey',
+          msg:'代码有两条出口：验收途中第一个对不上号 → <code>return i + 1</code>，本题走这条，返回 <b>' + (i + 1) +
+              '</b>；若 1~' + n + ' 全部对上号，循环走完才会走到 <code>return n + 1</code>。两条出口合起来恰好覆盖 1~' + (n + 1) + ' 的全部可能。',
+          do: draw({mat:snap(), states:stOf({[i]:'target'}), res:i + 1})});
+        return F;
+      }
+    }
+
+    F.push({hl:[11], tag:'返回', cls:'t-dark',
+      msg:'1~' + n + ' 全部对号入座、一个不缺 → 验收循环走完没找到缺口，落到最后一行 <code>return n + 1 = ' + (n + 1) + '</code> 🎉 复盘：两轮各扫一遍数组、交换总数不超过 n → 时间 O(n)；全程没开新表 → 空间 O(1)。',
+      do: draw({mat:snap(), states:stOf(), res:n + 1})});
+    return F;
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P040 · 二叉树的层序遍历 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/progress.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 40, num: 102, title: '二叉树的层序遍历', diff: '中等', cat: '二叉树',
+  method: 'levelOrder',
+
+  lede: '题目：从上到下、从左到右<b>一层一层</b>收集节点值，返回 <code>[[第1层], [第2层], …]</code>。' +
+        '武器是队列（<span class="var r">q</span>）：右端进、左端出。灵魂一步是出队前先 <span class="var i">n = len(q)</span> ' +
+        '把本层人数<b>拍死</b>——之后新入队的孩子是下一层的，这一轮绝不掺进来。' +
+        '下方会实时记出每一层的清单。',
+
+  roles: [
+    {c:'orange', code:'active', text:'刚出队、正在记录的节点'},
+    {c:'blue',   code:'in',     text:'在队列里排队（本层或下层）'},
+    {c:'green',  code:'done',   text:'已记入结果'},
+    {c:'violet', code:'peek',   text:'刚被塞进队尾的孩子'}
+  ],
+
+  codeTitle: '跟着高亮读代码——队列面板是主角：出队一个少一个，孩子从右边挤进来。第 10 行 <code>n = len(q)</code> 是"分层"的全部秘密。',
+
+  legend: [
+    {c:'orange', text:'node 刚出队'},
+    {c:'blue', text:'还在队列里'},
+    {c:'green', text:'已出队并记录'},
+    {c:'violet', text:'刚入队的下一层'}
+  ],
+
+  idea: 'BFS 用队列排队：先定死本层人数 n，再只弹 n 个——弹一个记一个，孩子排在队尾，天然分成一层一层。',
+
+  qa: [
+    {q:'为什么必须先 n = len(q)？直接 while q 不停弹不行吗？',
+     a:'队列里此刻恰好全是第 k 层的节点。先记下 n，本轮 for 就<b>只弹 n 个</b>；期间新入队的孩子属于第 k+1 层，不会混进本层清单。若不先记 n，队列边弹边长，层与层就糊在一起了。'},
+    {q:'队列里存的到底是什么？',
+     a:'"已经发现、还没处理"的节点。每处理一个节点，就把它的孩子追加到队尾——所以某一时刻队列里最多只有相邻两层：前面剩的本层 + 后面排队的下一层。'},
+    {q:'和递归 DFS 比呢？',
+     a:'DFS 也能按"深度 = 下标"塞进对应层，但写法绕。BFS 天然按层出队，是最直接的思路；时空都是 O(n)。'},
+    {q:'空树呢？',
+     a:'第 5 行 <code>if not root</code> 直接返回 []——队列都没必要建。'}
+  ],
+
+  complexity: '时间 O(n)（每个节点入队、出队各一次）　·　空间 O(n)（队列最宽时约一层，最多 n/2 个）',
+
+  form: [
+    {key:'root', label:'root', type:'tree', def:[3,9,20,null,null,15,7]}
+  ],
+  presets: [
+    {label:'[3,9,20,null,null,15,7]', values:{root:[3,9,20,null,null,15,7]}},
+    {label:'满二叉树 [1,2,3,4,5,6,7]', values:{root:[1,2,3,4,5,6,7]}},
+    {label:'单节点 [1]', values:{root:[1]}},
+    {label:'空树 []', values:{root:[]}}
+  ],
+
+  code: `from collections import deque
+
+class Solution:
+    def levelOrder(self, root):
+        if not root:                 # 空树直接返回
+            return []
+        q = deque([root])            # 队列: 还没处理的节点
+        res = []
+        while q:                     # 每一轮处理完整的一层
+            n = len(q)               # 先定死本层人数
+            row = []
+            for _ in range(n):       # 只弹 n 个, 不会带出下一层
+                node = q.popleft()   # 队首出队
+                row.append(node.val) # 记进本层清单
+                if node.left:        # 左孩子在队尾排队
+                    q.append(node.left)
+                if node.right:
+                    q.append(node.right)
+            res.append(row)          # 本层收工, 存入结果
+        return res
+`,
+
+  sol(input){
+    const T = Viz.parseTree(input.root || []);
+    const byKey = {}; T.nodes.forEach(n => byKey[n.key] = n);
+    if(T.root == null) return [];
+    const q = [T.root], res = [];
+    while(q.length){
+      const n = q.length, row = [];
+      for(let i = 0; i < n; i++){
+        const k = q.shift();
+        row.push(byKey[k].val);
+        if(byKey[k].left != null) q.push(byKey[k].left);
+        if(byKey[k].right != null) q.push(byKey[k].right);
+      }
+      res.push(row);
+    }
+    return res;
+  },
+  expected: [[3],[9,20],[15,7]],
+
+  quiz: [
+    {q:'为什么出队前必须先 n = len(q) 把本层人数「拍死」?',
+     options:['纯粹为了好看,不记 n 结果也一样','不先记 n,出队时新孩子不断从队尾挤进来,队列边弹边长,下一层的节点会混进本轮,层与层再也分不开','记 n 是为了省内存,队列可以少存几个节点'],
+     answer:1,
+     explain:'每轮开工时队列里恰好全是本层节点,先把人数定格在 n,本轮 for 就只弹 n 个;期间入队的孩子属于下一层,绝不掺进本层清单。若省掉这步直接 while 不停弹,队列边弹边长,新旧层糊成一锅粥,res 里分不出"层"。n = len(q) 拍死人数是树上、图上 BFS 分层的通用套路。',
+     jumpTo:5},
+    {q:'把输入换成满二叉树 [1,2,3,4,5,6,7],返回的 res 是?',
+     options:['[1,2,3,4,5,6,7]——一条扁平数组','[[1],[2,3],[4,5,6,7]]','[[1,2],[3,4],[5,6,7]]'],
+     answer:1,
+     explain:'根 1 先入队;第 1 层 n=1,弹出 1,把 2、3 排进队尾;第 2 层 n=2,弹出 2、3,带来 4~7;第 3 层 n=4 弹空收工。题目要的格式是"层的列表",一层一个子数组——不能把值摊平成一条(那是前序/中序干的事),也不能按别的方式凑层。每轮开工前"队列只装本层"这个不变式保证了分层天然正确。',
+     jumpTo:42},
+    {q:'解法二的手写队列里,「出队」为什么改成 head += 1,而不真的删掉队首元素?',
+     options:['因为数组的 append 只能加不能删','数组删队首要把它后面所有元素整体前移,一次 O(n);让头指针右移一格跳过即可,元素留在原地变灰——出队仍是 O(1)','删掉元素会破坏树的结构'],
+     answer:1,
+     explain:'数组的头部删除是 O(n) 的:后面 n−1 个元素都要往前挪。头指针队列把"删除"降级成"越过":队列区间 = queue[head..末尾],head 追上 len(queue) 就是队列空。deque 的 popleft 内部本质上也是移动读指针。代价是出过队的灰格占着数组内存(最多 2n 个槽位),换来每步出队 O(1) 且过程全程可见。',
+     jumpTo:8},
+  ],
+
+  steps(input){
+    const F = [];
+    const T = Viz.parseTree(input.root || []);
+    const t = Viz.treeLayout(input.root || []);
+    const byKey = {}; T.nodes.forEach(n => byKey[n.key] = n);
+    const q = [];                 // 队列: 存节点 key
+    const doneSet = new Set();    // 已出队并记录
+    const res = [];               // 每层的结果
+
+    const nm = k => '节点' + LCesc(String(byKey[k].val));
+    const snapDone = () => Array.from(doneSet);
+    const rowStr = row => '[' + row.map(x => LCesc(String(x))).join(', ') + ']';
+    const rowsText = () => res.length
+      ? res.map((r, i) => '第 <b>' + (i + 1) + '</b> 层 → [' + r.map(x => LCesc(String(x))).join(', ') + ']').join('<br>')
+      : null;
+
+    /* ★ 快照原则：q/done/peek/row/res 全部在 push 时切片定死, do() 只读快照 o */
+    const draw = o => (v) => {
+      const states = {};
+      (o.done || []).forEach(k => { states[k] = 'done'; });
+      (o.q || []).forEach(k => { if(states[k] == null) states[k] = 'in'; });
+      (o.peek || []).forEach(k => { if(states[k] == null) states[k] = 'peek'; });
+      if(o.cur != null) states[o.cur] = 'active';
+      v.tree('T', t, {label:'二叉树　·　橙=正在处理 蓝=排队 绿=已记录', states});
+      const qn = (o.q || []).map(k => ({key:'n' + k, val: byKey[k].val}));
+      const ptrs = [];
+      if(qn.length){
+        ptrs.push({key:'n' + o.q[0], text:'▼ 队首', cls:'mi'});
+        if(o.q.length > 1) ptrs.push({key:'n' + o.q[o.q.length - 1], text:'▼ 队尾', cls:'mg'});
+      }
+      v.list('Q', qn, {label:'队列 <code>q</code>　·　右端进、左端出（popleft）', pointers: ptrs});
+      if(o.vars) v.vars('vars', o.vars, {label:'本轮进度', hl:o.hlVars || []});
+      if(o.rowsText) v.text('rows', o.rowsText, {html:true, label:'结果 <code>res</code>　·　一层一行'});
+      if(o.result != null) v.result(o.result, {label:'层序遍历结果'});
+    };
+
+    F.push({hl:[1,3,4], tag:'读题', cls:'t-grey',
+      msg:'层序遍历 = 像<b>点名</b>一样从上到下、每层从左到右，逐层收集节点值。武器是<b>队列</b>（右端进、左端出）：处理完一个节点，就把它的两个孩子追加到队尾——先发现的孩子排前面，下一层的顺序天然从左到右，不会乱。下面盯住队列面板：队首从左边弹走，孩子从右边挤进来。',
+      do: draw({q: [], done: []})});
+    F.push({hl:[5,6], no: T.root != null ? 5 : undefined, ok: T.root == null ? 5 : undefined,
+      tag:'根检查', cls: T.root != null ? 't-blue' : 't-green',
+      msg: T.root != null
+        ? '<code>if not root</code> 检查：根存在，条件不成立 → 树有货，继续建队列。这行是给空树留的后门：空树连队列都不用建，直接走第 6 行 <code>return []</code>。先在门口排除边界，主循环里就不用到处判空。'
+        : '根是空的 → <code>not root</code> 成立，直接 <b>return []</b>：空树一层都没有，连队列都不必建。',
+      do: draw({q: [], done: []})});
+    if(T.root == null){
+      F.push({hl:[6], tag:'返回空', cls:'t-dark',
+        msg:'🎉 空树的层序遍历就是 <b>[]</b>：没有节点就没有层，一步到位。',
+        do: draw({q: [], done: [], result: []})});
+      return F;
+    }
+
+    q.push(T.root);
+    F.push({hl:[7,8], tag:'建队列', cls:'t-blue',
+      msg:'<code>q = deque([root])</code>：根' + nm(T.root) + '率先入队，<code>res = []</code> 空着等收结果。记住队列的成员规则：只放"已经被发现、还没被处理"的节点——现在队里只有根，它是第 1 层的唯一成员。',
+      do: draw({q: q.slice(), done: snapDone(), vars:{层: 1, n: '待定', row: '[]'}})});
+
+    let d = 1;
+    while(q.length){
+      const n = q.length;
+      const row = [];
+      F.push({hl:[9], ok:9, tag:'第 ' + d + ' 层开始', cls:'t-blue',
+        msg:'<code>while q</code> 检查：队列非空 → 还有活干，现在轮到<b>第 ' + d + '</b> 层。本轮的关键前提：<b>此刻队列里装的全部是第 ' + d + ' 层的节点</b>，一个下一层的都不掺——这是上一轮"弹空本层、只放进下层孩子"换来的整齐状态。',
+        do: draw({q: q.slice(), done: snapDone(), vars:{层: d, n: '待定', row: '[]'}})});
+      F.push({hl:[10], tag:'定本层人数', cls:'t-orange',
+        msg:'<code>n = len(q) = ' + n + '</code>：先把本层人数<b>拍死</b>在这个数上。接下来出队时会有新孩子从队尾挤进来，但它们属于下一层——本轮 for 只认开工前记下的 ' + n + ' 个。踩坑提醒：省掉这一步、直接在 while 里不停弹，队列边弹边长，新旧层糊成一锅粥，res 里再也分不出层。',
+        do: draw({q: q.slice(), done: snapDone(), vars:{层: d, n: n, row: '[]'}, hlVars:['n']})});
+      F.push({hl:[11], tag:'开清单', cls:'t-ink',
+        msg:'<code>row = []</code>：开一张本层清单，下面每出队一个节点就把它的值记上来。为什么要攒齐一整张再提交：LeetCode 要的返回格式是 <code>[[第1层], [第2层], …]</code>——一层一个子数组，不能一个一个往 res 里扔。',
+        do: draw({q: q.slice(), done: snapDone(), vars:{层: d, n: n, row: '[]'}})});
+
+      for(let i = 0; i < n; i++){
+        F.push({hl:[12], ok:12, tag:'第 ' + (i + 1) + ' / ' + n + ' 个', cls:'t-ink',
+          msg:'for 循环第 ' + (i + 1) + ' 轮（共 ' + n + ' 轮）：准备出队。橙色' + nm(q[0]) + '站在队首——队列"左出右进"，出来的永远是最早排进来的那个，这正是"从左到右"扫描的保证。',
+          do: draw({q: q.slice(), done: snapDone(), cur: q[0], vars:{层: d, n: n, row: rowStr(row)}})});
+        const k = q.shift();
+        F.push({hl:[13], tag:'出队', cls:'t-orange',
+          msg:'<code>node = q.popleft()</code>：' + nm(k) + ' 从队首离开，队列里少一个。它此刻橙色的身份是"正在处理"——马上要记值，还要负责把自己的孩子带来排队。',
+          do: draw({q: q.slice(), done: snapDone(), cur: k, vars:{层: d, n: n, row: rowStr(row)}})});
+        row.push(byKey[k].val);
+        F.push({hl:[14], tag:'记值', cls:'t-green',
+          msg:'<code>row.append(' + LCesc(String(byKey[k].val)) + ')</code>：' + nm(k) + ' 的值记进本层清单 → row = ' + rowStr(row) + '。节点标绿，表示"已出队并已记录"，之后不会再碰它。',
+          do: draw({q: q.slice(), done: snapDone(), cur: k, vars:{层: d, n: n, row: rowStr(row)}, hlVars:['row']})});
+
+        const hasL = byKey[k].left != null, hasR = byKey[k].right != null;
+        if(hasL) q.push(byKey[k].left);
+        F.push({hl: hasL ? [15,16] : [15], ok: hasL ? 15 : undefined, no: hasL ? undefined : 15,
+          tag:'左孩子', cls: hasL ? 't-blue' : 't-grey',
+          msg: hasL
+            ? nm(k) + ' 有左孩子 ' + nm(byKey[k].left) + ' → <code>q.append</code> 排到<b>队尾</b>（紫色，属于第 ' + (d + 1) + ' 层）。此刻队列是"剩下的本层 + 刚排进来的下层"两段拼接——但本轮只弹开工前定死的 n 个，新来的绝不掺进本层清单。'
+            : nm(k) + ' 没有左孩子 → <code>if node.left</code> 不成立，跳过入队。空位不进队列，所以队列里永远是真实节点，不会混进 null。',
+          do: draw({q: q.slice(), done: snapDone(), cur: k,
+                    peek: [byKey[k].left, byKey[k].right].filter(x => x != null),
+                    vars:{层: d, n: n, row: rowStr(row)}})});
+        if(hasR) q.push(byKey[k].right);
+        F.push({hl: hasR ? [17,18] : [17], ok: hasR ? 17 : undefined, no: hasR ? undefined : 17,
+          tag:'右孩子', cls: hasR ? 't-blue' : 't-grey',
+          msg: hasR
+            ? '右孩子 ' + nm(byKey[k].right) + ' 同样追加到队尾、紧跟在左孩子后面——下一层"从左到右"的顺序就是这么定下的。' + nm(k) + ' 处理完毕，标绿。'
+            : '右孩子也没有 → ' + nm(k) + ' 是叶子，两个孩子都不入队，处理完毕标绿。叶子出队只会让队列变短——整个循环能收敛，靠的就是这些"不带新人"的节点。',
+          do: draw({q: q.slice(), done: snapDone(), cur: k,
+                    peek: [byKey[k].left, byKey[k].right].filter(x => x != null),
+                    vars:{层: d, n: n, row: rowStr(row)}})});
+        doneSet.add(k);
+      }
+
+      res.push(row.slice());
+      F.push({hl:[19], tag:'第 ' + d + ' 层收工', cls:'t-green',
+        msg:'本层 ' + n + ' 个节点全部出队完毕 → <code>res.append(row)</code>：第 ' + d + ' 层清单 <b>' + rowStr(row) + '</b> 正式入库，res 已有 ' + res.length + ' 层。此刻队列里恰好是下一层的 ' + q.length + ' 个节点——"弹空一层、装满一层"，循环又回到开局的整齐状态。',
+        do: draw({q: q.slice(), done: snapDone(), vars:{层: d, n: n, row: rowStr(row)},
+                  rowsText: rowsText(), hlVars:['row']})});
+      d++;
+    }
+
+    F.push({hl:[9], no:9, tag:'队列空了', cls:'t-red',
+      msg:'再检查 <code>while q</code>：队列空了 → 连下一层的候补都没有，说明最后一层也已弹空，循环结束。队列从"装着根"到"彻底弹空"的全过程，正好把整棵树按层过了一遍。',
+      do: draw({q: [], done: snapDone(), rowsText: rowsText()})});
+
+    F.push({hl:[20], tag:'返回结果', cls:'t-dark',
+      msg:'🎉 <code>return res</code>：从上到下共 ' + res.length + ' 层，每层的值都凑齐了 —— <b>' +
+          res.map(r => '[' + r.map(x => LCesc(String(x))).join(',') + ']').join(', ') + '</b>。复盘：每个节点入队一次、出队一次，时间 O(n)；队列最宽时约是树最宽的一层，空间 O(n)。<code>n = len(q)</code> 拍死本层人数是 BFS 分层的通用套路——树上、图上的 BFS 全靠它。',
+      do: draw({q: [], done: snapDone(), rowsText: rowsText(), result: res.map(r => r.slice())})});
+
+    return F;
+  },
+
+  /* ========= 解法二：力扣官方思路 · 手写队列（不用 deque） ========= */
+  alt: {
+    label: '官方思路 · 手写队列(不用 deque)',
+    method: 'levelOrder',
+
+    lede: '题目不变：从上到下、从左到右<b>一层一层</b>收集节点值。这一版<b>不再引入 <code>deque</code></b>——' +
+          '一个普通数组 + 一个头指针 <span class="var i">head</span> 就是队列：<b>出队 = head+1</b>（元素留在原地变灰），' +
+          '入队还是 <code>append</code> 追到数组尾部。deque 的内部，本质上就是这么工作的。',
+
+    codeTitle: '解法二没有引入任何外部类：盯着数组里 <code>head</code> 的右移，就是"出队"的全部秘密；灰格 = 已出队但留在原地。',
+
+    idea: '队列的本质是"头指针 + 追尾"：出队不必真删元素，head 右移一格即可——deque 的内部就是这么工作的。',
+
+    complexity: '时间 O(n)（每个节点进出队各一次）　·　空间 O(n)（数组保留所有节点）',
+
+    qa: [
+      {q:'出队为什么不真的删除元素？',
+       a:'数组删队首要把后面所有元素整体前移，一次就是 O(n)。用 head 指针<b>跳过</b>即可：队列区间 = queue[head..末尾]。deque 的 popleft 内部本质上就是移动读指针。'},
+      {q:'while head < len(queue) 在判断什么？',
+       a:'head 追上队尾 = 队列空。每轮开头先定格 <b>n = len(queue)</b>——这一瞬间正好是本层的右边界，之后入队的孩子都算下一层，不会被本轮误处理。'},
+      {q:'和 deque 版相比亏了什么？',
+       a:'功能完全一样；代价是出过队的元素留在数组里占内存（最多 2n 个槽位），deque 会复用这些空间。换来的是每一步都看得见。'}
+    ],
+    roles: [
+      {c:'orange', code:'head', text:'队头下标：出队 = head+1'},
+      {c:'blue', code:'queue', text:'数组队列：本层 + 排队中的孩子'},
+      {c:'green', code:'res', text:'已收齐的层'}
+    ],
+    legend: [
+      {c:'orange', text:'head 当前队头'},
+      {c:'blue', text:'蓝 = 在队列里排队'},
+      {c:'green', text:'绿 = 已出队并记录'},
+      {swatch:'#f0efe9', text:'灰格 = 已出队(留在原地)'}
+    ],
+
+    code: `class Solution:
+    def levelOrder(self, root):
+        if not root:                 # 空树直接返回
+            return []
+        queue = [root]               # 数组当队列: 节点依次排进来
+        head = 0                     # 队头下标: 出队 = head+1
+        res = []
+        while head < len(queue):     # head 没追上队尾 = 队列非空
+            n = len(queue) - head    # 本层人数 = 队尾 - 队头
+            row = []
+            for _ in range(n):       # 只出队 n 个
+                node = queue[head]; head += 1   # 出队(不删元素)
+                row.append(node.val)
+                if node.left:        # 孩子排到数组尾
+                    queue.append(node.left)
+                if node.right:
+                    queue.append(node.right)
+            res.append(row)
+        return res
+`,
+
+    sol(input){
+      const T = Viz.parseTree(input.root || []);
+      const byKey = {}; T.nodes.forEach(n => byKey[n.key] = n);
+      if(T.root == null) return [];
+      const queue = [T.root]; let head = 0; const res = [];
+      while(head < queue.length){
+        const n = queue.length - head, row = [];
+        for(let i = 0; i < n; i++){
+          const k = queue[head]; head += 1;
+          row.push(byKey[k].val);
+          if(byKey[k].left != null) queue.push(byKey[k].left);
+          if(byKey[k].right != null) queue.push(byKey[k].right);
+        }
+        res.push(row);
+      }
+      return res;
+    },
+    expected: [[3],[9,20],[15,7]],
+
+    steps(input){
+      const F = [];
+      const T = Viz.parseTree(input.root || []);
+      const t = Viz.treeLayout(input.root || []);
+      const byKey = {}; T.nodes.forEach(n => byKey[n.key] = n);
+      const queue = [];        // 数组队列: 存节点 key
+      let head = 0;
+      const doneSet = new Set();
+      const res = [];
+
+      const nm = k => '节点' + LCesc(String(byKey[k].val));
+      const snapDone = () => Array.from(doneSet);
+      const rowStr = row => '[' + row.map(x => LCesc(String(x))).join(', ') + ']';
+      const rowsText = () => res.length
+        ? res.map((r, i) => '第 <b>' + (i + 1) + '</b> 层 → [' + r.map(x => LCesc(String(x))).join(', ') + ']').join('<br>')
+        : null;
+
+      /* ★ 快照原则：qKeys/head/done/cur/n/row/res 全部 push 时定死 */
+      const draw = o => (v) => {
+        const states = {};
+        (o.done || []).forEach(k => { states[k] = 'done'; });
+        (o.qKeys || []).forEach(k => { if(states[k] == null) states[k] = 'in'; });
+        if(o.cur != null) states[o.cur] = 'active';
+        v.tree('T', t, {label:'二叉树　·　橙=正在出队 蓝=在队列里 绿=已记录', states});
+        const vals = (o.qKeys || []).map(k => byKey[k].val);
+        const qStates = {};
+        (o.qKeys || []).forEach((k, i) => {
+          if(i < o.head) qStates[i] = 'gone';
+          else if(o.inLayer && o.n != null && i < o.head + o.n) qStates[i] = 'target';
+        });
+        v.arr('Q', vals, {
+          label:'数组队列 <code>queue</code>　·　灰 = 已出队但留在原地',
+          states: qStates,
+          markers: [{name:'head', idx: o.head, cls:'mi', text:'▲ head'}]
+        });
+        if(o.vars) v.vars('vars', o.vars, {label:'本轮进度', hl:o.hlVars || []});
+        if(o.rowsText) v.text('rows', o.rowsText, {html:true, label:'结果 <code>res</code>　·　一层一行'});
+        if(o.result != null) v.result(o.result, {label:'层序遍历结果'});
+      };
+
+      if(T.root == null){
+        F.push({hl:[3,4], ok:3, tag:'空树', cls:'t-grey',
+          msg:'根节点都不存在 → <code>not root</code> 成立，直接 <code>return []</code>：空树一层都没有，队列和头指针都不必登场。',
+          do: draw({qKeys: [], head: 0, done: [], result: []})});
+        return F;
+      }
+
+      queue.push(T.root);
+      F.push({hl:[1,2], tag:'读题', cls:'t-grey',
+        msg:'题目不变：从上到下、从左到右<b>一层一层</b>收集节点值。这一版<b>不引入 <code>deque</code></b>，用普通数组当队列。关键区别在出队：不真的删除队首元素——数组删头部要把后面所有元素整体前移，一次就是 O(n)；改为让<b>头指针 head 右移一格</b>跳过它，元素留在原地变灰。deque 的内部本质上就是这么工作的。',
+        do: draw({qKeys: queue.slice(), head: head, done: [], vars:{head: head, '队列长': queue.length}})});
+      F.push({hl:[5,6,7], tag:'手写队列初始化', cls:'t-grey',
+        msg:'三件套就位：<code>queue = [根节点]</code>、<code>head = 0</code>、<code>res = []</code>。约定一下：<b>队列区间 = queue[head..末尾]</b>——head 左边的灰格是出过队的"遗址"，右边才是还在排队的节点；<code>head 追上 len(queue)</code> 就等于队列空。现在 head = ' + head + '，队里只有根。',
+        do: draw({qKeys: queue.slice(), head: head, done: [], vars:{head: head, '队列长': queue.length}})});
+
+      while(head < queue.length){
+        const n = queue.length - head;
+        F.push({hl:[8,9,10,11], ok:8, tag:'while · 队列非空', cls:'t-blue',
+          msg:'<code>while head &lt; len(queue)</code>：head = ' + head + ' 还没追上队尾 ' + queue.length + ' → 队列非空。本层人数 <code>n = len(queue) − head = ' + queue.length + ' − ' + head + ' = ' + n + '</code>（deque 版直接 len(q)，因为它出队真删元素；这里出队不删，得手动扣掉前面的灰格）。和上一版一样，n 要在动手前<b>拍死</b>：之后入队的孩子都算下一层，本轮只处理这 ' + n + ' 个。',
+          do: draw({qKeys: queue.slice(), head: head, done: snapDone(), n: n, inLayer: true,
+                    vars:{head: head, '队列长': queue.length, n: n}, rowsText: rowsText()})});
+        const row = [];
+        for(let i = 0; i < n; i++){
+          const k = queue[head]; head += 1;
+          F.push({hl:[12], tag:'出队', cls:'t-orange',
+            msg:'<code>node = queue[' + (head - 1) + ']; head += 1</code>：' + nm(k) + ' 出队——元素<b>留在原地变灰</b>（没有真正删除），head 右移到 ' + head + '，把队列的左边界推进一步。这就是"头指针队列"的全部秘密：出队 O(1)，代价是灰格占着内存。',
+            do: draw({qKeys: queue.slice(), head: head, done: snapDone(), cur: k, n: n, inLayer: true,
+                      vars:{head: head, row: rowStr(row)}, rowsText: rowsText()})});
+          row.push(byKey[k].val);
+          F.push({hl:[13], tag:'记进本层', cls:'t-ink',
+            msg:'<code>row.append(node.val)</code>：' + nm(k) + ' 的值记进本层清单 → row = ' + rowStr(row) + '。树上的它同时标绿：数组里格子已变灰（出队），树上标绿（已记录）——两个视角对照着看。',
+            do: draw({qKeys: queue.slice(), head: head, done: snapDone(), cur: k, n: n, inLayer: true,
+                      vars:{head: head, row: rowStr(row), n: n}, hlVars:['row'], rowsText: rowsText()})});
+          const L = byKey[k].left, R = byKey[k].right;
+          if(L != null){
+            queue.push(L);
+            F.push({hl:[14,15], tag:'左孩子排队', cls:'t-blue',
+              msg:nm(k) + ' 的左孩子 ' + nm(L) + ' <code>append</code> 到数组尾部——head 不动，它落在"本轮 n 个"的边界之外，属于下一层，本轮绝不会处理到它。入队只能发生在队尾，队首的顺序纹丝不动。',
+              do: draw({qKeys: queue.slice(), head: head, done: snapDone(), cur: k, n: n,
+                        vars:{head: head, '队尾': queue.length}})});
+          } else {
+            F.push({hl:[14], no:14, tag:'无左孩子', cls:'t-grey',
+              msg:nm(k) + ' 没有左孩子 → <code>if node.left</code> 不成立，跳过，数组尾部不追加任何东西。空位不进队列，队列里永远是真实节点。',
+              do: draw({qKeys: queue.slice(), head: head, done: snapDone(), cur: k, n: n,
+                        vars:{head: head, '队尾': queue.length}})});
+          }
+          if(R != null){
+            queue.push(R);
+            F.push({hl:[16,17], tag:'右孩子排队', cls:'t-blue',
+              msg:nm(k) + ' 的右孩子 ' + nm(R) + ' 也排进数组尾部，紧跟在左孩子后面——下一层"从左到右"的顺序就是这么定下的。本层还剩 ' + (n - i - 1) + ' 个没出队。',
+              do: draw({qKeys: queue.slice(), head: head, done: snapDone(), cur: k, n: n,
+                        vars:{head: head, '队尾': queue.length}})});
+          } else {
+            F.push({hl:[16], no:16, tag:'无右孩子', cls:'t-grey',
+              msg:nm(k) + ' 也没有右孩子 → 跳过。它一个孩子都没带来——叶子出队只会让队列区间变短，' + nm(k) + ' 处理完毕标绿。',
+              do: draw({qKeys: queue.slice(), head: head, done: snapDone(), cur: k, n: n,
+                        vars:{head: head, '队尾': queue.length}})});
+          }
+          doneSet.add(k);
+        }
+        res.push(row.slice());
+        F.push({hl:[18], tag:'本层收工', cls:'t-green',
+          msg:'本层 ' + n + ' 个全部出队 → <code>res.append(row)</code>，res 已有 ' + res.length + ' 层。数组现在的构图：前面 ' + head + ' 个灰格是各层出队后的遗址，后面 ' + (queue.length - head) + ' 个蓝格就是下一层整整齐齐的队列——下一轮 <code>n = len(queue) − head</code> 会重新数一遍。',
+          do: draw({qKeys: queue.slice(), head: head, done: snapDone(), vars:{head: head, '队列长': queue.length},
+                    rowsText: rowsText()})});
+      }
+
+      F.push({hl:[8], no:8, tag:'head 追上队尾', cls:'t-red',
+        msg:'<code>head = ' + head + '</code> 追上队尾 <code>' + queue.length + '</code> → 队列区间 <code>queue[head..]</code> 为空，循环结束。所有节点都已出队并记录，灰格铺满整个数组。',
+        do: draw({qKeys: queue.slice(), head: head, done: snapDone(), rowsText: rowsText()})});
+
+      F.push({hl:[19], tag:'返回结果', cls:'t-dark',
+        msg:'🎉 <code>return res</code>：从上到下共 ' + res.length + ' 层 —— <b>' +
+            res.map(r => '[' + r.map(x => LCesc(String(x))).join(',') + ']').join(', ') + '</b>。全程没用任何外部类。这版证明了一个事实：<b>队列 = 头指针 + 追尾</b>，deque 的 popleft 内部就是移动读指针——理解了这一层，任何语言里都能徒手写出 O(1) 出队的队列。',
+        do: draw({qKeys: queue.slice(), head: head, done: snapDone(), rowsText: rowsText(), result: res.map(r => r.slice())})});
+
+      return F;
+    }
+  }
+});
+</script>
+</body>
+</html>
