@@ -131,17 +131,19 @@ function runPyCheck(pageId, solCfg, defs, inPlaceFallback){
   const codeFile = path.join(TMP, pageId + '_sol.py');
   const drvFile = path.join(TMP, pageId + '_drv.py');
   const types = {};
-  (solCfg.form || []).forEach(f => types[f.key] = f.type);
+  (solCfg.form || []).forEach(f => types[f.key] = f.pyType || f.type);
   const conv = {};
   for(const k in defs){
     const t = types[k] || 'arr';
     const v = defs[k];
-    if(t === 'list') conv[k] = {_py: 'list', v};
+    if(t === 'lists') conv[k] = {_py: 'lists', v};
+    else if(t === 'list') conv[k] = {_py: 'list', v};
     else if(t === 'tree') conv[k] = {_py: 'tree', v};
     else if(t === 'randlist') conv[k] = {_py: 'rand', v};
     else conv[k] = {_py: 'plain', v};
   }
   const method = solCfg.method || 'solve';
+  const hasListGroup = Object.values(types).includes('lists');
   fs.writeFileSync(codeFile, PY_PREAMBLE + '\n' + solCfg.code + '\n', 'utf8');
   const drv =
     PY_PREAMBLE + '\n' +
@@ -150,18 +152,39 @@ function runPyCheck(pageId, solCfg, defs, inPlaceFallback){
     'mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)\n' +
     // Match LeetCode: inputs and solution allocations share the same node types.
     'mod.ListNode, mod.TreeNode, mod.Node = ListNode, TreeNode, Node\n' +
-    'inst = mod.Solution()\n' +
+    (solCfg.judgeClass ? '' : 'inst = mod.Solution()\n') +
     'kw = {}\n' +
     'for k, v in json.loads(sys.argv[1]).items():\n' +
     '    if isinstance(v, dict) and "_py" in v:\n' +
-    '        if v["_py"] == "list": kw[k] = _build_list(v["v"])\n' +
+    '        if v["_py"] == "lists": kw[k] = [_build_list(a) for a in v["v"]]\n' +
+    '        elif v["_py"] == "list": kw[k] = _build_list(v["v"])\n' +
     '        elif v["_py"] == "tree": kw[k] = _build_tree(v["v"])\n' +
     '        elif v["_py"] == "rand": kw[k] = _build_rand(v["v"])\n' +
     '        else: kw[k] = v["v"]\n' +
     '    else: kw[k] = v\n' +
-    'res = getattr(inst, ' + JSON.stringify(method) + ')(**kw)\n' +
-    (inPlaceFallback ? 'if res is None and kw:\n    res = next(iter(kw.values()))   # 原地修改题: 返回 None 时校验被改的实参\n' : '') +
-    'print(json.dumps(_ser(res), ensure_ascii=False))\n';
+    (hasListGroup ?
+      'input_nodes = set()\n' +
+      'for heads in kw.values():\n' +
+      '    for head in heads:\n' +
+      '        while head:\n' +
+      '            input_nodes.add(id(head)); head = head.next\n' : '') +
+    (solCfg.judgeClass ?
+      'res = []; inst = None\n' +
+      'for i, (op, args) in enumerate(zip(kw["ops"], kw["args"])):\n' +
+      '    if i == 0:\n' +
+      '        assert op == ' + JSON.stringify(solCfg.judgeClass) + '\n' +
+      '        inst = getattr(mod, op)(*args); res.append(None)\n' +
+      '    else: res.append(getattr(inst, op)(*args))\n' :
+      'res = getattr(inst, ' + JSON.stringify(method) + ')(**kw)\n') +
+    (hasListGroup ?
+      'assert res is None or isinstance(res, ListNode), "must return ListNode or None"\n' +
+      'output_nodes = set(); node = res\n' +
+      'while node:\n' +
+      '    assert id(node) not in output_nodes, "result contains a cycle"\n' +
+      '    output_nodes.add(id(node)); node = node.next\n' +
+      'assert output_nodes == input_nodes, "merge must reuse every input node exactly once"\n' : '') +
+    (inPlaceFallback && !hasListGroup ? 'if res is None and kw:\n    res = next(iter(kw.values()))   # 原地修改题: 返回 None 时校验被改的实参\n' : '') +
+    'print(json.dumps(' + (hasListGroup ? '[] if res is None else _ser(res)' : '_ser(res)') + ', ensure_ascii=False))\n';
   fs.writeFileSync(drvFile, drv, 'utf8');
   const out = execFileSync('python', [drvFile, JSON.stringify(conv)], {timeout: 25000, encoding: 'utf8'});
   return JSON.parse(out.trim().split('\n').pop());
@@ -357,6 +380,14 @@ for(const f of files){
           const out = runPyCheck(pageId + (si === 0 ? '' : '_alt'), sc, defs, inPlace);
           pyOk = deepEq(out, sc.expected);
           if(!pyOk) errs.push(tag + 'py 输出 ' + JSON.stringify(out) + ' ≠ expected ' + JSON.stringify(sc.expected));
+          if(sc.judgeClass || (sc.form || []).some(f => f.pyType === 'lists')){
+            for(const preset of sc.presets || cfg.presets || []){
+              const input = Object.assign({}, defs, preset.values);
+              const actual = runPyCheck(pageId + '_preset', sc, input, false);
+              const expected = sc.sol(JSON.parse(JSON.stringify(input)));
+              if(!deepEq(actual, expected)) errs.push(tag + 'py preset「' + preset.label + '」输出不符');
+            }
+          }
         }catch(e){ pyOk = false; errs.push(tag + 'py: ' + (e.message || e).toString().split('\n').slice(-3).join(' | ')); }
       }
     }

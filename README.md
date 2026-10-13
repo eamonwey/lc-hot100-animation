@@ -1,6 +1,6 @@
 # LeetCode 热题 100 · 动画题解
 
-按 [LeetCode 官方学习计划](https://leetcode.cn/studyplan/top-100-liked/) 顺序制作的 **100 页交互式 Python 动画题解**：代码逐行高亮 ↔ 画面同步演示 ↔ 中文大白话解说。
+按分类组织的 **101 页交互式 Python 动画题解**，包含补齐的 LC146 LRU 缓存：代码逐行高亮 ↔ 画面同步演示 ↔ 中文大白话解说。已有页面编号保持不变，LRU 为 `p101.html`，位于链表分类。
 
 ## 在线阅读
 
@@ -26,7 +26,7 @@ GitHub Pages 部署后直接访问：`https://eamonwey.github.io/lc-hot100-anima
 ```
 index.html          目录页（进度、搜索、难度筛选）
 assets/             engine.js 播放引擎 · viz.js 可视化组件库 · style.css · problems.js 题目清单
-pages/p001~100.html 每题一个独立页面
+pages/p001~101.html 每题一个独立页面
 SPEC.md             页面生产规范
 tools/              校验流水线（check.js 逻辑+Python真实运行对拍 · sweep.js 浏览器实测）
 ```

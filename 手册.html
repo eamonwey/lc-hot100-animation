@@ -44,9 +44,9 @@
 <body>
 <div class="head">
   <h1>📖 LeetCode 热题 100 · 速查手册</h1>
-  <p>100 张复习卡: 核心一句话 + 完整 Python 代码 + 复杂度。由 <a href="index.html">动画题解</a> 自动生成,
-     打印(Ctrl+P)可当纸质复习册。生成时间: 2026/10/10 23:53:16</p>
-  <div><a class="toc" href="#cat-哈希">🗂哈希 · 3</a><a class="toc" href="#cat-双指针">👉双指针 · 4</a><a class="toc" href="#cat-滑动窗口">🪟滑动窗口 · 2</a><a class="toc" href="#cat-子串">🧵子串 · 3</a><a class="toc" href="#cat-普通数组">🔢普通数组 · 5</a><a class="toc" href="#cat-矩阵">⬜矩阵 · 4</a><a class="toc" href="#cat-链表">🔗链表 · 13</a><a class="toc" href="#cat-二叉树">🌳二叉树 · 15</a><a class="toc" href="#cat-图论">🗺图论 · 4</a><a class="toc" href="#cat-回溯">🧭回溯 · 8</a><a class="toc" href="#cat-二分查找">🔍二分查找 · 6</a><a class="toc" href="#cat-栈">🥞栈 · 5</a><a class="toc" href="#cat-堆">⛰堆 · 3</a><a class="toc" href="#cat-贪心算法">💰贪心算法 · 4</a><a class="toc" href="#cat-动态规划">📈动态规划 · 10</a><a class="toc" href="#cat-多维动态规划">🧮多维动态规划 · 5</a><a class="toc" href="#cat-技巧">🎩技巧 · 6</a></div>
+  <p>101 张复习卡: 核心一句话 + 完整 Python 代码 + 复杂度。由 <a href="index.html">动画题解</a> 自动生成,
+     打印(Ctrl+P)可当纸质复习册。生成时间: 2026/10/13 20:18:51</p>
+  <div><a class="toc" href="#cat-哈希">🗂哈希 · 3</a><a class="toc" href="#cat-双指针">👉双指针 · 4</a><a class="toc" href="#cat-滑动窗口">🪟滑动窗口 · 2</a><a class="toc" href="#cat-子串">🧵子串 · 3</a><a class="toc" href="#cat-普通数组">🔢普通数组 · 5</a><a class="toc" href="#cat-矩阵">⬜矩阵 · 4</a><a class="toc" href="#cat-链表">🔗链表 · 14</a><a class="toc" href="#cat-二叉树">🌳二叉树 · 15</a><a class="toc" href="#cat-图论">🗺图论 · 4</a><a class="toc" href="#cat-回溯">🧭回溯 · 8</a><a class="toc" href="#cat-二分查找">🔍二分查找 · 6</a><a class="toc" href="#cat-栈">🥞栈 · 5</a><a class="toc" href="#cat-堆">⛰堆 · 3</a><a class="toc" href="#cat-贪心算法">💰贪心算法 · 4</a><a class="toc" href="#cat-动态规划">📈动态规划 · 10</a><a class="toc" href="#cat-多维动态规划">🧮多维动态规划 · 5</a><a class="toc" href="#cat-技巧">🎩技巧 · 6</a></div>
 </div>
 <main>
 <h2 id="cat-哈希">🗂 哈希</h2><section class="card d1"><h3><span class="pn">P001 · LC1</span> 两数之和 <span class="df d1">简单</span></h3><p class="ap">解法: 一次遍历 + 哈希表（值→下标）</p><p class="idea">💡 别回头找搭档：把"我还需要谁"记进哈希表，让答案自己来撞上门——空间换时间。</p><pre class="code">class Solution:
@@ -595,17 +595,18 @@ class Solution:
         return dummy.next
 </pre><p class="cx">时间 O(n log n)（每层归并 O(n)，共 log n 层）　·　空间 O(log n)（递归栈）</p><p class="lnk"><a href="pages/p033.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/sort-list/" target="_blank">力扣原题 ↗</a></p></section><section class="card d3"><h3><span class="pn">P034 · LC23</span> 合并 K 个升序链表 <span class="df d3">困难</span></h3><p class="ap">解法: 分治：两两合并（归并）</p><p class="idea">💡 分治两两合并：每轮把相邻两条升序链合成一条，条数减半，log K 轮后只剩一条——每次合并就是第 21 题的"摘队头"工序。</p><pre class="code">class Solution:
     def mergeKLists(self, lists):
-        # LeetCode 传入 K 条升序链表, 这里用数组模拟节点
+        # lists 中每个元素是链表头节点或 None
         def merge2(a, b):                  # 合并两条升序链
-            i = j = 0; out = []
-            while i &lt; len(a) and j &lt; len(b):
-                if a[i] &lt;= b[j]:           # 两队头比一比
-                    out.append(a[i]); i += 1
+            dummy = tail = ListNode(0)
+            while a and b:
+                if a.val &lt;= b.val:         # 比较两队头的值
+                    tail.next = a; a = a.next
                 else:
-                    out.append(b[j]); j += 1
-            out += a[i:]; out += b[j:]     # 接上没比完的剩余段
-            return out
-        ls = [list(x) for x in lists]      # 每条链开一份拷贝
+                    tail.next = b; b = b.next
+                tail = tail.next
+            tail.next = a or b             # 接上剩余整段
+            return dummy.next
+        ls = list(lists)                   # 只拷贝链表头的容器
         while len(ls) &gt; 1:                 # 两两合并, 条数每轮减半
             nxt = []
             for i in range(0, len(ls) - 1, 2):
@@ -613,8 +614,29 @@ class Solution:
             if len(ls) % 2:                # 落单的原样晋级
                 nxt.append(ls[-1])
             ls = nxt
-        return ls[0] if ls else []
-</pre><p class="cx">时间 O(N log K)（N 为节点总数，每轮 O(N)，共 log K 轮）　·　空间 O(1)（链表版只改指针；动画用数组模拟）</p><p class="lnk"><a href="pages/p034.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/merge-k-sorted-lists/" target="_blank">力扣原题 ↗</a></p></section><h2 id="cat-二叉树">🌳 二叉树</h2><section class="card d1"><h3><span class="pn">P035 · LC94</span> 二叉树的中序遍历 <span class="df d1">简单</span></h3><p class="ap">解法: 递归：左 → 根 → 右</p><p class="idea">💡 中序 = 根在中间：先把左子树整个走完，回来记下自己，再去右子树。空位是递归的刹车。</p><pre class="code">class Solution:
+        return ls[0] if ls else None
+</pre><p class="cx">时间 O(N log K)（N 为节点总数）　·　辅助空间 O(K)（ls、nxt 保存链表头；merge2 复用原节点）</p><p class="lnk"><a href="pages/p034.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/merge-k-sorted-lists/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P101 · LC146</span> LRU 缓存 <span class="df d2">中等</span></h3><p class="ap">解法: OrderedDict：哈希查找 + 维护使用顺序</p><p class="idea">💡 命中或写入就把键移到最右端；超过容量就删掉最左端。OrderedDict 封装了哈希查找和双向顺序维护，get、put 都是 O(1)。</p><pre class="code">from collections import OrderedDict
+
+class LRUCache:
+    def __init__(self, capacity: int):
+        self.capacity = capacity
+        self.cache = OrderedDict()
+
+    def get(self, key: int) -&gt; int:
+        if key not in self.cache:
+            return -1
+        self.cache.move_to_end(key)       # 使用过，移到 MRU 端
+        return self.cache[key]
+
+    def put(self, key: int, value: int) -&gt; None:
+        if key in self.cache:
+            self.cache[key] = value
+            self.cache.move_to_end(key)
+            return
+        self.cache[key] = value
+        if len(self.cache) &gt; self.capacity:
+            self.cache.popitem(last=False) # 删除 LRU 端
+</pre><p class="cx">get / put 平均时间 O(1)　·　空间 O(capacity)</p><p class="lnk"><a href="pages/p101.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/lru-cache/" target="_blank">力扣原题 ↗</a></p></section><h2 id="cat-二叉树">🌳 二叉树</h2><section class="card d1"><h3><span class="pn">P035 · LC94</span> 二叉树的中序遍历 <span class="df d1">简单</span></h3><p class="ap">解法: 递归：左 → 根 → 右</p><p class="idea">💡 中序 = 根在中间：先把左子树整个走完，回来记下自己，再去右子树。空位是递归的刹车。</p><pre class="code">class Solution:
     def inorderTraversal(self, root):
         res = []                       # 访问序列
         def dfs(node):                 # 中序: 左 → 根 → 右

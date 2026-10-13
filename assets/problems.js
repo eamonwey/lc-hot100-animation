@@ -1,6 +1,6 @@
 /* ============================================================
  * problems.js —— LeetCode 热题 100 · 题目清单（按官方学习计划顺序）
- * order = 目录序号(1~100)，num = LeetCode 题号
+ * order = 稳定页面编号，num = LeetCode 题号
  * approach = 推荐解法（题解页按此实现），input = 默认测试用例
  * ============================================================ */
 window.LC_PROBLEMS = [
@@ -51,6 +51,7 @@ window.LC_PROBLEMS = [
   {order:32, num:138, slug:'copy-list-with-random-pointer', title:'随机链表的复制', diff:'中等', cat:'链表', approach:'三步法：穿插复制 / 补随机 / 拆分', input:{head:[[7,null],[13,0],[11,4],[10,2],[1,0]]}},
   {order:33, num:148, slug:'sort-list', title:'排序链表', diff:'中等', cat:'链表', approach:'快慢找中点 + 归并排序', input:{head:[4,2,1,3]}},
   {order:34, num:23,  slug:'merge-k-sorted-lists', title:'合并 K 个升序链表', diff:'困难', cat:'链表', approach:'分治：两两合并（归并）', input:{lists:[[1,4,5],[1,3,4],[2,6]]}},
+  {order:101, num:146, slug:'lru-cache', title:'LRU 缓存', diff:'中等', cat:'链表', approach:'OrderedDict：哈希查找 + 维护使用顺序', input:{ops:['LRUCache','put','put','get','put','get','put','get','get','get'], args:[[2],[1,1],[2,2],[1],[3,3],[2],[4,4],[1],[3],[4]]}},
 
   /* ---------- 二叉树 ---------- */
   {order:35, num:94,  slug:'binary-tree-inorder-traversal', title:'二叉树的中序遍历', diff:'简单', cat:'二叉树', approach:'递归：左 → 根 → 右', input:{root:[1,null,2,3]}},

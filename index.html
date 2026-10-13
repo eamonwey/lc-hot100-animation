@@ -28,7 +28,7 @@
     </p>
     <div class="pbar">
       <div class="track"><div class="fillbar" id="pfill" style="width:0%"></div></div>
-      <span class="pt" id="ptext">已掌握 0 / 100</span>
+      <span class="pt" id="ptext">已掌握 0</span>
     </div>
     <div class="statsbar" id="statsBar"></div>
     <div class="reviewbar" id="reviewBar" style="display:none"></div>
@@ -166,7 +166,8 @@ function render(){
   const sb = document.getElementById('statsBar');
   const rcData = loadJSON('lc100.recites');
   const reciteN = Object.keys(rcData).filter(k => rcData[k] > 0).length;
-  let sh = '<span class="st">已掌握<b>' + dn.length + '</b>/100</span>' +
+  const total = window.LC_PROBLEMS.length;
+  let sh = '<span class="st">已掌握<b>' + dn.length + '</b>/' + total + '</span>' +
            '<span class="st">🔥 连续学习<b>' + streak + '</b>天</span>' +
            '<span class="st">🔄 累计复习<b>' + rvTotal + '</b>轮</span>' +
            '<span class="st">✍ 可默写<b>' + reciteN + '</b>题</span>';
@@ -233,9 +234,9 @@ function render(){
   });
   if(!html) html = '<p style="color:var(--muted);margin-top:20px">没有符合条件的题目～</p>';
   secs.innerHTML = html;
-  const pct = Math.round(dn.length / 100 * 100);
+  const pct = Math.round(dn.length / total * 100);
   document.getElementById('pfill').style.width = pct + '%';
-  document.getElementById('ptext').textContent = '已掌握 ' + dn.length + ' / 100' + (pct === 100 ? ' 🎉 全部刷完！' : '');
+  document.getElementById('ptext').textContent = '已掌握 ' + dn.length + ' / ' + total + (dn.length === total ? ' 🎉 全部刷完！' : '');
 }
 
 document.getElementById('searchBox').addEventListener('input', function(){

@@ -72,6 +72,7 @@ function validateInput(cfg, input){
       if(v.length > f.maxRows || v.some(r => r.length > f.maxCols)) fail('动画最多支持 ' + f.maxRows + '×' + f.maxCols + ' 网格');
     }
   }
+  if(typeof cfg.validate === 'function') cfg.validate(input);
 }
 
 window.LC = {
@@ -139,8 +140,9 @@ function boot(){
   const app = document.getElementById('app') || document.body;
   const probs = window.LC_PROBLEMS || [];
   const me = probs.find(p => p.order === cfg.order);
-  const prev = probs.find(p => p.order === cfg.order - 1);
-  const next = probs.find(p => p.order === cfg.order + 1);
+  const pageIndex = probs.findIndex(p => p.order === cfg.order);
+  const prev = probs[pageIndex - 1];
+  const next = probs[pageIndex + 1];
 
   window.PAGE_STATE = {order: cfg.order, stepsOk: false, verify: null, stepsCount: 0};
 

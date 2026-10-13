@@ -67,7 +67,8 @@ for(const file of fs.readdirSync(path.join(ROOT,'pages')).filter(f => /^p\d+\.ht
           assert.deepEqual(copy(call),copy(before),'calling merge2 must not move or replace source rows');
           assert.deepEqual(init.rows.filter(r=>r[0]!=='out').map(r=>r[0]),before.rows.map(r=>r[0]));
           assert.deepEqual(copy(init.vars.outer.nxt),copy(before.vars.outer.nxt));
-          assert.equal(init.rows.find(r=>r[0]==='out')[2].dummy,false);
+          assert.equal(init.rows.find(r=>r[0]==='out')[2].dummy,true);
+          assert.equal(init.rows.find(r=>r[0]==='out')[2].pointers[0].key,'__dummy');
         }
         if(frames[i].tag==='加入 nxt'){
           const before=capture(frames[i-1]),after=capture(frames[i]);

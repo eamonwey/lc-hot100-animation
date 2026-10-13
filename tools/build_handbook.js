@@ -1,6 +1,6 @@
 /* ============================================================
- * tools/build_handbook.js —— 从 100 个题解页抽取配置,
- * 生成一页式「速查手册.html」(全 100 卡: 核心一句话+代码+复杂度)。
+ * tools/build_handbook.js —— 从题解页抽取配置,
+ * 生成一页式「速查手册.html」(核心一句话+代码+复杂度)。
  * 用法: node tools/build_handbook.js
  * ============================================================ */
 'use strict';
@@ -115,7 +115,7 @@ const html = `<!DOCTYPE html>
 <body>
 <div class="head">
   <h1>📖 LeetCode 热题 100 · 速查手册</h1>
-  <p>100 张复习卡: 核心一句话 + 完整 Python 代码 + 复杂度。由 <a href="index.html">动画题解</a> 自动生成,
+  <p>${all.length} 张复习卡: 核心一句话 + 完整 Python 代码 + 复杂度。由 <a href="index.html">动画题解</a> 自动生成,
      打印(Ctrl+P)可当纸质复习册。生成时间: ${new Date().toLocaleString('zh-CN')}</p>
   <div>${toc}</div>
 </div>
