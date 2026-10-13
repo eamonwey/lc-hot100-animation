@@ -110,6 +110,8 @@ header .roles code{font-weight:650}
 .blk-t{font-size:13px;color:#4c5160}
 .blk-t code{font-weight:650;color:var(--blue)}
 .blk-b{position:relative;width:100%}
+.tree-viewport{width:100%;min-width:0;overflow-x:auto;overscroll-behavior-x:contain}
+.tree-viewport>.blk-b{margin-inline:auto}
 .viz-it{position:absolute;transition:
   left .38s cubic-bezier(.22,.9,.3,1), top .38s cubic-bezier(.22,.9,.3,1),
   width .3s, height .3s, background .18s, color .18s, border-color .18s, opacity .28s;}

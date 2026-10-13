@@ -4,7 +4,7 @@
   "description": "",
   "main": "check.js",
   "scripts": {
-    "test": "node check.js && node animation_test.js && node lru_test.js && node regression.js && node release_test.js && node list_render_test.js && node viz_state_test.js && node layout_test.js && node graph_render_test.js"
+    "test": "node check.js && node animation_test.js && node lru_test.js && node regression.js && node release_test.js && node list_render_test.js && node viz_state_test.js && node layout_test.js && node tree_layout_test.js && node graph_render_test.js"
   },
   "keywords": [],
   "author": "",

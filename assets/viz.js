@@ -538,6 +538,13 @@ class Viz{
   tree(id, layout, opt){
     opt = opt || {};
     const b = this._blk(id, opt.label);
+    if(!b.treeViewport){
+      const viewport = document.createElement('div');
+      viewport.className = 'tree-viewport';
+      b.el.insertBefore(viewport, b.body);
+      viewport.appendChild(b.body);
+      b.treeViewport = viewport;
+    }
     if(!b._uid) b._uid = this._uidSeq();
     const NW = 46, NH = 38, topPad = 24;
     const keep = new Set();
@@ -851,19 +858,38 @@ Viz.treeLayout = function(arr){
     if(left[key] != null) setD(left[key], d + 1);
     if(right[key] != null) setD(right[key], d + 1);
   })(T.root, 0);
-  // 中序位置定 x
-  let counter = 0; const xpos = {};
-  (function ino(key){
-    if(left[key] != null) ino(left[key]);
-    xpos[key] = counter++;
-    if(right[key] != null) ino(right[key]);
-  })(T.root);
+  // 子树按自身宽度占位，父节点居中；单侧孩子预留半个间距以保留方向。
+  const shapes = {}, xpos = {}, shift = (CELLW + GAPX) / 2;
+  function measure(key){
+    const l = left[key] == null ? null : measure(left[key]);
+    const r = right[key] == null ? null : measure(right[key]);
+    let shape;
+    if(l && r){
+      const offset = l.w + GAPX;
+      shape = {w:offset + r.w, center:(l.center + offset + r.center) / 2, left:0, right:offset};
+    }else if(l){
+      shape = {w:l.w + shift, center:l.center + shift, left:0};
+    }else if(r){
+      shape = {w:r.w + shift, center:r.center, right:shift};
+    }else{
+      shape = {w:CELLW, center:CELLW / 2};
+    }
+    shapes[key] = shape;
+    return shape;
+  }
+  const rootShape = measure(T.root);
+  (function place(key, offset){
+    const shape = shapes[key];
+    xpos[key] = offset + shape.center - CELLW / 2;
+    if(left[key] != null) place(left[key], offset + shape.left);
+    if(right[key] != null) place(right[key], offset + shape.right);
+  })(T.root, pad);
   nodes.forEach(nd => {
-    nd.x = pad + xpos[nd.key] * (CELLW + GAPX);
+    nd.x = xpos[nd.key];
     nd.y = pad + nd.d * ROWH;
     nd.leaf = nd.left == null && nd.right == null;
   });
-  const W = Math.max(120, pad * 2 + nodes.length * (CELLW + GAPX) - GAPX);
+  const W = Math.max(120, pad * 2 + rootShape.w);
   const H = Math.max(60, pad * 2 + (maxD + 1) * ROWH);
   return {nodes, edges, w: W, h: H};
 };
