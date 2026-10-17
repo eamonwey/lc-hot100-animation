@@ -45,7 +45,7 @@
 <div class="head">
   <h1>📖 LeetCode 热题 100 · 速查手册</h1>
   <p>101 张复习卡: 核心一句话 + 完整 Python 代码 + 复杂度。由 <a href="index.html">动画题解</a> 自动生成,
-     打印(Ctrl+P)可当纸质复习册。生成时间: 2026/10/13 20:18:51</p>
+     打印(Ctrl+P)可当纸质复习册。生成时间: 2026/10/17 17:38:29</p>
   <div><a class="toc" href="#cat-哈希">🗂哈希 · 3</a><a class="toc" href="#cat-双指针">👉双指针 · 4</a><a class="toc" href="#cat-滑动窗口">🪟滑动窗口 · 2</a><a class="toc" href="#cat-子串">🧵子串 · 3</a><a class="toc" href="#cat-普通数组">🔢普通数组 · 5</a><a class="toc" href="#cat-矩阵">⬜矩阵 · 4</a><a class="toc" href="#cat-链表">🔗链表 · 14</a><a class="toc" href="#cat-二叉树">🌳二叉树 · 15</a><a class="toc" href="#cat-图论">🗺图论 · 4</a><a class="toc" href="#cat-回溯">🧭回溯 · 8</a><a class="toc" href="#cat-二分查找">🔍二分查找 · 6</a><a class="toc" href="#cat-栈">🥞栈 · 5</a><a class="toc" href="#cat-堆">⛰堆 · 3</a><a class="toc" href="#cat-贪心算法">💰贪心算法 · 4</a><a class="toc" href="#cat-动态规划">📈动态规划 · 10</a><a class="toc" href="#cat-多维动态规划">🧮多维动态规划 · 5</a><a class="toc" href="#cat-技巧">🎩技巧 · 6</a></div>
 </div>
 <main>
@@ -749,15 +749,7 @@ class Solution:
             node.left = build(lo, mid - 1)    # 左半段全部比它小
             node.right = build(mid + 1, hi)   # 右半段全部比它大
             return node                  # 把根交回给上层挂接
-        root = build(0, len(nums) - 1)
-        out, q = [], [root]              # 树层序化成数组, 便于和输出格式对拍
-        while q:
-            n = q.pop(0)
-            if n is None:
-                out.append(None); continue
-            out.append(n.val); q.append(n.left); q.append(n.right)
-        while out and out[-1] is None: out.pop()
-        return out
+        return build(0, len(nums) - 1)    # 返回树的根节点
 </pre><p class="cx">时间 O(n)（每个元素建一个节点）　·　空间 O(log n)（递归栈，平衡树高）</p><p class="lnk"><a href="pages/p041.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/convert-sorted-array-to-bst/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P042 · LC98</span> 验证二叉搜索树 <span class="df d2">中等</span></h3><p class="ap">解法: 递归携带上下界</p><p class="idea">💡 递归携带上下界：左子树上界收紧成当前值、右子树下界抬高成当前值，一路收紧，谁出界谁暴露。</p><pre class="code">class Solution:
     def isValidBST(self, root):
         def check(node, lo, hi):          # node 的值必须落在开区间 (lo, hi)
@@ -836,14 +828,7 @@ class Solution:
             root.left = build(pre[1:mid+1], ino[:mid])     # 左半段
             root.right = build(pre[mid+1:], ino[mid+1:])   # 右半段
             return root
-        root = build(preorder, inorder)
-        out, q = [], [root]                # 以下只是层序化, 方便展示对拍
-        while q:
-            n = q.pop(0)
-            if n is None: out.append(None); continue
-            out.append(n.val); q.append(n.left); q.append(n.right)
-        while out and out[-1] is None: out.pop()
-        return out
+        return build(preorder, inorder)    # 返回树的根节点
 </pre><p class="cx">时间 O(n²)（切片版；下标 + 哈希可优化到 O(n)）　·　空间 O(n)（切片开销 + 递归栈 O(h)）</p><p class="lnk"><a href="pages/p046.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/construct-binary-tree-from-preorder-and-inorder-traversal/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P047 · LC437</span> 路径总和 III <span class="df d2">中等</span></h3><p class="ap">解法: 前缀和 + 回溯（哈希计数）</p><p class="idea">💡 像"和为 K 的子数组"在树上重演：cur 是前缀和，cnt 记每个前缀出现过几次，cnt[cur − target] 就是到此节点收口、和为 target 的路径条数；回溯时注销。</p><pre class="code">class Solution:
     def pathSum(self, root, targetSum):
         cnt = {0: 1}                  # 前缀和 -&gt; 出现次数(空前缀哨兵)

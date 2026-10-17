@@ -74,14 +74,7 @@ LC.register({
             root.left = build(pre[1:mid+1], ino[:mid])     # 左半段
             root.right = build(pre[mid+1:], ino[mid+1:])   # 右半段
             return root
-        root = build(preorder, inorder)
-        out, q = [], [root]                # 以下只是层序化, 方便展示对拍
-        while q:
-            n = q.pop(0)
-            if n is None: out.append(None); continue
-            out.append(n.val); q.append(n.left); q.append(n.right)
-        while out and out[-1] is None: out.pop()
-        return out
+        return build(preorder, inorder)    # 返回树的根节点
 `,
 
   sol(input){
@@ -348,8 +341,8 @@ LC.register({
 
     build(0, pre.length - 1, 0, ino.length - 1, 0, []);
 
-    F.push({hl:[12,13,14,15,16,17,18], tag:'层序化输出', cls:'t-dark',
-      msg:'<code>build</code> 返回的是树本身（LeetCode 收卷格式是层序数组）；末尾把它按<b>层序</b>铺平成 <b>[' + layerStr() + ']</b>（null = 空位），方便与答案对拍。核心算法到上一帧就结束了：前序定根、中序分左右，两把刀切完整棵树。',
+    F.push({hl:[11], tag:'返回根节点', cls:'t-dark',
+      msg:'<code>return build(preorder, inorder)</code> 返回 TreeNode 根节点；空树返回 None。页面将这棵树按层序展示为 <b>[' + layerStr() + ']</b>，null 表示空孩子。这只是展示格式，不需要在提交代码中将树转成列表。',
       do: draw({
         preStates: preStates(pre.length, pre.length - 1), preCls:{}, preMarkers:[],
         inoStates: inoStates(-1, -2, null, []), inoCls:{}, inoMarkers:[],

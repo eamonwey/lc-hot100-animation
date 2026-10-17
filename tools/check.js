@@ -144,6 +144,7 @@ function runPyCheck(pageId, solCfg, defs, inPlaceFallback){
   }
   const method = solCfg.method || 'solve';
   const hasListGroup = Object.values(types).includes('lists');
+  const returnsTree = ['sortedArrayToBST','buildTree','invertTree'].includes(method);
   fs.writeFileSync(codeFile, PY_PREAMBLE + '\n' + solCfg.code + '\n', 'utf8');
   const drv =
     PY_PREAMBLE + '\n' +
@@ -183,8 +184,9 @@ function runPyCheck(pageId, solCfg, defs, inPlaceFallback){
       '    assert id(node) not in output_nodes, "result contains a cycle"\n' +
       '    output_nodes.add(id(node)); node = node.next\n' +
       'assert output_nodes == input_nodes, "merge must reuse every input node exactly once"\n' : '') +
-    (inPlaceFallback && !hasListGroup ? 'if res is None and kw:\n    res = next(iter(kw.values()))   # 原地修改题: 返回 None 时校验被改的实参\n' : '') +
-    'print(json.dumps(' + (hasListGroup ? '[] if res is None else _ser(res)' : '_ser(res)') + ', ensure_ascii=False))\n';
+    (returnsTree ? 'assert res is None or isinstance(res, TreeNode), "must return TreeNode or None, got " + type(res).__name__\n' : '') +
+    (inPlaceFallback && !hasListGroup && !returnsTree ? 'if res is None and kw:\n    res = next(iter(kw.values()))   # 原地修改题: 返回 None 时校验被改的实参\n' : '') +
+    'print(json.dumps(' + (hasListGroup || returnsTree ? '[] if res is None else _ser(res)' : '_ser(res)') + ', ensure_ascii=False))\n';
   fs.writeFileSync(drvFile, drv, 'utf8');
   const out = execFileSync('python', [drvFile, JSON.stringify(conv)], {timeout: 25000, encoding: 'utf8'});
   return JSON.parse(out.trim().split('\n').pop());
@@ -380,7 +382,7 @@ for(const f of files){
           const out = runPyCheck(pageId + (si === 0 ? '' : '_alt'), sc, defs, inPlace);
           pyOk = deepEq(out, sc.expected);
           if(!pyOk) errs.push(tag + 'py 输出 ' + JSON.stringify(out) + ' ≠ expected ' + JSON.stringify(sc.expected));
-          if(sc.judgeClass || (sc.form || []).some(f => f.pyType === 'lists')){
+          if(sc.judgeClass || ['sortedArrayToBST','buildTree','invertTree'].includes(sc.method) || (sc.form || []).some(f => f.pyType === 'lists')){
             for(const preset of sc.presets || cfg.presets || []){
               const input = Object.assign({}, defs, preset.values);
               const actual = runPyCheck(pageId + '_preset', sc, input, false);

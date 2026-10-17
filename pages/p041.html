@@ -66,15 +66,7 @@ LC.register({
             node.left = build(lo, mid - 1)    # 左半段全部比它小
             node.right = build(mid + 1, hi)   # 右半段全部比它大
             return node                  # 把根交回给上层挂接
-        root = build(0, len(nums) - 1)
-        out, q = [], [root]              # 树层序化成数组, 便于和输出格式对拍
-        while q:
-            n = q.pop(0)
-            if n is None:
-                out.append(None); continue
-            out.append(n.val); q.append(n.left); q.append(n.right)
-        while out and out[-1] is None: out.pop()
-        return out
+        return build(0, len(nums) - 1)    # 返回树的根节点
 `,
 
   sol(input){
@@ -113,7 +105,7 @@ LC.register({
      options:['[1,2,3,4]','[2,1,3,null,null,null,4]','[2,1,4,3]'],
      answer:1,
      explain:'build(0,3):mid=(0+3)//2=1 → 根 2;左半段 [0..0] → 左孩子 1;右半段 build(2,3):mid=2 → 右孩子 3,再切出 [3..3] → 4 挂在 3 的右边。层序化得 [2,1,3,null,null,null,4]。注意本题答案不唯一:偶数个元素取偏右中点会长出另一棵同样合法的平衡 BST,判题只要求"合法 + 平衡",返回任意一棵都对。',
-     jumpTo:53},
+     jumpTo:52},
     {q:'整个建树过程要对数组元素做多少次「大小比较」?',
      options:['O(n log n) 次,和排序差不多','每建一个节点比较 2 次,共约 2n 次','0 次——数组已升序,"左半段全小于中点、右半段全大于中点"由有序性自动保证'],
      answer:2,
@@ -293,20 +285,16 @@ LC.register({
     const rootKey = visit(0, nums.length - 1, []);
     const serOut = serLevel(rootKey);
 
-    F.push({hl:[11,12], tag:'拿到根', cls:'t-blue',
+    F.push({hl:[11], tag:'拿到根', cls:'t-blue',
       msg: rootKey != null
-        ? '<code>root = build(0, ' + (nums.length - 1) + ')</code> 返回——整棵树的根是' + nm(rootKey) + '，头顶打上「根」名牌。树已经长成，但 LeetCode 要的是数组格式，所以最后做一步<b>层序化</b>：按层扫一遍树、摊平成数组，方便和输出格式对答案。'
-        : '空数组一个元素都没有，<code>build(0, -1)</code> 命中出口返回 None → 空树，直接进入输出环节。',
+        ? '<code>return build(0, ' + (nums.length - 1) + ')</code> 返回整棵树的根节点 ' + nm(rootKey) + '，头顶打上「根」名牌。LeetCode 接收的是这个 TreeNode 对象；页面随后用层序数组展示它，展示格式不改变函数返回类型。'
+        : '空数组没有元素，<code>return build(0, -1)</code> 返回 None，表示空树。页面将空树显示为 []。',
       do: draw({seg: {}, markers: [], layout: lay(), exists: created.slice(), ret: Array.from(returned),
                 tags: rootKey != null ? {[rootKey]: {text:'根', cls:'mv'}} : {}})});
-    F.push({hl:[13,14,15,16,17,18], tag:'层序化', cls:'t-ink',
-      msg:'这一步只是<b>格式转换</b>，不改变算法本身：队列出队一个记一个；遇到空孩子记 <code>null</code> 占位、但不再展开它的孩子——这正是 LeetCode 序列化二叉树的标准格式，null 只是"这个位置没节点"的占位说明。',
-      do: draw({seg: {}, markers: [], layout: lay(), exists: created.slice(), ret: Array.from(returned),
-                tags: rootKey != null ? {[rootKey]: {text:'根', cls:'mv'}} : {}})});
-    F.push({hl:[19], tag:'建树完成', cls:'t-dark',
+    F.push({hl:[11], tag:'建树完成', cls:'t-dark',
       msg: rootKey != null
-        ? '🎉 去掉尾部的 null 占位 → 输出 <b>' + serTxt(serOut) + '</b>。复盘：每个元素恰好建一个节点，时间 O(n)；平衡树高 O(log n) 决定递归栈深。提醒：本题答案<b>不唯一</b>——偶数个元素取偏左还是偏右中点会长出不同的平衡 BST，判题只要求"合法 + 平衡"，返回任意一棵都对。'
-        : '🎉 空树层序化什么都记不到 → 输出 <b>[]</b>：空数组的合法答案就是空树。',
+        ? '🎉 函数已返回 TreeNode 根节点，树的层序展示为 <b>' + serTxt(serOut) + '</b>。每个元素建一个节点，时间 O(n)，递归栈 O(log n)。答案不唯一：返回任意一棵合法、平衡的 BST 都可以，无需在题解代码中转成数组。'
+        : '🎉 函数返回 None，表示空树；页面的层序展示为 <b>[]</b>。',
       do: draw({seg: {}, markers: [], layout: lay(), exists: created.slice(), ret: Array.from(returned),
                 tags: rootKey != null ? {[rootKey]: {text:'根', cls:'mv'}} : {},
                 result: serOut})});
