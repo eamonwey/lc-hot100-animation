@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P021 · 搜索二维矩阵 II · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/progress.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 21, num: 240, title: '搜索二维矩阵 II', diff: '中等', cat: '矩阵',
+  method: 'searchMatrix',
+
+  lede: '题目：矩阵<b>每行从左到右递增、每列从上到下递增</b>，判断 target 是否存在，越快越好。' +
+        '动画从<b>右上角</b> (0, n−1) 出发：<span class="var r">x</span> 是当前格的值——' +
+        'x 太大就往<b>左</b>、太小就往<b>下</b>，每走一步白送淘汰一整行或一整列。' +
+        '灰格 = 已排除区，绿格 = 走过的检查点，就像在一棵二叉搜索树上走路。',
+
+  roles: [
+    {c:'orange', code:'x',      text:'当前位置 (i,j) 的值'},
+    {c:'blue',   code:'target', text:'要找的目标'},
+    {c:'green',  code:'done',   text:'走过的检查点'},
+    {c:'grey',   code:'muted',  text:'已排除的行/列'}
+  ],
+
+  codeTitle: '跟着高亮读代码——if 行变<span style="color:var(--green)">绿</span>＝命中；' +
+             'elif 变绿＝太大往左，else 变绿＝太小往下；变红＝还要继续比。',
+
+  legend: [
+    {c:'orange', text:'当前位置'},
+    {c:'green',  text:'走过的检查点'},
+    {swatch:'var(--grey-soft)', text:'灰格 = 已排除的行列'},
+    {c:'violet', text:'找到的 target'}
+  ],
+
+  idea: '站上右上角：大了往左、小了往下——每一步淘汰一整行或一整列，最多 m+n 步，像走一棵 BST。',
+
+  qa: [
+    {q:'为什么右上角这么神奇？',
+     a:'右上角的值 x 有个独一无二的性质：<b>左邻比它小、正下方比它大</b>。' +
+       '拿 x 和 target 比一次，就能断定"该往哪边走、哪边彻底没戏"——这和二叉搜索树里' +
+       '"比节点小去左子树、大去右子树"一模一样。左下角同理（右上对称）。'},
+    {q:'为什么左下角也行，右下角却不行？',
+     a:'右下角的两边：左邻比它小、正上方也比它小——比较一次<b>排除不了任何一边</b>；' +
+       '左上角两边都比它大，同样废掉。只有右上/左下角是"一小一大"各占一边。'},
+    {q:'为什么每一步敢淘汰整行/整列？',
+     a:'往左走时：x &gt; target，而这一列<b>越往下越大</b>，所以第 j 列下面所有格子全都 &gt; target，整列作废；' +
+       '往下走时：x &lt; target，而这一行<b>越往左越小</b>，左边全都不够大，整行作废。'},
+    {q:'复杂度？比逐行二分强吗？',
+     a:'指针每步要么 i+1 要么 j−1，最多走 m+n−1 步，O(m+n)。逐行二分是 O(m·log n)：' +
+       '行多列少时 O(m+n) 更赚；行少列多时二分占优。这解法胜在又快又好写。'}
+  ],
+
+  complexity: '时间 O(m+n)（每步淘汰一行或一列）　·　空间 O(1)（两个指针）',
+
+  form: [
+    {key:'matrix', label:'matrix（每行一行）', type:'grid', def:[[1,4,7],[2,5,8],[3,6,9]]},
+    {key:'target', label:'target', type:'num', def:6}
+  ],
+  presets: [
+    {label:'3×3 找 6（命中）', values:{matrix:[[1,4,7],[2,5,8],[3,6,9]], target:6}},
+    {label:'4×4 找 9（命中）', values:{matrix:[[1,4,7,11],[2,5,8,12],[3,6,9,16],[10,13,14,17]], target:9}},
+    {label:'4×4 找 14（走折线）', values:{matrix:[[1,4,7,11],[2,5,8,12],[3,6,9,16],[10,13,14,17]], target:14}},
+    {label:'3×3 找 13（不存在）', values:{matrix:[[1,4,7],[2,5,8],[3,6,9]], target:13}}
+  ],
+
+  code: `class Solution:
+    def searchMatrix(self, matrix, target):
+        i, j = 0, len(matrix[0]) - 1     # 从右上角出发
+        while i < len(matrix) and j >= 0:   # 还在矩阵里
+            x = matrix[i][j]
+            if x == target:              # 命中!
+                return True
+            elif x > target:             # 太大: 这一列越往下越大
+                j -= 1                   #   → 整列作废, 往左
+            else:                        # 太小: 这一行越往左越小
+                i += 1                   #   → 整行作废, 往下
+        return False                     # 走出矩阵还没见着 → 没有
+`,
+
+  sol(input){
+    const m = input.matrix;
+    const R = m.length, C = R ? m[0].length : 0;
+    if(!R || !C) return false;
+    const t = input.target;
+    let i = 0, j = C - 1;
+    while(i < R && j >= 0){
+      const x = m[i][j];
+      if(x === t) return true;
+      else if(x > t) j -= 1;
+      else i += 1;
+    }
+    return false;
+  },
+  expected: true,
+
+  quiz: [
+    {q:'为什么从右上角出发能每步淘汰一整行/整列？右下角为什么不行？',
+     options:['右上角值最大，先看最大值效率高','右上角左邻比它小、正下方比它大，比一次就能断定该往哪边走、哪边整行/列没戏；右下角左邻和正上方都比它小，比一次排除不了任何一边','其实从哪个角出发都行，只是右上角写起来顺手'],
+     answer:1,
+     explain:'右上角是「一小一大」各占一边的独特位置：x > target 时这一列越往下越大、整列作废（往左走）；x < target 时这一行越往左越小、整行作废（往下走）。右下角两边都比它小，左上角两边都比它大，比较一次什么都排除不了，只能全扫。左下角与右上角对称，同样可行。这和 BST「小往左、大往右」的判断力如出一辙。',
+     jumpTo:1},
+    {q:'默认矩阵 [[1,4,7],[2,5,8],[3,6,9]] 里找 target = 5，指针走哪条路、比较几次命中？',
+     options:['(0,2)=7 → 左移；(0,1)=4 → 下移；(1,1)=5 命中，共 3 次','(0,2)=7 → 下移；(1,2)=8 → 左移；(1,1)=5 命中，共 3 次','(0,0)=1 → 右移一路扫到 (1,1)，共 5 次'],
+     answer:0,
+     explain:'第一步 (0,2) 的 7 > 5，第 2 列往下只会更大 → 整列作废，往左；第二步 (0,1) 的 4 < 5，第 0 行往左只会更小 → 整行作废，往下；第三步 (1,1) 的 5 正中目标。误选第二个把「大了往左」记反成「大了往下」——7 比 5 大，下方只会更大，往下永远找不到；误选第三个等于放弃矩阵的结构信息暴力扫描。',
+     jumpTo:16},
+    {q:'指针为什么每步只能动一个（i 或 j），不能斜着走（i、j 一起动）？',
+     options:['斜着走更快，只是代码难写','斜着一步同时跨过一行和一列，看着赚，但会跳过未检查的格子——被跳过的区域既没被证明有 target 也没被证明没有，可能漏掉 target','因为两个变量不能同时自增'],
+     answer:1,
+     explain:'每步排除的合法性来自「整行/整列都被证明不可能」：x > target 时整列作废，x < target 时整行作废——但一次比较只够排除一条边。斜着走等于一步跨过一行加一列，其中一部分格子其实没被任何比较覆盖到，target 恰好藏在那里就漏了。一步一步走，最多 m+n−1 步，既不漏也不错，这正是 O(m+n) 的来历。',
+     jumpTo:4},
+  ],
+
+  steps(input){
+    const F = [];
+    const m = input.matrix.map(r => r.slice());
+    const R = m.length, C = m[0].length;
+    const target = input.target;
+    let i = 0, j = C - 1;
+    const path = [];
+
+    /* ★ 快照原则：排除区/路径/当前格状态在 push 那一刻求值 */
+    const snap = () => m.map(r => r.slice());
+    const stOf = (curKey, foundKey) => {
+      const o = {};
+      for(let r = 0; r < R; r++) for(let c = 0; c < C; c++){
+        if(r < i || c > j) o[r + ',' + c] = 'muted';
+      }
+      path.forEach(k => { o[k] = 'done'; });
+      if(curKey) o[curKey] = 'active';
+      if(foundKey) o[foundKey] = 'target';
+      return o;
+    };
+    const draw = (o) => (v) => {
+      v.grid('G', o.mat, {label:'矩阵　·　灰 = 已排除区　·　绿 = 走过的检查点', states:o.states});
+      if(o.vars) v.vars('vars', o.vars, {label:'指针与比较'});
+      if(o.res !== undefined) v.result(o.res, {label:'返回结果'});
+    };
+
+    F.push({hl:[1,2,3], tag:'初始化', cls:'t-grey',
+      msg:'矩阵每行向右递增、每列向下递增。两个指针从<b>右上角</b>出发：i = 0、j = ' + (C - 1) + '，橙格 (0,' + (C - 1) + ') = ' + m[0][C - 1] +
+          ' 就是第一个检查点，目标 target = ' + target + '。右上角独一无二——<b>左邻比它小、正下方比它大</b>，拿它和 target 比一次，' +
+          '就能断定该往哪边走、哪边整行/整列没戏，和二叉搜索树"小往左、大往右"走路一模一样。' +
+          '反例：从右下角出发，左邻和正上方都比它小，比一次排除不了任何一边，只能老老实实全扫。',
+      do: draw({mat:snap(), states:stOf('0,' + (C - 1)), vars:{i:0, j:j, x:m[0][C - 1], target:target}})});
+
+    while(i < R && j >= 0){
+      F.push({hl:[4], ok:4, tag:'还在界内', cls:'t-blue',
+        msg:'第 ' + (path.length + 1) + ' 轮：i = ' + i + '、j = ' + j + '，指针还在矩阵里（没掉出底边、也没走出左边）→ 搜索继续。' +
+            '画面读法：灰格 = 之前每步"白送"排除的行列，橙格 = 现在站的检查点；未排除区还剩 ' + (R - i) + ' 行 × ' + (j + 1) + ' 列，target 若存在就藏在里面。',
+        do: draw({mat:snap(), states:stOf(i + ',' + j), vars:{i:i, j:j, x:'…', target:target}})});
+
+      path.push(i + ',' + j);
+      const x = m[i][j];
+      F.push({hl:[5], tag:'看当前格', cls:'t-ink',
+        msg:'<code>x = matrix[' + i + '][' + j + '] = ' + LCesc(x) + '</code>，和 target = ' + target +
+            ' 比一比（第 ' + path.length + ' 次比较）。这一格正是"未排除区"的右上角：同行左邻都比它小、同列下方都比它大，' +
+            '所以每一步都自动继承"大→往左、小→往下"的判断力——敢一直贪心走下去的底气就在这。',
+        do: draw({mat:snap(), states:stOf(i + ',' + j), vars:{i:i, j:j, x:x, target:target}})});
+
+      if(x === target){
+        F.push({hl:[6], ok:6, tag:'命中', cls:'t-green',
+          msg:'<code>x = ' + x + ' == target = ' + target + '</code> 🎉 在 (' + i + ',' + j + ') 命中！格子染上紫红色，一路的绿格就是走过的检查点。' +
+              '注意我们从没扫过整个矩阵——只走了一条不回头的折线就撞到了它。',
+          do: draw({mat:snap(), states:stOf(i + ',' + j, i + ',' + j), vars:{i:i, j:j, x:x, target:target}})});
+        F.push({hl:[7], tag:'返回', cls:'t-dark',
+          msg:'return True。一共只比较了 <b>' + path.length + '</b> 次（封顶 m+n−1 = ' + (R + C - 1) +
+              ' 次）——每一步要么命中、要么白送淘汰一整行/整列，灰格就是被顺路扔掉的格子。这就是 O(m+n)：矩阵再大，走的也只是"一条边"的长度。',
+          do: draw({mat:snap(), states:stOf(i + ',' + j, i + ',' + j), res:true, vars:{i:i, j:j, x:x, target:target}})});
+        F.push({hl:[12], tag:'另一个出口', cls:'t-grey',
+          msg:'代码还有一条出口：一直走到<b>出界</b>（i 越界或 j &lt; 0）都没命中，才会 <code>return False</code>。' +
+              '本题第 ' + path.length + ' 次就命中了，没走到这。',
+          do: draw({mat:snap(), states:stOf(i + ',' + j, i + ',' + j), res:true})});
+        return F;
+      }
+      if(x > target){
+        F.push({hl:[6], no:6, tag:'比较', cls:'t-red',
+          msg:'x = ' + x + ' &gt; target = ' + target + '：站上第 ' + j + ' 列的顶格，嫌它太大。这一列<b>越往下越大</b>，' +
+              '下面的格子全都比 ' + x + ' 还大，更不可能是 ' + target + ' → 第 ' + j + ' 列<b>整列作废</b>（变灰），<code>j -= 1</code> 往左挪。' +
+              '踩坑提醒：每步只许动一个指针——i、j 一起动（斜着走）会跳过未检查的格子，可能漏掉 target。',
+          do: draw({mat:snap(), states:stOf(i + ',' + j), vars:{i:i, j:j, x:x, target:target}})});
+        j -= 1;
+        F.push({hl:[8,9], ok:8, tag:'往左', cls:'t-violet',
+          msg:'左移到 (' + i + ',' + j + ')' + (j >= 0 ? '，新检查点是 ' + m[i][j] + '。' : '——j &lt; 0，左边也没有了，下一步就出界。') +
+              '被排除的行列永远不会再回来看：每步排除都是终审——正因为绝不回头，整个算法才只要 O(m+n) 步。',
+          do: draw({mat:snap(), states:stOf(j >= 0 ? i + ',' + j : null), vars:{i:i, j:j, x: j >= 0 ? m[i][j] : '—', target:target}})});
+      } else {
+        F.push({hl:[6], no:6, tag:'比较', cls:'t-blue',
+          msg:'x = ' + x + ' &lt; target = ' + target + '：嫌它太小。这一行<b>越往左越小</b>（每行从左到右递增），左边的格子比 ' + x +
+              ' 还小，更够不着 ' + target + ' → 第 ' + i + ' 行<b>整行作废</b>（变灰），<code>i += 1</code> 往下挪——同样每步只动一个指针。',
+          do: draw({mat:snap(), states:stOf(i + ',' + j), vars:{i:i, j:j, x:x, target:target}})});
+        i += 1;
+        F.push({hl:[10,11], ok:10, tag:'往下', cls:'t-violet',
+          msg:'下移到 (' + i + ',' + j + ')' + (i < R ? '，新检查点是 ' + m[i][j] + '。' : '——i 越界，下面也没有了。') +
+              '划掉的行同样永不回头——每一步都把搜索范围砍掉一整条边，范围只缩不涨。',
+          do: draw({mat:snap(), states:stOf(i < R ? i + ',' + j : null), vars:{i:i, j:j, x: i < R ? m[i][j] : '—', target:target}})});
+      }
+    }
+
+    F.push({hl:[4], no:4, tag:'出界', cls:'t-red',
+      msg:'指针走出矩阵（i = ' + i + '、j = ' + j + '）→ while 条件不成立，循环结束。' +
+          '为什么这时敢断言没有 ' + target + '？只要它存在，就一定还在未排除区里，而每轮检查的恰是未排除区的右上角——区域被清空之前，这个岗哨一直有人站，绝不会漏。',
+      do: draw({mat:snap(), states:stOf(), vars:{i:i, j:j, x:'—', target:target}})});
+
+    F.push({hl:[12], tag:'返回', cls:'t-dark',
+      msg:'return False 🎉 只花了 <b>' + path.length + '</b> 次比较，灰格已经盖住大半个矩阵——没有走一步冤枉路，这就是"从右上角贪心走路"的威力。',
+      do: draw({mat:snap(), states:stOf(), res:false})});
+    return F;
+  }
+});
+</script>
+</body>
+</html>

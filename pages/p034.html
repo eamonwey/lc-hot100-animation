@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P034 · 合并 K 个升序链表 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/progress.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 34, num: 23, title: '合并 K 个升序链表', diff: '困难', cat: '链表',
+  method: 'mergeKLists',
+
+  lede: '题目：把 <b>K 条已经升序</b>的链表合成一条总的升序链表。' +
+        '困难点在"别合并得太笨"：最省力的排法是<b>分治两两配对</b>——每轮把相邻两条合成一条，条数直接减半，' +
+        'log K 轮后只剩一条。每次"两条合成一条"就是第 21 题的工序：' +
+        '<span class="var b">a</span> 和 <span class="var o">b</span> 两个队头比一比，小的通过 <code>tail.next</code> 接进结果。',
+
+  roles: [
+    {c:'blue',   code:'a', text:'左链当前节点，正在比较'},
+    {c:'orange', code:'b', text:'右链当前节点，正在比较'},
+    {c:'green',  code:'tail', text:'结果链尾部，用 next 接入节点'},
+    {c:'violet', code:'merge2', text:'合并两条有序链的工序（= LC 21）'}
+  ],
+
+  codeTitle: '上半部分 merge2 是"合并两条有序链"的标准工序；下半部分 while 循环两两配对，条数一轮减半。比较行变<span style="color:var(--green)">绿</span>＝摘左链的，变<span style="color:var(--red)">红</span>＝摘右链的。',
+
+  legend: [
+    {c:'blue',   text:'a 左链当前节点'},
+    {c:'orange', text:'b 右链当前节点'},
+    {c:'green',  text:'tail 结果链尾指针'},
+    {c:'muted',  text:'灰色 = 本轮轮空等待的链'}
+  ],
+
+  idea: '分治两两合并：每轮把相邻两条升序链合成一条，条数减半，log K 轮后只剩一条——每次合并就是第 21 题的"摘队头"工序。',
+
+  qa: [
+    {q:'为什么不按顺序一条条往结果上并（先并 0+1，再并上 2……）？',
+     a:'顺序合并最坏是 O(K·N)：第一条链会被反复拖着比 K−1 次。两两配对每轮条数减半，每轮所有节点总共只被扫一遍 O(N)，共 log K 轮 → <b>O(N log K)</b>。K=3 时差别不大，K 很大时分治优势明显。'},
+    {q:'merge2 里"摘队头"到底在干嘛？',
+     a:'两条链都已有序，所以全局最小的候选只可能出现在两个队头：比一下，用 tail.next 接上较小的节点，该链的指针沿 next 前进，然后 tail 前进。一边走到 None 后，另一边剩下的部分<b>本来就有序且不小于结果链尾</b>，用 tail.next = a or b 整段接上。'},
+    {q:'落单（奇数条）的链怎么办？',
+     a:'这一轮没有对手就<b>原样晋级</b>到下一轮，下轮自然有对手。注意配对始终取相邻两条（第 0+1、第 2+3…），这样每条链每轮最多被合并一次，条数变为 ⌈K/2⌉。'},
+    {q:'还能更快吗？',
+     a:'小顶堆（优先队列）解法是 O(N log K) 常数更稳、代码也好写；两两分治是同样的复杂度但只用"合并两条链"这一块积木。两者都是本题的标准答案。'}
+  ],
+
+  complexity: '时间 O(N log K)（N 为节点总数）　·　辅助空间 O(K)（ls、nxt 保存链表头；merge2 复用原节点）',
+
+  form: [
+    {key:'lists', label:'lists（每行一条链）', type:'grid', pyType:'lists', def:[[1,4,5],[1,3,4],[2,6]]}
+  ],
+  presets: [
+    {label:'3 条：[1,4,5] [1,3,4] [2,6]', values:{lists:[[1,4,5],[1,3,4],[2,6]]}},
+    {label:'4 条：两轮减半', values:{lists:[[2,4],[1,3],[0,5],[6]]}},
+    {label:'重复值：[2] 和 [1,1,1]', values:{lists:[[2],[1,1,1]]}},
+    {label:'单条 [10]（边界）', values:{lists:[[10]]}},
+    {label:'空输入 []', values:{lists:[]}},
+    {label:'两条空链 [[],[]]', values:{lists:[[],[]]}},
+    {label:'含空链与重复值', values:{lists:[[],[-2,1,1],[],[-1,1,3]]}}
+  ],
+
+  code: `class Solution:
+    def mergeKLists(self, lists):
+        # lists 中每个元素是链表头节点或 None
+        def merge2(a, b):                  # 合并两条升序链
+            dummy = tail = ListNode(0)
+            while a and b:
+                if a.val <= b.val:         # 比较两队头的值
+                    tail.next = a; a = a.next
+                else:
+                    tail.next = b; b = b.next
+                tail = tail.next
+            tail.next = a or b             # 接上剩余整段
+            return dummy.next
+        ls = list(lists)                   # 只拷贝链表头的容器
+        while len(ls) > 1:                 # 两两合并, 条数每轮减半
+            nxt = []
+            for i in range(0, len(ls) - 1, 2):
+                nxt.append(merge2(ls[i], ls[i + 1]))
+            if len(ls) % 2:                # 落单的原样晋级
+                nxt.append(ls[-1])
+            ls = nxt
+        return ls[0] if ls else None
+`,
+
+  sol(input){
+    const lists = (input.lists || []).map(r => (r || []).filter(x => x != null));
+    function merge2(a, b){
+      const out = []; let i = 0, j = 0;
+      while(i < a.length && j < b.length){
+        if(a[i] <= b[j]){ out.push(a[i]); i++; } else { out.push(b[j]); j++; }
+      }
+      while(i < a.length){ out.push(a[i]); i++; }
+      while(j < b.length){ out.push(b[j]); j++; }
+      return out;
+    }
+    let ls = lists.map(x => x.slice());
+    while(ls.length > 1){
+      const nxt = [];
+      for(let i = 0; i + 1 < ls.length; i += 2) nxt.push(merge2(ls[i], ls[i + 1]));
+      if(ls.length % 2) nxt.push(ls[ls.length - 1]);
+      ls = nxt;
+    }
+    return ls[0] || [];
+  },
+  expected: [1,1,2,3,4,4,5,6],
+
+  quiz: [
+    {q:'把 K 条升序链并成一条,为什么推荐「两两配对分治」,而不是第 0+1 条并完、结果再和第 2 条并……顺序往上叠?',
+     options:['顺序叠会并出错误结果,只有分治能保证升序','顺序叠结果也对,但大结果会被反复拖着重扫,最坏 O(K·N);两两配对每轮所有节点只扫一遍、条数减半,总共 O(N log K)','分治省内存,顺序叠必须把所有节点复制一份'],
+     answer:1,
+     explain:'两种做法结果都正确,差在代价。顺序合并时"结果链"越来越长,每来一条新链都要和整条大结果逐个比队头,最早并入的节点被拖着重扫 K−1 次;两两配对每轮每条链最多参加一次合并,一轮所有节点合计 O(N),共 log K 轮 → O(N log K)。K=3 时差别不大,K 很大时分治明显胜出。',
+     jumpTo:2},
+    {q:'默认输入 3 条链 [1,4,5]、[1,3,4]、[2,6]。第 1 轮两两配对结束后,待合并队列里剩下的是什么?',
+     options:['[1,4,5,1,3,4] 和 [2,6]','[1,1,2,3,4,4,5,6]——一轮就并完了','[1,1,3,4,4,5] 和 [2,6]（[2,6] 落单原样晋级）'],
+     answer:2,
+     explain:'第 1 轮只配对相邻的第 0+1 条:merge2([1,4,5],[1,3,4]) 逐个摘队头 → [1,1,3,4,4,5];[2,6] 落单没有对手,原样晋级。第 2 轮才把它俩并成 [1,1,2,3,4,4,5,6]——3 条链要 ⌈log₂3⌉ = 2 轮,不是一轮;也不能简单把两条链拼接,拼完并不升序。',
+     jumpTo:31},
+    {q:'merge2 里某条链摘空后,为什么剩下的整段直接接上、不再逐个比较?',
+     options:['因为剩余段一定只剩 1 个元素','为了省一次函数调用,结果其实要重排','剩余段自身升序，队头不小于已接入链尾，整段接上仍然有序'],
+     answer:2,
+     explain:'循环退出说明至少一条源链走到了 None。另一条链自身升序，之前每次都先接入较小的队头，所以它的剩余队头不小于已接入的链尾，后面的节点也不小于链尾。用 tail.next = a or b 整段接上即可。',
+     jumpTo:27},
+  ],
+
+  steps(input){
+    const F = [];
+    const lists = (input.lists || []).map(r => (r || []).filter(x => x != null));
+    const nodesOf = lists.map((arr, li) => arr.map((v, ni) => ({key:'p' + li + '_' + ni, val:v})));
+    const byKey = {};
+    nodesOf.forEach(ns => ns.forEach(n => byKey[n.key] = n));
+    const vv = k => k == null ? '空' : LCesc(String(byKey[k].val));
+    const vName = keys => '[' + keys.map(k => vv(k)).join(',') + ']';
+
+    let ls = nodesOf.map(ns => ns.map(n => n.key));
+    let names = lists.map((_, li) => '链表' + li);
+    let round = 0, mergeCnt = 0;
+
+    /* ★ 快照原则：rows/pointers/states 在 push 时拼成字面量快照；do() 只读快照 */
+    const draw = o => (v) => {
+      (o.rows || []).forEach(r => {
+        const opt = {label: r.label, states: r.states || {}, dummy: !!r.dummy};
+        if(r.pointers && r.pointers.length) opt.pointers = r.pointers;   // 没指针就不带这个键
+        v.list(r.id, r.keys.map(k => byKey[k]), opt);
+      });
+      if(o.vars) v.vars('vars', o.vars, {label:'merge2 进度'});
+      if(o.outer) v.vars('outer', o.outer, {label:'外层配对循环'});
+      if(o.result != null) v.result(o.result, {label:'合并结果'});
+      v.order((o.rows || []).map(r => r.id).concat(['outer','vars','result']));
+    };
+
+    /* 待合并队列的整排展示；act = 本轮要配对的位置集合 */
+    const queueRows = act => ls.map((keys, qi) => ({
+      id:'q' + qi, keys: keys.slice(), label: names[qi] + ' = ' + vName(keys),
+      states: keys.reduce((m, k) => (m[k] = (act && act.has(qi)) ? 'in' : (act ? 'muted' : null), m), {}),
+      pointers: []
+    }));
+    const mutedRow = (keys, label, qi, ai) => ({id:'q' + qi, keys: keys.slice(), label: label + (qi < ai ? '（本轮已处理）' : '（等待本轮处理）'),
+      states: keys.reduce((m, k) => (m[k] = 'muted', m), {})});
+
+    /* merge2 动画：a、b 两条升序链的队头逐个摘小者（p021 式摘取） */
+    function mergeAnim(ai, bi, outer){
+      const aKeys = ls[ai], bKeys = ls[bi];
+      const la = names[ai], lb = names[bi];
+      let i = 0, j = 0, attached = false;
+      const out = [];
+      const waitRows = () => ls.map((keys, qi) => ({keys, qi, name: names[qi]}))
+        .filter(x => x.qi !== ai && x.qi !== bi)
+        .map(x => mutedRow(x.keys, x.name, x.qi, ai));
+      const srcRows = (aPtr, bPtr) => ls.map((keys, qi) => qi === ai ?
+        {id:'q' + ai, keys:attached ? [] : aKeys.slice(i), label: la + (attached ? '（剩余段已接入结果链）' : '（左源 a，剩 ' + (aKeys.length - i) + ' 个）'),
+         states: aPtr ? {[aKeys[i]]:'active'} : {}, pointers: aPtr ? [{key:aKeys[i], text:'▼ a', cls:'mi'}] : null} :
+        qi === bi ? {id:'q' + bi, keys:attached ? [] : bKeys.slice(j), label: lb + (attached ? '（剩余段已接入结果链）' : '（右源 b，剩 ' + (bKeys.length - j) + ' 个）'),
+         states: bPtr ? {[bKeys[j]]:'active'} : {}, pointers: bPtr ? [{key:bKeys[j], text:'▼ b', cls:'mr'}] : null} :
+        mutedRow(keys,names[qi],qi,ai)).filter(r => !attached || (r.id !== 'q' + ai && r.id !== 'q' + bi)).concat([
+        {id:'out', keys:out.slice(), dummy:true, label:'dummy.next 开始的已接入节点',
+         pointers:[{key:tail || '__dummy',text:'▼ tail',cls:'mg'}],
+         states: out.length ? {[out[out.length - 1]]:'just'} : {}}
+      ]);
+      let tail = null;
+      const mVars = () => ({a:aKeys[i] == null ? 'None' : vv(aKeys[i]), b:bKeys[j] == null ? 'None' : vv(bKeys[j]), tail:tail == null ? 'dummy' : vv(tail), '已接入节点':out.length});
+
+      F.push({hl:[18], tag:'取出两条', cls:'t-violet',
+        msg:'把 <b>' + la + '</b> 和 <b>' + lb + '</b> 递给 <code>merge2</code>。关键前提：两条各自已经升序——所以全局最小的候选<b>只可能藏在两个队头</b>（a 队头 ' + vv(aKeys[0]) + '、b 队头 ' + vv(bKeys[0]) + '），中间的元素都比各自的队头大，根本不用看。比一次、摘一个，重复到某边摘空。',
+        do: draw({rows: queueRows(new Set([ai,bi])), outer})});
+      F.push({hl:[4,5], tag:'merge2 初始化', cls:'t-grey',
+        msg:'初始化 <code>dummy = tail = ListNode(0)</code>：dummy 是结果链的哑节点，tail 暂时指向它。a、b 分别指向两条链的队头，下一步比较节点的 val，把较小的节点接到 tail.next。',
+        do: draw({rows: srcRows(aKeys.length > 0, bKeys.length > 0), vars: mVars(), outer})});
+
+      while(i < aKeys.length && j < bKeys.length){
+        F.push({hl:[6], ok:6, tag:'while 检查', cls:'t-blue',
+          msg:'循环条件 <code>a and b</code>：两条链的当前节点都不是 None，继续比较队头。只要一边走到 None，就退出循环，整段接上另一边的剩余节点。',
+          do: draw({rows: srcRows(true, true), vars: mVars(), outer})});
+        const takeA = byKey[aKeys[i]].val <= byKey[bKeys[j]].val;
+        F.push({hl:[7], ok: takeA ? 7 : undefined, no: takeA ? undefined : 7, tag:'比较队头', cls: takeA ? 't-green' : 't-red',
+          msg:'队头对决：<code>a.val = ' + vv(aKeys[i]) + '</code> vs <code>b.val = ' + vv(bKeys[j]) + '</code> → ' +
+              (takeA ? '<b>' + vv(aKeys[i]) + ' ≤ ' + vv(bKeys[j]) + '</b>，摘左链的。凭什么说 ' + vv(aKeys[i]) + ' 就是剩余元素里最小的？它 ≤ b 的队头（b 后面的只会更大），又 ≤ a 自己后面的（a 升序）——两边都压不住它，它就是当前全局最小。'
+                     : '<b>' + vv(aKeys[i]) + ' &gt; ' + vv(bKeys[j]) + '</b>，摘右链的。同理，' + vv(bKeys[j]) + ' ≤ a 的队头、≤ b 自己后面的，是当前全局最小。'),
+          do: draw({rows: srcRows(true, true), vars: mVars(), outer})});
+        if(takeA){ out.push(aKeys[i]); i++; } else { out.push(bKeys[j]); j++; }
+        F.push({hl: takeA ? [8] : [9,10], tag:'摘取', cls:'t-green',
+          msg:'执行 <code>tail.next = ' + (takeA ? 'a; a = a.next' : 'b; b = b.next') + '</code>：接入节点 <b>' + vv(out[out.length - 1]) + '</b>，该源链的指针沿 next 前进。tail 还停在原位置，下一步才移到刚接入的节点。',
+          do: draw({rows: srcRows(false, false), vars: mVars(), outer})});
+        tail = out[out.length - 1];
+        F.push({hl:[11], tag:'tail 前进', cls:'t-green',
+          msg:'执行 <code>tail = tail.next</code>：tail 前进到刚接入的节点 <b>' + vv(tail) + '</b>。已接入的节点依次为 ' + vName(out) + '，下一轮继续从这个尾指针接链。',
+          do: draw({rows:srcRows(i < aKeys.length, j < bKeys.length), vars:mVars(), outer})});
+      }
+
+      const rest = aKeys.slice(i).concat(bKeys.slice(j));
+      rest.forEach(k => out.push(k));
+      attached = true;
+      F.push({hl:[6,12], no:6, tag:'接上剩余', cls:'t-orange',
+        msg:'有一边走到 None，循环结束。执行 <code>tail.next = a or b</code>，把剩余整段 ' + vName(rest) + ' 接到 tail 后面。剩余段自身升序，且不小于已合并链尾，整段接上即可；tail 无需继续前进。',
+        do: draw({rows: srcRows(false, false), vars: mVars(), outer})});
+
+      F.push({hl:[13], tag:'merge2 返回', cls:'t-dark',
+        msg:'<code>merge2(' + la + ', ' + lb + ')</code> 收工，返回长 ' + out.length + ' 的新升序链 <b>' + vName(out) + '</b>。从此它作为一条整体参加后面的配对，原来那两条的使命结束——这就是"条数减半"的实际含义。',
+        do: draw({rows: waitRows().concat([
+          {id:'out', keys:out.slice(), label:'合并结果 = ' + vName(out), states:{}}
+        ]), outer})});
+      return out;
+    }
+
+    /* ---- 开场 ---- */
+    F.push({hl:[1,2,14], tag:'初始化', cls:'t-grey',
+      msg: lists.length
+        ? '共 <b>K = ' + lists.length + '</b> 条升序链（合计 ' + lists.reduce((s, a) => s + a.length, 0) + ' 个节点）。策略是<b>分治两两配对</b>：每轮把相邻两条并成一条，条数直接减半，log K 轮后只剩 1 条。比"抓着第一条链一条条往上叠"聪明——那样第一条链会被反复拖着重扫，最坏 O(K·N)；两两配对每轮所有节点总共只被扫一遍。'
+        : '输入为空，没有链可合并，直接返回空。',
+      do: draw({rows: queueRows(null)})});
+
+    while(ls.length > 1){
+      round++;
+      F.push({hl:[15], ok:15, tag:'新一轮', cls:'t-blue',
+        msg:'还剩 <b>' + ls.length + '</b> 条 → 进入第 ' + round + ' 轮两两配对，本轮将并出 ' + Math.floor(ls.length / 2) + ' 条新链' + (ls.length % 2 ? '，最后 1 条落单轮空' : '') + '。配对只取相邻的两条（第 0+1、第 2+3…），保证每条链本轮最多被合并一次——一轮下来所有节点总共只被扫一遍，这是 O(N log K) 的根基。',
+        do: draw({rows: queueRows(null)})});
+      F.push({hl:[16], tag:'准备装结果', cls:'t-grey',
+        msg:'<code>nxt = []</code>：备一个空篮子装本轮的新链。为什么用新篮子、不直接改写 <code>ls</code>？因为配对要按老顺序读 <code>ls[0]+ls[1]、ls[2]+ls[3]…</code>，一边读一边覆盖会踩掉自己还没读到的原料——所以本轮全写进 nxt，轮末一次性 <code>ls = nxt</code> 换代。',
+        do: draw({rows: queueRows(null)})});
+
+      const nxt = [];
+      const nxtNames = [];
+      const outerState = p => ({'轮次':round, '外层 i':p, nxt:nxt.map(keys=>keys.map(k=>byKey[k].val))});
+      for(let p = 0; p + 1 < ls.length; p += 2){
+        F.push({hl:[17], tag:'配对', cls:'t-violet',
+          msg:'本轮第 ' + (p / 2 + 1) + ' 组配对：取出相邻的 <b>' + names[p] + '</b>（长 ' + ls[p].length + '）和 <b>' + names[p + 1] + '</b>（长 ' + ls[p + 1].length + '），画面上这两条高亮、其余灰色等待。交给 <code>merge2</code>——两条都已升序，合并等于边比边摘，不需要重新排序。',
+          do: draw({rows: queueRows(new Set([p, p + 1])), outer:outerState(p)})});
+        const merged = mergeAnim(p, p + 1, outerState(p));
+        nxt.push(merged);
+        nxtNames.push(names[p] + '+' + names[p + 1]);
+        F.push({hl:[18], tag:'加入 nxt', cls:'t-green',
+          msg:'merge2 已返回，现在执行 <code>nxt.append(...)</code>，把这一整条合并结果作为一个元素加入 nxt。外层 i 仍为 ' + p + '，下一组才会增加 2。',
+          do: draw({rows:queueRows(new Set([p,p+1])).concat([
+            {id:'out',keys:merged.slice(),label:'刚加入 nxt 的合并结果'}]),outer:outerState(p)})});
+        mergeCnt++;
+      }
+      if(ls.length % 2){
+        F.push({hl:[19,20], ok:19, tag:'落单晋级', cls:'t-orange',
+          msg:'共 ' + ls.length + ' 条（奇数），<b>' + names[ls.length - 1] + '</b>（' + vName(ls[ls.length - 1]) + '）落单，这轮没有对手 → <b>原样晋级</b>到下一轮。不并它不影响正确性：它本来就是升序的，晚一轮合并只是排队，下一轮自然分到对手。',
+          do: draw({rows: queueRows(null)})});
+        nxt.push(ls[ls.length - 1]);
+        nxtNames.push(names[ls.length - 1]);
+      } else {
+        F.push({hl:[19], no:19, tag:'没有落单', cls:'t-grey',
+          msg:'共 ' + ls.length + ' 条（偶数），正好两两配满，没有轮空的——<code>len(ls) % 2</code> 为 0，落单分支不进，条数将精确减半。',
+          do: draw({rows: queueRows(null)})});
+      }
+      ls = nxt; names = nxtNames;
+      F.push({hl:[21], tag:'本轮结束', cls:'t-green',
+        msg:'第 ' + round + ' 轮结束：条数减半，现在只剩 <b>' + ls.length + '</b> 条：' +
+            names.map(nm => '<b>' + nm + '</b>').join('、') + '。注意每条新链内部已经是合并好的升序，下一轮配对时整条当作一个"大队列"来比队头。',
+        do: draw({rows: queueRows(null)})});
+    }
+
+    F.push({hl:[15], no:15, tag:'只剩一条', cls:'t-blue',
+      msg: ls.length === 1
+        ? '只剩 <b>1</b> 条 → 循环条件 <code>len(ls) &gt; 1</code> 不再成立，合并完成。复盘：条数 K → ⌈K/2⌉ → … → 1 共 log K 轮，每轮所有节点只被扫一遍 O(N)，总时间 O(N log K)。'
+        : '没有链可合并，直接收工。',
+      do: draw({rows: queueRows(null)})});
+
+    const finalKeys = ls.length ? ls[0] : [];
+    F.push({hl:[22], tag:'返回', cls:'t-dark',
+      msg:'🎉 <code>return ls[0] if ls else None</code>：返回最终链表的头节点，空链返回 None。结果为 <b>' + (finalKeys.length ? vName(finalKeys) : '[]') + '</b>。时间 O(N log K)；ls、nxt 保存至多 K 个链表头，辅助空间 O(K)。',
+      do: draw({rows:[{id:'q0', keys:finalKeys, label:'最终合并结果', states: finalKeys.reduce((m, k) => (m[k] = 'done', m), {})}],
+        result: finalKeys.map(k => byKey[k].val)})});
+
+    return F;
+  }
+});
+</script>
+</body>
+</html>

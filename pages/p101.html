@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P101 · LRU 缓存 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+<style>
+#stage .listnode{transition:left .38s cubic-bezier(.22,.9,.3,1),top .38s cubic-bezier(.22,.9,.3,1),background .18s,border-color .18s,opacity .28s}
+@media(prefers-reduced-motion:reduce){#stage .listnode{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/progress.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order:101, num:146, title:'LRU 缓存', diff:'中等', cat:'链表',
+  method:'run', judgeClass:'LRUCache',
+  lede:'设计一个固定容量的缓存：<code>get(key)</code> 查询值，找不到返回 -1；<code>put(key, value)</code> 写入或覆盖。读取命中和写入都算一次使用，容量满时淘汰<b>最久没有使用</b>的键。Python 的 <code>OrderedDict</code> 同时提供哈希查找和顺序维护：左端是 LRU，右端是 MRU。',
+  idea:'命中或写入就把键移到最右端；超过容量就删掉最左端。OrderedDict 封装了哈希查找和双向顺序维护，get、put 都是 O(1)。',
+  roles:[
+    {c:'orange',code:'key',text:'当前操作的键'},
+    {c:'violet',code:'LRU',text:'最久未使用，满容量时先淘汰'},
+    {c:'green',code:'MRU',text:'最近使用，位于最右端'},
+    {c:'blue',code:'cache',text:'保存键值及使用顺序'}
+  ],
+  codeTitle:'节点里显示 key；键值表保存 value。move_to_end 更新使用顺序，popitem(last=False) 淘汰左端。',
+  legend:[{c:'orange',text:'当前操作的键'},{c:'green',text:'刚更新使用顺序'},{c:'red',text:'被淘汰的键'}],
+  complexity:'get / put 平均时间 O(1)　·　空间 O(capacity)',
+  qa:[
+    {q:'为什么读取也会改变顺序？',a:'LRU 根据最近一次使用的时间淘汰。get 命中意味着刚刚使用过，所以必须移到 MRU 端；get 未命中不改变缓存。'},
+    {q:'put 一个已有的键会淘汰其他键吗？',a:'不会增加键的数量。只覆盖该键的值，再移到 MRU 端。容量仍在限制内，不需要淘汰。'},
+    {q:'普通字典和 OrderedDict 的区别是什么？',a:'普通字典能保存插入顺序，但不会自动把读取或覆盖的键移到末尾。OrderedDict 的 move_to_end 和 popitem(last=False) 直接支持这两种顺序操作。'},
+    {q:'不用 OrderedDict 如何实现？',a:'用哈希表保存 key 到节点的映射，用双向链表维护 LRU 到 MRU 的顺序。命中时 O(1) 摘下节点并接到尾端；淘汰时 O(1) 删除头部节点，再删除哈希记录。'}
+  ],
+  form:[
+    {key:'ops',label:'ops',type:'strlist',maxLength:30,def:['LRUCache','put','put','get','put','get','put','get','get','get']},
+    {key:'args',label:'args',type:'json',maxLength:30,def:[[2],[1,1],[2,2],[1],[3,3],[2],[4,4],[1],[3],[4]]}
+  ],
+  presets:[
+    {label:'官方用例：容量 2',values:{ops:['LRUCache','put','put','get','put','get','put','get','get','get'],args:[[2],[1,1],[2,2],[1],[3,3],[2],[4,4],[1],[3],[4]]}},
+    {label:'覆盖已有键',values:{ops:['LRUCache','put','put','put','put','get','get'],args:[[2],[1,10],[2,20],[1,99],[3,30],[2],[1]]}},
+    {label:'容量 1',values:{ops:['LRUCache','put','get','put','get','get'],args:[[1],[0,0],[0],[1,5],[0],[1]]}},
+    {label:'未命中不更新顺序',values:{ops:['LRUCache','put','put','get','put','get'],args:[[2],[1,1],[2,2],[9],[3,3],[1]]}},
+    {label:'已是 MRU 再次读取',values:{ops:['LRUCache','put','put','get','get','get'],args:[[2],[1,1],[2,2],[2],[2],[1]]}},
+    {label:'仅初始化',values:{ops:['LRUCache'],args:[[3]]}}
+  ],
+  validate(input){
+    const {ops,args}=input;
+    if(!Array.isArray(ops) || !Array.isArray(args) || !ops.length || ops.length!==args.length) throw new Error('ops 和 args 必须非空且数量相同');
+    if(ops[0]!=='LRUCache' || !Array.isArray(args[0]) || args[0].length!==1 || !Number.isInteger(args[0][0]) || args[0][0]<1 || args[0][0]>6) throw new Error('第一步必须是 LRUCache，动画容量为 1～6');
+    for(let i=1;i<ops.length;i++){
+      const op=ops[i],a=args[i];
+      if(!['get','put'].includes(op) || !Array.isArray(a) || a.length!==(op==='get'?1:2)) throw new Error('第 '+(i+1)+' 步必须是 get(key) 或 put(key,value)');
+      if(!Number.isInteger(a[0]) || a[0]<0 || a[0]>99 || (op==='put' && (!Number.isInteger(a[1]) || a[1]<0 || a[1]>999))) throw new Error('动画的 key 范围为 0～99，value 为 0～999 的整数');
+    }
+  },
+  code:`from collections import OrderedDict
+
+class LRUCache:
+    def __init__(self, capacity: int):
+        self.capacity = capacity
+        self.cache = OrderedDict()
+
+    def get(self, key: int) -> int:
+        if key not in self.cache:
+            return -1
+        self.cache.move_to_end(key)       # 使用过，移到 MRU 端
+        return self.cache[key]
+
+    def put(self, key: int, value: int) -> None:
+        if key in self.cache:
+            self.cache[key] = value
+            self.cache.move_to_end(key)
+            return
+        self.cache[key] = value
+        if len(self.cache) > self.capacity:
+            self.cache.popitem(last=False) # 删除 LRU 端
+`,
+  sol(input){
+    this.validate(input);
+    const cache=new Map(),out=[null],capacity=input.args[0][0];
+    for(let i=1;i<input.ops.length;i++){
+      const [key,value]=input.args[i];
+      if(input.ops[i]==='get'){
+        if(!cache.has(key)){out.push(-1);continue;}
+        const v=cache.get(key);cache.delete(key);cache.set(key,v);out.push(v);
+      }else{
+        cache.delete(key);cache.set(key,value);
+        if(cache.size>capacity)cache.delete(cache.keys().next().value);
+        out.push(null);
+      }
+    }
+    return out;
+  },
+  expected:[null,null,null,1,null,-1,null,-1,3,4],
+  quiz:[
+    {q:'容量 2，依次 put(1,1)、put(2,2)、get(1)、put(3,3)，淘汰哪个键？',options:['1','2','3'],answer:1,explain:'get(1) 命中后，顺序从 [1,2] 变为 [2,1]。插入 3 超出容量，淘汰左端 2，剩下 [1,3]。'},
+    {q:'容量 2，缓存为 [1,2]（左 LRU、右 MRU）。put(1,99) 后怎样变化？',options:['淘汰 2，只保留 1','仍为 [1,2]，顺序不变','变为 [2,1]，值 1 更新为 99，不淘汰'],answer:2,explain:'已有键只覆盖值，不增加数量。写入也算使用，键 1 移到 MRU 端。'},
+    {q:'get(9) 未命中时会改变使用顺序吗？',options:['不会，返回 -1','会把左端移到右端','会插入键 9'],answer:0,explain:'未命中没有可更新的缓存节点，直接返回 -1，顺序及容量都保持原样。'}
+  ],
+  steps(input){
+    this.validate(input);
+    const F=[],cache=new Map(),out=[null],capacity=input.args[0][0];
+    const push=(hl,tag,msg,extra={})=>{
+      const entries=[...cache.entries()],results=out.slice();
+      const state={...extra};
+      F.push({hl,tag,msg,cls:state.cls || 't-blue',ok:state.ok,no:state.no,do(v){
+        const nodes=entries.map(([k])=>({key:'k'+k,val:k}));
+        const pointers=nodes.length?[{key:nodes[0].key,text:'LRU',cls:'mv'},{key:nodes.at(-1).key,text:'MRU',cls:'mg'}]:[];
+        v.list('cache',nodes,{label:'使用顺序：左 LRU → 右 MRU（节点显示 key）',pointers,states:state.key==null?{}:{['k'+state.key]:state.moved?'done':'active'}});
+        v.map('values',entries,{label:'cache：key → value',hlK:state.key});
+        v.vars('state',{capacity,'缓存数量':entries.length,'当前操作':state.op || 'LRUCache('+capacity+')',key:state.key==null?'—':state.key,value:state.value==null?'—':state.value},{label:'当前状态'});
+        if(state.evicted!=null)v.list('evicted',[{key:'gone'+state.evicted,val:state.evicted}],{label:'本次淘汰的 key',states:{['gone'+state.evicted]:'block'}});
+        v.arr('returns',results.map(x=>x==null?'null':x),{label:'按操作顺序的返回值',states:{[results.length-1]:'just'},cw:48});
+        if(state.final)v.result(results,{label:'返回结果'});
+        v.order(['cache','values','state','evicted','returns','result']);
+      }});
+    };
+    push([1,3,4,5,6],'初始化','创建容量为 '+capacity+' 的缓存，OrderedDict 为空。构造函数在操作序列中的返回值记为 null。',{cls:'t-grey'});
+    for(let i=1;i<input.ops.length;i++){
+      const op=input.ops[i],[key,value]=input.args[i],info={key,value,op:op+'('+input.args[i].join(',')+')'};
+      if(op==='get'){
+        push([8],'读取','调用 get('+key+')，先检查哈希表中是否存在这个键。',info);
+        const hit=cache.has(key);
+        push([9],hit?'命中':'未命中',hit?'key 存在，读取也算使用，接下来更新顺序。':'key 不存在，直接返回 -1，缓存顺序不变。',{...info,ok:hit?undefined:9,no:hit?9:undefined});
+        if(!hit){out.push(-1);push([10],'返回 -1','这次未命中，返回 -1。缓存的内容和顺序都没有变化。',info);}
+        else{
+          const found=cache.get(key);cache.delete(key);cache.set(key,found);
+          push([11],'移到 MRU','执行 move_to_end('+key+')，把这个键移到最右端，其他键的相对顺序保持不变。',{...info,value:found,moved:true});
+          out.push(found);push([12],'返回值','返回 cache['+key+'] = '+found+'。',{...info,value:found,moved:true});
+        }
+      }else{
+        push([14],'写入','调用 put('+key+','+value+')，先判断是覆盖还是插入。',info);
+        const exists=cache.has(key);
+        push([15],exists?'覆盖分支':'新增分支',exists?'这个键已存在，先覆盖值，再更新使用顺序。':'这是新键，将写入 MRU 端，然后检查容量。',{...info,ok:exists?15:undefined,no:exists?undefined:15});
+        if(exists){
+          cache.set(key,value);push([16],'覆盖值','覆盖 cache['+key+'] 为 '+value+'；节点位置暂时不变。',info);
+          cache.delete(key);cache.set(key,value);push([17],'移到 MRU','写入也算使用，把键 '+key+' 移到最右端。',{...info,moved:true});
+          out.push(null);push([18],'写入结束','已有键没有增加数量，无需淘汰。put 返回 None，在操作序列中记为 null。',{...info,moved:true});
+        }else{
+          cache.set(key,value);push([19],'插入新键','新键 '+key+' 插入最右端，暂时有 '+cache.size+' 个键。',{...info,moved:true});
+          const full=cache.size>capacity;
+          push([20],'检查容量',full?'数量超过容量 '+capacity+'，接下来淘汰最左端的 LRU。':'数量没有超过容量，不用淘汰。',{...info,ok:full?20:undefined,no:full?undefined:20});
+          let evicted;
+          if(full){evicted=cache.keys().next().value;cache.delete(evicted);push([21],'淘汰 LRU','popitem(last=False) 删除最左端的键 '+evicted+'，其余键保持原顺序。',{...info,evicted,cls:'t-orange'});}
+          out.push(null);push([14],'写入结束','put 没有返回值，记录 null。缓存数量不超过容量。',{...info,evicted,moved:true});
+        }
+      }
+    }
+    push([3],'执行完毕','所有操作执行完毕。返回值与每次调用一一对应；缓存仍可继续处理 get 和 put。',{final:true,cls:'t-dark'});
+    return F;
+  }
+});
+</script>
+</body>
+</html>

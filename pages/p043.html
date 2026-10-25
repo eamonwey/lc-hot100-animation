@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P043 · 二叉搜索树中第 K 小的元素 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/progress.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 43, num: 230, title: '二叉搜索树中第 K 小的元素', diff: '中等', cat: '二叉树',
+  method: 'kthSmallest',
+
+  lede: '题目：在二叉搜索树（BST）里找<b>第 k 小</b>的值。BST 送分性质：' +
+        '<b>中序遍历（左 → 根 → 右）访问到的值恰好从小到大</b>。' +
+        '所以不用排序——递归一路向左走（右侧调用栈一长一消），每"访问"一个节点就往 ' +
+        '<span class="var o">seq</span> 里记一个数，<b>记到第 <span class="var v">k</span> 个的瞬间就是答案</b>，' +
+        '剩下的子树连门都不用进。',
+
+  roles: [
+    {c:'orange', code:'active', text:'当前递归到的节点'},
+    {c:'blue',   code:'in',     text:'递归路径上的祖先'},
+    {c:'green',  code:'done',   text:'已记进 seq 的节点'},
+    {c:'violet', code:'target', text:'第 k 个（答案）'},
+    {c:'ink',    code:'stack',  text:'右侧竖条 = 递归调用栈'}
+  ],
+
+  codeTitle: '跟着高亮读代码——第 5 行变<span style="color:var(--red)">红</span>＝节点存在、继续走，变<span style="color:var(--green)">绿</span>＝空位或已数够（转身返回）；第 10 行每执行一次，<code>seq</code> 就长一格。',
+
+  legend: [
+    {c:'orange', text:'go 正在处理'},
+    {c:'green', text:'已记入 seq'},
+    {c:'violet', text:'第 k 个 · 命中'}
+  ],
+
+  idea: 'BST 中序遍历 = 升序输出：一边递归一边数，seq 记到第 k 个的那一刻，答案就到手，剩下的全剪掉。',
+
+  qa: [
+    {q:'为什么中序遍历出来的就是从小到大？',
+     a:'BST 的定义保证：<b>左子树的所有值 &lt; 根 &lt; 右子树的所有值</b>。中序遍历的顺序恰好是"先把左边的全看完 → 看根 → 再看右边"，把这三条性质串起来，输出天然升序。普通二叉树没有这个性质，就只能先遍历完再排序。'},
+    {q:'seq 里的数是怎么"越来越接近答案"的？',
+     a:'seq 记的就是中序访问序列的前缀。第 1 个一定是最小值（一直往左走到底那个），第 2 个是次小……所以长度数到 k 的那一刻，seq 最后一个元素就是第 k 小。之后继续走只会记到更大的数，毫无意义——第 8、9 行的判断就是干这个的剪枝。'},
+    {q:'能不能不用递归？',
+     a:'可以：用显式栈模拟中序（一路压左孩子，弹出一个记一个，再转向右孩子），数到第 k 个返回；或者干脆中序存完整数组取 [k-1]。递归版配上提前返回最省——本题只要求访问到第 k 个就停。'},
+    {q:'复杂度是多少？',
+     a:'时间最坏 O(n)（k 是最大值时整棵要走完），平均只需 O(h + k)：先扎到最左 O(h)，再数 k 个。空间 O(h) 递归栈，h 为树高。'}
+  ],
+
+  complexity: '时间最坏 O(n)，平均 O(h + k)　·　空间 O(h)（递归栈，h 为树高）',
+
+  form: [
+    {key:'root', label:'root', type:'tree', def:[5,3,6,2,4,null,null,1]},
+    {key:'k', label:'k', type:'num', def:3}
+  ],
+  presets: [
+    {label:'[5,3,6,2,4,null,null,1] k=3', values:{root:[5,3,6,2,4,null,null,1], k:3}},
+    {label:'[3,1,4,null,2] k=1（第 1 小）', values:{root:[3,1,4,null,2], k:1}},
+    {label:'默认树 k=6（数到最后一个）', values:{root:[5,3,6,2,4,null,null,1], k:6}},
+    {label:'单节点 [1] k=1', values:{root:[1], k:1}}
+  ],
+
+  code: `class Solution:
+    def kthSmallest(self, root, k):
+        seq = []                           # 中序依次记下的值(越来越大)
+        def go(node):                      # 中序: 左 -> 根 -> 右
+            if not node or len(seq) >= k:  # 空位 / 已数够, 不用再走
+                return
+            go(node.left)                  # 1) 先走左边
+            if len(seq) >= k:              # 答案在左边出现了?
+                return                     # 是 -> 直接返回(剪枝)
+            seq.append(node.val)           # 2) 轮到当前: 记一个数
+            go(node.right)                 # 3) 再走右边
+        go(root)
+        return seq[k - 1]                  # 第 k 个记下的就是答案
+`,
+
+  sol(input){
+    const T = Viz.parseTree(input.root || []);
+    const byKey = {}; T.nodes.forEach(n => byKey[n.key] = n);
+    const k = input.k, seq = [];
+    (function go(key){
+      if(key == null || seq.length >= k) return;
+      go(byKey[key].left);
+      if(seq.length >= k) return;
+      seq.push(byKey[key].val);
+      go(byKey[key].right);
+    })(T.root);
+    return seq[k - 1];
+  },
+  expected: 3,
+
+  quiz: [
+    {q:'为什么偏偏选中序遍历(左→根→右)来找第 k 小?',
+     options:['中序遍历自带排序功能,任何二叉树中序出来都是升序','因为 BST 性质"左子树全部 < 根 < 右子树",中序"先看完全左、再看根、再看右"恰好把这三段串成升序;普通二叉树没有这个性质','因为层序遍历必须用队列,中序不用额外空间'],
+     answer:1,
+     explain:'把 BST 的大小性质和中序的访问顺序对齐:中序先记完左子树(全部 < 根),再记根,最后才进右子树(全部 > 根)——所以每个值被记时,比它小的全记完了,seq 天然升序。换前序或后序,顺序就乱了;换普通二叉树,连"左 < 根"都不成立,只能遍历完再排序。这是题目送的分:BST + 中序 = 升序。',
+     jumpTo:1},
+    {q:'把输入换成 [3,1,4,null,2]、k=2,答案是多少?',
+     options:['1','2','3'],
+     answer:1,
+     explain:'这棵树:根 3、左孩子 1(1 的右孩子是 2)、右孩子 4。中序序列 = 1, 2, 3, 4。过程:一路向左扎到 1,记第 1 个;回到 1 转进右孩子 2,记第 2 个——正好 = k,命中答案 2,节点 3、4 压根不进。所以选 2;选 1 是把"k=1"当成了 k,选 3 是错拿根的值。',
+     jumpTo:19},
+    {q:'seq 数够 k 个之后,剩下的没访问的节点怎么处理?',
+     options:['全部访问完,保证 seq 覆盖整棵树','从根重新遍历一遍验证答案','直接急停:没访问的节点只可能比答案大,第 7~8 行的 len(seq) ≥ k 闸门把剩余递归全部拦下'],
+     answer:2,
+     explain:'中序升序意味着:此刻 seq 里的全 ≤ 答案,树里还没碰的节点全 > 答案——继续走只会记到更大的数,纯属白费。所以每个 go() 进门先查一遍闸门,左边回来也要再查一遍,数够就层层急停。靠着这个剪枝,时间从最坏 O(n) 降到平均 O(h + k):先扎到最左 O(h),再数 k 个就收工。',
+     jumpTo:24},
+  ],
+
+  steps(input){
+    const F = [];
+    const T = Viz.parseTree(input.root || []);
+    const t = Viz.treeLayout(input.root || []);
+    const byKey = {}; T.nodes.forEach(n => byKey[n.key] = n);
+    const K = input.k;
+    const seq = [];                // 中序记下的值
+    const visited = new Set();     // 已记入 seq 的节点 key
+    let hitKey = null;             // 命中第 K 个的节点
+    let callSeq = 0;
+
+    const snapVisited = () => Array.from(visited);
+    const seqStr = () => '[' + seq.map(x => LCesc(String(x))).join(', ') + ']';
+
+    /* ★ 快照原则：seq/visited/hitKey/stack/path 全部在 push 那一刻切片定死，
+       do() 只读快照 o，绝不回读外层变量 */
+    const draw = o => (v) => {
+      const states = {};
+      (o.path || []).forEach(k => { states[k] = 'in'; });
+      (o.done || []).forEach(k => { if(states[k] == null) states[k] = 'done'; });
+      if(o.cur != null) states[o.cur] = 'active';
+      if(o.hit != null) states[o.hit] = 'target';
+      const tags = {};
+      if(o.hit != null) tags[o.hit] = {text:'第 ' + K + ' 小!', cls:'mv'};
+      v.tree('T', t, {label:'二叉搜索树　·　绿 = 已记入 <code>seq</code>　紫 = 第 ' + K + ' 小', states, tags});
+      const stack = o.stack || [];
+      if(stack.length) v.stack('S', stack, {
+        label:'递归调用栈　·　越往下越新',
+        states:{[stack[stack.length - 1].key]:'active'},
+        topTag:'栈顶'
+      });
+      v.set('seq', o.seq.map(x => String(x)), {label:'<code>seq</code>　·　中序记下的值（越来越接近有序）', color:'g'});
+      if(o.vars) v.vars('vars', o.vars, {label:'计数', hl:o.hlVars || []});
+      if(o.result != null) v.result(o.result, {label:'第 ' + K + ' 小'});
+    };
+
+    function visit(kk, frames, path){
+      const id = 'c' + (++callSeq);
+      const stack = frames.concat([{key:id, val:'go(' + (kk == null ? '空' : String(byKey[kk].val)) + ')'}]);
+      const base = extra => Object.assign({
+        stack, seq: seq.slice(), done: snapVisited(), hit: hitKey
+      }, extra || {});
+      if(kk == null){
+        const full = seq.length >= K;
+        F.push({hl:[5,6], ok:5, tag:'递归出口', cls:'t-grey',
+          msg: full
+            ? '第 5 行先查一遍：<code>len(seq) = ' + seq.length + ' ≥ k = ' + K + '</code> 已经<b>数够了</b> → 这个函数连门都不进，直接 return。为什么敢这么果断？答案早已进了 seq，从这里继续走到的任何节点只会更大，走下去全是白费——第 5 行后半段的 <code>len(seq) &gt;= k</code> 就是全递归的总闸，每次调 go() 都先过一遍这道闸。'
+            : '调用 <code>go(空)</code>：这个方向已经走到空位（该节点在这个方向上没有孩子），<code>not node</code> 成立 → 直接返回。空子树没有值可记，计数不受影响——seq 还是 ' + seq.length + ' 个。这个出口保证递归每一步走到底都有地方落脚，绝不会冲进空指针。',
+          do: draw(base({path}))});
+        return;
+      }
+      F.push({hl:[5,6], no:5, tag:'进入 go', cls:'t-blue',
+        msg:'进入 <b>go(节点 ' + LCesc(String(byKey[kk].val)) + ')</b>：节点存在（第 5 行 <code>not node</code> 不成立），且 seq 才 ' + seq.length + ' 个、不到 k = ' + K + '，第 6 行的闸门也放行。按中序规矩「左→根→右」，<b>左子树里的值全都比节点 ' + LCesc(String(byKey[kk].val)) + ' 小</b>，必须先把它们记完，所以它自己先靠边站，先调 go(node.left)。树上橙色是它，蓝色一路排开的是在递归路径上等着它回来的祖先。',
+        do: draw(base({cur:kk, path: path.concat(kk)}))});
+
+      visit(byKey[kk].left, stack, path.concat(kk));
+
+      const enough = seq.length >= K;
+      F.push({hl:[7,8], ok: enough ? 8 : undefined, no: enough ? undefined : 8,
+        tag:'左边回来', cls: enough ? 't-red' : 't-ink',
+        msg: enough
+          ? '从左边回来：seq 已经有 <b>' + seq.length + '</b> 个，正好 = k = ' + K + ' → 第 8 行成立。这说明第 k 小的答案已经在左子树里记到了；当前节点和它右边的数只会更大，记了也白记。于是它<b>自己不记、右边也不去</b>，直接 return——这就是剪枝，把剩下没用的路全省掉。画面上：节点 ' + LCesc(String(byKey[kk].val)) + ' 保持橙色，既不变绿也不进 seq。'
+          : '从左边回来：seq 里有 ' + seq.length + ' 个，还不到 k = ' + K + ' → 第 8 行不成立，没有触发剪枝。既然比节点 ' + LCesc(String(byKey[kk].val)) + ' 小的值已经全部记完（都在它左子树里），<b>它自己就是升序序列的第 ' + (seq.length + 1) + ' 个</b>，轮到它进 seq 了。画面上它还是橙色，等着第 10 行来记账。',
+        do: draw(base({cur:kk, path: path.concat(kk)}))});
+
+      if(enough){
+        F.push({hl:[9], tag:'剪枝返回', cls:'t-red',
+          msg:'<code>return</code>：节点 ' + LCesc(String(byKey[kk].val)) + ' 什么都不记、孩子也一个不碰，直接出栈。不变式：答案已进了 seq（seq = ' + seqStr() + '），整棵树里还没访问的节点只可能更大——多看一个都是白费。这种「照样往下递归，但一数够就全员急停」的闸门，正是本题比朴素中序快的关键。',
+          do: draw(base({path}))});
+        return;
+      }
+
+      seq.push(byKey[kk].val);
+      visited.add(kk);
+      const hit = seq.length === K;
+      if(hit) hitKey = kk;
+      F.push({hl:[10], tag: hit ? '命中第 ' + K + ' 个!' : '访问当前节点', cls: hit ? 't-violet' : 't-green',
+        msg:'第 10 行 <code>seq.append(' + LCesc(String(byKey[kk].val)) + ')</code> → seq = ' + seqStr() +
+            (hit
+              ? '，长度正好 = k = ' + K + '！<b>节点 ' + LCesc(String(byKey[kk].val)) + ' 就是第 ' + K + ' 小</b>——它变紫、树上挂出「第 ' + K + ' 小!」名牌，答案到手。接下来不用再走任何一步：后面只会遇到更大的数，第 7~8 行的判断会把剩余递归全部拦下。'
+              : '，已数 ' + seq.length + ' / ' + K + ' 个。凭什么轮到它？它的整棵左子树（更小的值）刚记完、右子树（更大的值）还没开始，所以它恰是升序里的第 ' + seq.length + ' 个。画面上它由橙转绿、跳进下方绿色 seq 条；下一个被记的值一定比它大，seq 因此始终升序。'),
+        do: draw(base({cur:kk, path: path.concat(kk), vars:{k:K, '已数': seq.length}, hlVars:['已数']}))});
+
+      F.push({hl:[11], tag:'走右边', cls:'t-ink',
+        msg:'第 11 行 <code>go(node.right)</code>：<b>右子树的值全比当前节点大</b>，装的是中序序列的「后半段」——这正是「左→根→右」的最后一步。' +
+            (byKey[kk].right != null ? '右边是节点 ' + LCesc(String(byKey[byKey[kk].right].val)) + '，进去接着按左→根→右数，seq 可能继续变长。' : '右边是空位，go(空) 会立刻撞上第 5 行返回，这一步等于空转。') + '调用栈会再压一格。',
+        do: draw(base({cur:kk, path: path.concat(kk)}))});
+
+      visit(byKey[kk].right, stack, path.concat(kk));
+
+      F.push({hl:[11], tag:'go 返回', cls:'t-grey',
+        msg:'节点 ' + LCesc(String(byKey[kk].val)) + ' 的 <code>go()</code> 执行完毕（左右子树都处理完了），出栈返回上一层——栈矮一格，控制权交回它的父节点。此刻 seq = ' + seqStr() + ' 共 ' + seq.length + ' 个；父节点若还没记自己，接下来就轮到它记，若已记过，就继续它剩下的方向。',
+        do: draw(base({path}))});
+    }
+
+    F.push({hl:[1,2,3,4], tag:'初始化', cls:'t-grey',
+      msg:'准备一个空列表 <code>seq</code>，它专门收"中序遍历写下来的值"。BST 的超能力：<b>中序遍历（左→根→右）访问到的值天然升序</b>——左边的全比根小、右边的全比根大，所以不用把整棵树走完再排序，边走边记，记满 ' + K + ' 个就停。对每个节点，代码只做三件事：先走完<b>整棵左子树</b> → 记自己 → 再走右边，顺序不能换。',
+      do: draw({stack:[], seq:[], done:[], vars:{k:K, '已数':0}})});
+
+    F.push({hl:[12], tag:'发起递归', cls:'t-blue',
+      msg:'<code>go(root)</code>：从根节点 ' + (T.root != null ? LCesc(String(byKey[T.root].val)) : '—') + ' 开始递归。右侧竖条就是<b>调用栈</b>：每调一次 go() 压一格、返回时弹掉，标着「栈顶」的那格是最新调用；seq 现在还是空的（已记 0 个）。接下来就盯两个数字的变化：seq 的长度和栈的高度。',
+      do: draw({stack:[], seq:[], done:[], vars:{k:K, '已数':0}})});
+
+    visit(T.root, [], []);
+
+    F.push({hl:[13], tag:'返回答案', cls:'t-dark',
+      msg: T.root == null
+        ? '空树一个节点都没有，自然没有第 k 小，函数什么都不做就结束。（题目保证 1 ≤ k ≤ 节点数，这个分支只是兜底。）'
+        : '🎉 <code>return seq[k - 1]</code> = <b>' + (seq.length >= K ? LCesc(String(seq[K - 1])) : '—') + '</b>，正是中序记下的第 ' + K + ' 个值。复盘 seq = ' + seqStr() + '：它天然升序，因为每记一个节点时，它整棵左子树（更小的值）都已被记完。整个过程先扎到最左 O(h)、再记 k 个值——不必遍历完整棵树。',
+      do: draw({stack:[], seq: seq.slice(), done: snapVisited(), hit: hitKey,
+                result: seq.length >= K ? seq[K - 1] : null})});
+
+    return F;
+  }
+});
+</script>
+</body>
+</html>

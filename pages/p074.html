@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P074 · 前 K 个高频元素 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/progress.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 74, num: 347, title: '前 K 个高频元素', diff: '中等', cat: '堆',
+  method: 'topKFrequent',
+
+  lede: '题目：返回数组里<b>出现次数最多</b>的 k 个数。不需要真建堆：先用哈希表 <span class="var r">cnt</span> 数每个数出现几次，' +
+        '再按"出现次数"把数扔进对应的<span class="var o">桶</span>（桶的下标 = 次数），最后从最高的桶往低处收，收满 k 个就停。' +
+        '一个数最多出现 len(nums) 次，所以桶的数量是确定的——这就是<b>桶排序</b>版本的 O(n) 解法。',
+
+  roles: [
+    {c:'orange', code:'x',    text:'正在数的元素'},
+    {c:'blue',   code:'cnt',  text:'哈希表：数字 → 出现次数'},
+    {c:'green',  code:'桶',    text:'桶 c 装所有"出现 c 次"的数'},
+    {c:'violet', code:'ans',  text:'从高频到低频收进答案'}
+  ],
+
+  codeTitle: '跟着高亮读代码——<code>if len(ans) &lt; k</code> 变<span style="color:var(--green)">绿</span>＝还没收满、放行收进 ans，变<span style="color:var(--red)">红</span>＝已经收满、低频的数挡在门外；空桶直接跳过。',
+
+  legend: [
+    {c:'orange', text:'当前数的格子'},
+    {c:'blue', text:'哈希表 cnt'},
+    {c:'green', text:'桶（下标 = 频率）'},
+    {c:'violet', text:'ans 已收的答案'}
+  ],
+
+  idea: '先数后装桶：桶的下标就是出现次数，天然有序——从最高的桶往低处收 k 个，比堆排序还省事，整体 O(n)。',
+
+  qa: [
+    {q:'为什么桶的下标最大只要 len(nums)？',
+     a:'一个数出现次数最多也就是"整个数组都是它"，即 len(nums) 次。所以建 len(nums)+1 个桶（下标 0~len(nums)）绝对够用，0 号桶永远空着（出现 0 次的数不在数组里）。'},
+    {q:'桶排序和堆排序比好在哪？',
+     a:'堆排序要维护一个大小 k 的堆，每次操作 O(log k)，总共 O(n log k)；桶排序把计数结果按"次数"直接分箱，次数天然是 1~n 的整数，扫描一遍就是 O(n)。代价只是几个桶数组的空间。'},
+    {q:'两个数出现次数相同怎么办？',
+     a:'它们会落进同一个桶，收的时候按先来后到取。LeetCode 保证答案唯一（不会出现"取谁都说得通"的平局边界），动画里遇到平局会按 cnt 的登记顺序收。'}
+  ],
+
+  complexity: '时间 O(n)（数一遍 + 装桶 + 扫桶）　·　空间 O(n)（哈希表 + 桶）',
+
+  form: [
+    {key:'nums', label:'nums', type:'arr', def:[1,1,1,2,2,3]},
+    {key:'k', label:'k', type:'num', def:2}
+  ],
+  presets: [
+    {label:'[1,1,1,2,2,3] k=2（默认）', values:{nums:[1,1,1,2,2,3], k:2}},
+    {label:'[4,4,4,6,6,2] k=2', values:{nums:[4,4,4,6,6,2], k:2}},
+    {label:'[3,1,3,2,2] k=2（有平局）', values:{nums:[3,1,3,2,2], k:2}},
+    {label:'[1] k=1（边界：单元素）', values:{nums:[1], k:1}}
+  ],
+
+  code: `class Solution:
+    def topKFrequent(self, nums, k):
+        cnt = {}                                   # ① 数字 -> 出现次数
+        for x in nums:
+            cnt[x] = cnt.get(x, 0) + 1
+        buckets = [[] for _ in range(len(nums) + 1)]   # ② 桶: 下标 = 出现次数
+        for x, c in cnt.items():                   # 每个数丢进自己频率的桶
+            buckets[c].append(x)
+        ans = []
+        for c in range(len(buckets) - 1, 0, -1):   # ③ 频率从高到低扫桶
+            for x in buckets[c]:
+                if len(ans) < k:                   # 还没收满 k 个
+                    ans.append(x)                  # 才收进答案
+        return ans                                 # 从高到低, 收满为止
+`,
+
+  sol(input){
+    const nums = input.nums || [], k = Math.max(1, input.k | 0);
+    const cnt = new Map();
+    for(const x of nums) cnt.set(x, (cnt.get(x) || 0) + 1);
+    const buckets = Array.from({length: nums.length + 1}, () => []);
+    cnt.forEach((c, x) => buckets[c].push(x));
+    const ans = [];
+    for(let c = buckets.length - 1; c >= 1; c--){
+      for(const x of buckets[c]){
+        if(ans.length < k) ans.push(x);
+      }
+    }
+    return ans;
+  },
+  expected: [1, 2],
+
+  quiz: [
+    {q:'桶数组为什么要建 len(nums)+1 个,而不是"不同数的个数"个?',
+     options:['因为不同数的个数不好数,干脆多建点','因为一个数最多出现 len(nums) 次(整个数组都是它),桶下标 1~len(nums) 就封顶了——下标 0 永远空着','为了让每个桶恰好装一个数'],
+     answer:1,
+     explain:'桶的下标是"出现次数",而次数的范围由数组长度封顶:最极端也只是某个数占满整个数组,即 len(nums) 次。所以建 len(nums)+1 个桶(下标 0~len(nums))绝对够用,0 号桶常空——出现 0 次的数根本不在数组里。桶的多少跟"有几个不同的数"无关,那是哈希表 cnt 的事。',
+     jumpTo:14},
+    {q:'nums = [5,5,4,4,3,3,3,1],k = 2,返回的是?',
+     options:['[5,4]','[3,5]','[3,4]'],
+     answer:1,
+     explain:'先数:3 出现 3 次,5 和 4 各 2 次,1 出现 1 次 → 装桶:3 号桶 [3]、2 号桶 [5,4]、1 号桶 [1]。从高往低收:先收 3,再从 2 号桶收 5——收满 k = 2 个,4 和 1 被闸门挡在门外。答案是 [3,5]。选 [5,4] 是按"数的大小"排了序——这里只看频率,不看数值;同桶内的 5、4 按登记顺序收,题目保证答案唯一。',
+     jumpTo:23},
+    {q:'整个流程一次两两比较都没做,凭什么说结果已经按频率排好?',
+     options:['因为哈希表会自动按值排序','因为"出现次数"本来就是 1~n 的整数,拿它当桶下标,下标天然从低到高有序——倒着扫一遍就是从高频到低频,比较排序被数组下标白替了','因为 Python 的 append 会自动把大的放前面'],
+     answer:1,
+     explain:'这是桶排序(计数思想)的精髓:频率 c 恰好是一个小范围整数,能直接当数组下标——数字一扔进 c 号桶就自动"归位",不需要任何元素间比较。收的时候从最高下标往下扫,先进 ans 的频率必 ≥ 后进的。对比堆解法每次操作 O(log k),这里数数、装桶、收桶三趟全线性,总时间 O(n)。',
+     jumpTo:15},
+  ],
+
+  steps(input){
+    const F = [];
+    let nums = (input.nums || []).filter(x => x != null);
+    const k = Math.max(1, Math.round(Number(input.k)) || 1);
+    const cnt = new Map();
+    const buckets = Array.from({length: nums.length + 1}, () => []);
+    const ans = [];
+    let maxF = 0;
+
+    const cntSnap = () => Array.from(cnt, ([kk, vv]) => [String(kk), vv]);
+    const ansTxt = () => '[' + ans.join(', ') + ']';
+    const bkHtml = (curC) => {
+      const rows = [];
+      for(let c = maxF; c >= 1; c--){
+        const lst = buckets[c] || [];
+        const cur = c === curC;
+        const body = lst.length ? '[' + lst.join(', ') + ']' : '（空）';
+        rows.push('<div style="' + (lst.length ? '' : 'color:#b3afa2;') + (cur ? 'font-weight:700;color:var(--orange);' : '') + '">' +
+          '频率 ' + c + ' 号桶 → <span class="' + (cur ? 'mk-a' : 'mk-b') + '">' + LCesc(body) + '</span></div>');
+      }
+      return rows.join('') || '（还没有桶）';
+    };
+    const mkI = i => [{name:'x', idx:i, cls:'mi', text:'▲ x'}];
+
+    const draw = (o) => (v) => {
+      const arrOpt = {
+        label:'数组 <code>nums</code>　·　<code>k = ' + o.k + '</code>',
+        states:o.nst || {}
+      };
+      if(o.mk && o.mk.length) arrOpt.markers = o.mk;
+      v.arr('nums', o.nums, arrOpt);
+      if(o.cntEnt) v.map('cnt', o.cntEnt, {label:'哈希表 <code>cnt</code>（数字 → 次数）', hlK:o.hlK});
+      if(o.bkC != null) v.text('bk', o.bkH, {label:'桶排序　·　桶下标 = 出现频率（从高到低收）', html:true});
+      if(o.vars) v.vars('vars', o.vars, {label:'当前状态', hl:o.hlv || []});
+      if(o.res !== undefined) v.result(o.res, {label:'返回结果'});
+    };
+
+    /* 初始化 */
+    F.push({hl:[1,2,3], tag:'初始化', cls:'t-grey',
+      msg:'要找出现次数前 <b>' + k + '</b> 多的数。三步走：<b>① 用哈希表 cnt 数出每个数出现的次数 → ② 按"次数"把数扔进桶里（桶的下标 = 次数）→ ③ 从最高频的桶往低频收，收满 ' + k + ' 个立刻停</b>。核心直觉：出现次数本来就是 1~n 的整数，拿它当数组下标，"按频率排序"就白捡了——一次两两比较都不用做。',
+      do: draw({nums:nums, k:k, nst:{}, cntEnt:cntSnap()})});
+
+    /* ① 计数 */
+    for(let i = 0; i < nums.length; i++){
+      const x = nums[i];
+      const old = cnt.get(x) || 0;
+      F.push({hl:[4], tag:'看数', cls:'t-ink',
+        msg:'第 <b>' + i + '</b> 格是 <b>' + x + '</b>（▲ x 指着它）。先查哈希表读旧账：它' + (cnt.has(x) ? '已经登记过，当前 ' + old + ' 次' : '是新面孔，当前 0 次') + '——这一帧只读数，下一帧才 +1。哈希表查一次 O(1)，这是整个算法能线性扫完的底气。',
+        do: draw({nums:nums, k:k, nst:{[i]:'active'}, mk:mkI(i),
+                  cntEnt:cntSnap(), hlK:String(x),
+                  vars:{x:x, 'cnt[x]':old}})});
+      cnt.set(x, old + 1);
+      if(old + 1 > maxF) maxF = old + 1;
+      F.push({hl:[5], tag:'计数 +1', cls:'t-blue',
+        msg:'<code>cnt[' + x + ']</code> 从 ' + old + ' 涨到 <b>' + (old + 1) + '</b>（表里那行闪蓝）。每格只贡献一次 +1，扫完 ' + nums.length + ' 格，cnt 就攒齐了"数字 → 次数"的完整清单——这份清单就是下一步装桶的全部原料。',
+        do: draw({nums:nums, k:k, nst:{[i]:'done'}, mk:mkI(i),
+                  cntEnt:cntSnap(), hlK:String(x),
+                  vars:{x:x, 'cnt[x]':old + 1}})});
+    }
+
+    /* ② 建桶 + 装桶 */
+    F.push({hl:[6], tag:'建桶', cls:'t-grey',
+      msg:'数完了：一共 <b>' + cnt.size + '</b> 个不同的数，最高频率 <b>' + maxF + '</b>。现在建 <b>len(nums)+1 = ' + (nums.length + 1) +
+          '</b> 个空桶，<b>桶的下标 = 出现次数</b>。为什么这些桶绝对够用？一个数最多出现 len(nums) 次（整个数组全是它），下标 0~len(nums) 就封顶了；0 号桶永远空着——出现 0 次的数根本不在数组里。',
+      do: draw({nums:nums, k:k, nst:{}, cntEnt:cntSnap(), bkC:null,
+                vars:{'不同数':cnt.size, '最高频率':maxF}})});
+    cnt.forEach((c, x) => {
+      buckets[c].push(x);
+      F.push({hl:[7,8], tag:'入桶', cls:'t-green',
+        msg:'<b>' + x + '</b> 出现了 <b>' + c + '</b> 次 → 扔进 <b>' + c + ' 号桶</b>（桶面板里对应行加粗）。这就是桶排序的精髓：<b>次数 c 直接当数组下标用</b>，数一扔进去就自动按频率归位——桶下标天然从低到高排好，后面倒着收就是"从高频到低频"，一次比较排序都省了。',
+        do: draw({nums:nums, k:k, nst:{}, cntEnt:cntSnap(), hlK:String(x), bkC:c, bkH:bkHtml(c),
+                  vars:{x:x, '出现次数':c}})});
+    });
+
+    /* ③ 从高到低收 */
+    F.push({hl:[9], tag:'准备收', cls:'t-grey',
+      msg:'<code>ans</code> 还是空的。接下来从<b>最高频</b>（' + maxF + ' 号桶）往下扫：桶下标天然从大到小，顺着收，<b>先进 ans 的频率一定 ≥ 后进的</b>。为什么收到第 ' + k + ' 个就能停？前 ' + k + ' 名必然是频率最高的一批——一旦收满，剩下桶里的数频率只会更低，绝不可能挤进前 K，看都不用看。',
+      do: draw({nums:nums, k:k, nst:{}, cntEnt:cntSnap(), bkC:maxF, bkH:bkHtml(maxF),
+                vars:{'已收':0, k:k}})});
+
+    for(let c = buckets.length - 1; c >= 1; c--){
+      const lst = buckets[c];
+      if(!lst.length){
+        F.push({hl:[10], no:10, tag:'扫 ' + c + ' 号桶', cls:'t-red',
+          msg:'<b>' + c + ' 号桶是空的</b>：没有任何数恰好出现 ' + c + ' 次。频率不是连续的——比如所有数都只出现 1、2 次，中间的桶就空着。空桶没有货 → 直接跳过，继续往低处找。',
+          do: draw({nums:nums, k:k, nst:{}, cntEnt:cntSnap(), bkC:c, bkH:bkHtml(c),
+                    vars:{c:c, '已收':ans.length, k:k}})});
+        continue;
+      }
+      F.push({hl:[10], ok:10, tag:'扫 ' + c + ' 号桶', cls:'t-blue',
+        msg:'<b>' + c + ' 号桶</b>里有 [' + lst.join(', ') + ']：它们的出现次数都是 ' + c + '，彼此并列——同一桶内谁先谁后都行（题目保证答案唯一，这里按 cnt 的登记顺序收）。逐个送去 12 号行检查：ans 收满没有？没收满才放行。',
+        do: draw({nums:nums, k:k, nst:{}, cntEnt:cntSnap(), bkC:c, bkH:bkHtml(c),
+                  vars:{c:c, '已收':ans.length, k:k}})});
+      for(const x of lst){
+        if(ans.length < k){
+          ans.push(x);
+          const full = ans.length === k;
+          F.push({hl:[11,12,13], ok:12, tag:'收入 ans', cls:full ? 't-green' : 't-violet',
+            msg:'ans 未满（已收 ' + ans.length + ' 个 &lt; k = ' + k + '）→ 把 <b>' + x + '</b> 收进 ans = ' + ansTxt() + '。放行一定正确：扫描是频率从高到低，排在它前面的频率都不低于它，它稳进前 K。' +
+                (full ? '<b>ans 已收满 ' + k + ' 个！</b>12 号行的闸门从此关死——后面桶里的数频率只会更低，再热闹也进不了前 K，循环可以提前收摊。' : '继续往低频的桶扫。'),
+            do: draw({nums:nums, k:k, nst:{}, cntEnt:cntSnap(), bkC:c, bkH:bkHtml(c),
+                      vars:{c:c, ans:ansTxt(), '已收':ans.length}, hlv:['ans'], res:full ? ans.slice() : undefined})});
+        } else {
+          F.push({hl:[11,12], no:12, tag:'不再收', cls:'t-grey',
+            msg:'ans 已收满 <b>' + k + '</b> 个 → <code>len(ans) &lt; k</code> 不成立（12 号行变红），<b>' + x + '</b> 被挡在门外。这道闸门就是"收 k 个就停"的落点：它的频率 ≤ ans 里任何一个数，再收进去只会挤掉正确答案——一步都不多走。',
+            do: draw({nums:nums, k:k, nst:{}, cntEnt:cntSnap(), bkC:c, bkH:bkHtml(c),
+                      vars:{c:c, ans:ansTxt(), '已收':ans.length}, hlv:['ans']})});
+        }
+      }
+    }
+
+    F.push({hl:[14], tag:'返回', cls:'t-dark',
+      msg:'从最高频一路收到收满，<code>return ' + ansTxt() + '</code> —— 前 <b>' + k + '</b> 高频元素到手。复盘：数数、装桶、收桶三趟全是线性扫描，元素之间<b>零比较</b>，总时间 O(n)——比堆解法的 O(n log k) 还快，代价只是哈希表和桶数组的额外空间。',
+      do: draw({nums:nums, k:k, nst:{}, cntEnt:cntSnap(), bkC:maxF, bkH:bkHtml(maxF),
+                vars:{ans:ansTxt(), '已收':ans.length}, hlv:['ans'], res:ans.slice()})});
+
+    return F;
+  }
+});
+</script>
+</body>
+</html>

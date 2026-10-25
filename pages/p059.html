@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P059 · 单词搜索 · 动画题解</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="../assets/problems.js"></script>
+<script src="../assets/progress.js"></script>
+<script src="../assets/viz.js"></script>
+<script src="../assets/engine.js"></script>
+<script>
+LC.register({
+  order: 59, num: 79, title: '单词搜索', diff: '中等', cat: '回溯',
+  method: 'exist',
+
+  lede: '题目：在二维网格里找一条<b>上下左右相邻</b>的字母路，恰好拼出 <span class="var r">word</span>，同一个格子不许走两次。' +
+        '动画里 <span class="var i">dfs(i,j,k)</span> 的意思是"站在格子 (i,j)，word 前 k 个字母已经匹配上"：' +
+        '先给脚下盖个 <code>#</code> 章防止重复踩，向四个方向递归；走不通就把章擦掉（回溯）换条路。右侧调用栈一层 = 匹配一个字母。',
+
+  roles: [
+    {c:'orange', code:'dfs(i,j,k)', text:'当前格 (i,j)，已匹配 k 个字母'},
+    {c:'blue',   code:'#',  text:'本条路上已占用的格子（盖章防重踩）'},
+    {c:'violet', code:'回溯', text:'走不通 → 擦掉 # 恢复现场'},
+    {c:'green',  code:'True', text:'有方向走通 → True 一路传回去'}
+  ],
+
+  codeTitle: '跟着高亮读代码——第 7 行变<span style="color:var(--green)">绿</span>＝出界/对不上（此路不通），' +
+             '变<span style="color:var(--red)">红</span>＝格子合法且字母对上；第 12 行紫色＝回溯擦章恢复。',
+
+  idea: '走过的格子立刻盖章 #，四方向递归；返回前必须擦章恢复现场——让每次尝试都从"干净的棋盘"出发。',
+
+  qa: [
+    {q:'为什么盖章后一定要擦掉？',
+     a:'盖章只对"当前这一条尝试"负责。擦掉后，后面的起点和别的分支才能合法地再次经过这格。不擦相当于永久堵路——比如 word 是 ABA 这种会折返的形状，不恢复现场就永远找不到。'},
+    {q:'复杂度为什么是 O(mn·3^L)？',
+     a:'起点有 m×n 个；进入路径后每一步最多 3 个新方向（来路那个格子盖着 #，注定走不通），路径最长 L = word 长度。空间是递归栈 O(L)。'},
+    {q:'不改 board、改用一个 visited 数组行吗？',
+     a:'完全等价。原地盖章省掉 O(mn) 的额外数组，但会临时改输入参数；面试里提一句"也可以用 visited，函数返回后棋盘原样"更稳。'},
+    {q:'k == len(word) 为什么放在最前面判？',
+     a:'最后一个字母匹配成功后，下一层调用的 k 正好越界。先判"已完成"再判"出界"，连 (3,1) 这种界外格子都能正确收尾返回 True——顺序反了就会先误判出界。'}
+  ],
+
+  complexity: '时间 O(mn·3^L)（L=单词长，每步至多 3 个新方向）　·　空间 O(L)（递归栈）',
+
+  form: [
+    {key:'board', label:'board（每行一行）', type:'grid', maxRows:4, maxCols:4, def:[['A','B','C','E'],['S','F','C','S'],['A','D','E','E']]},
+    {key:'word', label:'word', type:'str', maxLength:8, def:'ABCCED'}
+  ],
+  presets: [
+    {label:'ABCCED → true（默认）', values:{board:[['A','B','C','E'],['S','F','C','S'],['A','D','E','E']], word:'ABCCED'}},
+    {label:'ABCB → false（不存在）', values:{board:[['A','B','C','E'],['S','F','C','S'],['A','D','E','E']], word:'ABCB'}},
+    {label:'SEE → true（会拐弯）', values:{board:[['A','B','C','E'],['S','F','C','S'],['A','D','E','E']], word:'SEE'}},
+    {label:'ABCE → true（一行走完）', values:{board:[['A','B','C','E'],['S','F','C','S'],['A','D','E','E']], word:'ABCE'}}
+  ],
+
+  code: `class Solution:
+    def exist(self, board, word):
+        m, n = len(board), len(board[0])
+        def dfs(i, j, k):
+            if k == len(word):          # 单词全部匹配完
+                return True
+            if i < 0 or i >= m or j < 0 or j >= n or board[i][j] != word[k]:
+                return False            # 出界或字符对不上
+            board[i][j] = '#'           # 现场标记: 盖章防重踩
+            ok = (dfs(i + 1, j, k + 1) or dfs(i - 1, j, k + 1) or
+                  dfs(i, j + 1, k + 1) or dfs(i, j - 1, k + 1))
+            board[i][j] = word[k]       # 回溯: 擦章恢复现场
+            return ok
+        for i in range(m):
+            for j in range(n):
+                if dfs(i, j, 0):        # 每个格子都试试当起点
+                    return True
+        return False
+`,
+
+  sol(input){
+    const board = (input.board || []).map(r => (r || []).map(v => String(v)));
+    const word = String(input.word == null ? '' : input.word);
+    const m = board.length, n = m ? board[0].length : 0;
+    function dfs(i, j, k){
+      if(k === word.length) return true;
+      if(i < 0 || i >= m || j < 0 || j >= n || board[i][j] !== word[k]) return false;
+      board[i][j] = '#';
+      const ok = dfs(i + 1, j, k + 1) || dfs(i - 1, j, k + 1) ||
+                 dfs(i, j + 1, k + 1) || dfs(i, j - 1, k + 1);
+      board[i][j] = word[k];
+      return ok;
+    }
+    for(let i = 0; i < m; i++)
+      for(let j = 0; j < n; j++)
+        if(dfs(i, j, 0)) return true;
+    return false;
+  },
+  expected: true,
+
+  quiz: [
+    {q:'格子盖章成 # 后,递归返回前为什么必须把章擦掉(还原成 word[k])?',
+     options:['不擦也行,# 本来就是合法字符','章只对「当前这条尝试」生效:不擦的话这格被永久堵死,像 ABA 这种要折返经过同一格的单词就永远找不到,别的分支和起点也会被误伤','为了节省内存'],
+     answer:1,
+     explain:'盖章的语义是"本条路已占用",只在该次 dfs 路径存活期间有效。函数返回意味着这条路(或这个分支)的尝试结束,现场必须复原——后面的起点、旁边未探索的分支才有资格再次经过这格。比如 word="ABA":第二个 A 可以正是起点的上邻居折回来,若起点还盖着 #,这条本来成立的路线会被第 7 行误杀。擦章 = 让每次尝试都从干净棋盘出发。',
+     jumpTo:36},
+    {q:'代入算一算:默认网格不变,word = "FCED" 能找到吗?',
+     options:['能:F(1,1) → C(1,2) → E(2,2) → D(2,1),一路相邻','不能:F 的四邻里没有第二个 C','能:F(1,1) → E(2,1) → C(1,2) → D(2,1),可以斜着走'],
+     answer:0,
+     explain:'从 F(1,1) 出发:右邻 (1,2) 是 C → 下邻 (2,2) 是 E → 左邻 (2,1) 是 D,四格相邻相接,路线成立 → true。注意两条铁律:只能上下左右、不能斜跳,所以"F 直接到 E"的走法不合法;而 D 在 E 的左边、不在右边,第二个选项把方位记岔了。这类题动手在网格上描一遍路径,比凭感觉快得多。',
+     jumpTo:42},
+    {q:'复杂度是 O(mn·3^L) 而不是 O(mn·4^L),那个 3 是怎么来的?',
+     options:['因为每个格子最多只有 3 个邻居','进入路径后,每一步的四个方向里,来路那格盖着 # 必然走不通——每步至多 3 个新方向(起点层才有完整的 4 个)','3 是网格的维度数'],
+     answer:1,
+     explain:'路径上的格子都盖着 #,而递归最忌讳的就是回头:来路那格虽然字母一定对得上,但 # 章让它当场被第 7 行拒绝。于是除起点外每步只剩 3 个可走方向,路径最长 L,单次尝试是 3^L 量级。这条"来路注定走不通"同时也是正确性的基石——它就是"同一格不许走两次"的实现方式。',
+     jumpTo:5},
+  ],
+
+  steps(input){
+    const F = [];
+    let board = (input.board || []).map(r => (r || []).map(v => String(v)));
+    let word = String(input.word == null ? '' : input.word);
+    const notes = [];
+    if(board.length > 4){ board = board.slice(0, 4); notes.push('行数限 4'); }
+    const m = board.length;
+    let n = m ? Math.max.apply(null, board.map(r => r.length)) : 0;
+    if(n > 4){ n = 4; notes.push('列数限 4'); }
+    board = board.map(r => { const rr = r.slice(0, n); while(rr.length < n) rr.push(''); return rr; });
+    if(word.length > 8){ word = word.slice(0, 8); notes.push('单词限 8 字母'); }
+    const warr = word.split('');
+    let seq = 0, tried = 0;
+    const stack = [];
+    const pathOrder = [];              // 当前递归路上盖了章的格子, 按顺序
+    let winOrder = null;               // 成功后定型的答案路线
+
+    const snapB = () => board.map(r => r.slice());
+    const stB = (cur, curCls, markCls) => {
+      const st = {};
+      for(let a = 0; a < m; a++) for(let b = 0; b < n; b++)
+        if(board[a][b] === '#') st[a + ',' + b] = markCls || 'in';
+      if(cur) st[cur] = curCls || 'active';
+      return st;
+    };
+    const winSt = () => { const st = {}; (winOrder || []).forEach(k => { st[k] = 'done'; }); return st; };
+    const wst = (k) => { const o = {}; for(let x = 0; x < k; x++) o[x] = 'done'; if(k < warr.length) o[k] = 'active'; return o; };
+    const wm = (k) => [{name:'k', idx:k, cls:'mi', text:'▲ k'}];
+    const pTxt = (k) => '<span class="mk-g">' + (k ? LCesc(word.slice(0, k)) : '…') + '</span>' +
+      '<span class="mk-b">' + (k < word.length ? LCesc(word.slice(k)) : '✓') + '</span>' +
+      '　·　已集齐 ' + k + ' / ' + word.length + ' 个字母';
+
+    const draw = (o) => (v) => {
+      v.grid('G', o.mat, {label:'网格 <code>board</code>　·　蓝 <code>#</code> = 本条路已占用', states:o.st, cw:46});
+      v.arr('W', warr, {label:'单词 <code>word</code>　·　绿 = 已匹配', quotes:true, states:o.wst, markers:o.wm || []});
+      v.text('P', o.pTxt, {label:'匹配进度', html:true});
+      v.stack('S', o.stk, {label:'递归调用栈　·　一层管一个字母', topTag:'栈顶', states:o.sst || {}});
+      v.vars('V', o.vars, {label:'变量'});
+      if(o.res !== undefined) v.result(o.res, {label:'返回结果'});
+    };
+
+    function dfs(i, j, k){
+      const id = 'f' + (++seq);
+      stack.push({key:id, val:'dfs(' + i + ',' + j + ',' + k + ')'});
+      if(k === word.length){
+        winOrder = pathOrder.slice();
+        F.push({hl:[5,6], ok:6, tag:'全部匹配！', cls:'t-green',
+          msg:'k 数到 <b>' + word.length + '</b>，和单词一样长 → word 的每个字母都找到了自己的格子，<b>return True</b>！这个判断放在函数第一行很关键：最后一个字母匹配成功后再往下递归一层，k 正好越界，在这里被接住收尾——先判"完成"再判"出界"，顺序不能反。画面：整条 word 变绿，答案路线的格子标绿，True 将沿调用栈一层层传回起点。',
+          do: draw({mat:snapB(), st:stB(null, null, 'done'), wst:wst(k), wm:wm(k), pTxt:pTxt(k),
+                    stk:stack.slice(), sst:{[id]:'just'}, vars:{i:i, j:j, k:k}})});
+        stack.pop();
+        return true;
+      }
+      const inG = i >= 0 && i < m && j >= 0 && j < n;
+      if(!inG || board[i][j] !== word[k]){
+        const why = !inG
+          ? '(' + i + ',' + j + ') 出界了'
+          : (board[i][j] === '#'
+              ? '(' + i + ',' + j + ') 盖着 <code>#</code>：本条路已经用过这格，不许再踩'
+              : '(' + i + ',' + j + ') 是 <code>' + LCesc(board[i][j]) + '</code>，对不上 <code>word[' + k + ']=' + LCesc(word[k]) + '</code>');
+        F.push({hl:[7,8], ok:7, tag:'此路不通', cls:'t-red',
+          msg:'<code>dfs(' + i + ',' + j + ',' + k + ')</code>：' + why + ' → 第 7 行保护条件触发，<b>return False</b>。返回 False 不是出错，只是宣告"这条分支死了"，调用方会转头试下一个方向——回溯就是靠无数次 False 试出来的。画面：这格标红，栈顶这层随即退掉。',
+          do: draw({mat:snapB(), st:stB(inG ? (i + ',' + j) : null, 'block'), wst:wst(k), wm:wm(k), pTxt:pTxt(k),
+                    stk:stack.slice(), sst:{[id]:'block'}, vars:{i:i, j:j, k:k}})});
+        stack.pop();
+        return false;
+      }
+      F.push({hl:[4,7], no:7, tag:'进入', cls:'t-blue',
+        msg:'进入 <code>dfs(' + i + ',' + j + ',' + k + ')</code>：格子 (' + i + ',' + j + ') 在界内，字母 <code>' + LCesc(board[i][j]) + '</code> 与 <code>word[' + k + ']</code> 对上 → 有资格往下走。此刻进度：已匹配 ' + k + ' / ' + word.length + ' 个字母，word 条上前 ' + k + ' 格已绿。往下分叉之前，先把这格"占住"。',
+        do: draw({mat:snapB(), st:stB(i + ',' + j, 'peek'), wst:wst(k), wm:wm(k), pTxt:pTxt(k),
+                  stk:stack.slice(), sst:{[id]:'active'}, vars:{i:i, j:j, k:k}})});
+
+      board[i][j] = '#';
+      pathOrder.push(i + ',' + j);
+      F.push({hl:[9], tag:'现场标记', cls:'t-orange',
+        msg:'<code>board[' + i + '][' + j + ']</code> 盖章成 <code>#</code>（蓝色）：这格归<b>本条路</b>专用，四方向递归再撞见它时，第 7 行会判"字符对不上"而拒绝——这就是"同一格不许用两次"的实现方式，类比走迷宫时在路口放个背包占位。注意：章只对当前这条尝试生效，等下返回前一定擦掉。',
+        do: draw({mat:snapB(), st:stB(i + ',' + j, 'active'), wst:wst(k), wm:wm(k), pTxt:pTxt(k),
+                  stk:stack.slice(), sst:{[id]:'active'}, vars:{i:i, j:j, k:k}})});
+
+      const dirs = [[1,0,'下'],[-1,0,'上'],[0,1,'右'],[0,-1,'左']];
+      let got = false;
+      for(let d = 0; d < 4 && !got; d++){
+        const ni = i + dirs[d][0], nj = j + dirs[d][1];
+        const nxt = (k + 1 < word.length) ? LCesc(word[k + 1]) : '（已到词尾）';
+        F.push({hl:[10,11], tag:'四方向尝试', cls:'t-ink',
+          msg:(d === 0
+            ? '站在 (' + i + ',' + j + ')，要给 <code>word[' + (k + 1) + ']=' + nxt + '</code> 找下一个格子：下、上、右、左四方向挨个试。顺序完全不影响正确性——四个方向反正都会被问到，顺序只决定谁先被试、找到得早还是晚，答案对错与它无关。第 10~11 行用 <code>or</code> 把四个递归串起来：任何一边走通就短路收工。先试[<b>' + dirs[d][2] + '</b>]。'
+            : '[<b>' + dirs[d - 1][2] + '</b>]方向返回 False——那个邻居出界、盖着 # 或字母对不上，不是好路。换[<b>' + dirs[d][2] + '</b>]：递归 <code>dfs(' + ni + ',' + nj + ',' + (k + 1) + ')</code>，k 从 ' + k + ' 前进到 ' + (k + 1) + '。四方向里只要有一个走通就赢。'),
+          do: draw({mat:snapB(), st:stB(i + ',' + j, 'active'), wst:wst(k + 1), wm:wm(k + 1), pTxt:pTxt(k),
+                    stk:stack.slice(), sst:{[id]:'active'}, vars:{i:i, j:j, k:k}})});
+        got = dfs(ni, nj, k + 1);
+      }
+
+      board[i][j] = word[k];
+      pathOrder.pop();
+      stack.pop();
+      F.push({hl:[12,13], tag:'回溯·恢复现场', cls: got ? 't-green' : 't-violet',
+        msg:(got
+          ? '有方向返回了 <b>True</b>（or 短路，剩下的方向看都不看）→ (' + i + ',' + j + ') 在成功路线上！'
+          : '四个方向全军覆没 → (' + i + ',' + j + ') 这条路宣告不通，但不白走——') +
+            '返回前必须<b>擦章恢复现场</b>：把 <code>board[' + i + '][' + j + ']</code> 从 <code>#</code> 还原成 <code>' + LCesc(word[k]) + '</code>。章只是"本条路"的临时占位，不擦的话这格被永久堵死——word 像 ABA 那样折返的形状就永远找不到，后面的起点和别的分支也会被误伤。然后 return <b>' + got + '</b> 给上层。',
+        do: draw({mat:snapB(), st:winOrder ? winSt() : stB(), wst:wst(k), wm:wm(k), pTxt:pTxt(k),
+                  stk:stack.slice(), sst:{}, vars:{i:i, j:j, k:k}})});
+      return got;
+    }
+
+    F.push({hl:[1,2,3,4], tag:'初始化', cls:'t-grey',
+      msg:'任务：在 ' + m + '×' + n + ' 网格里找一条<b>上下左右相邻</b>、不重复踩格的字母路，恰好拼出 <code>' + LCesc(word) + '</code>（长 ' + word.length + '）。打法是回溯三步曲：每个格子都试试当起点 → 走进一格先盖章 <code>#</code> 占住 → 四方向递归，返回前擦章恢复原样。画面导览：word 条上绿色 = 已匹配的字母，网格里蓝 <code>#</code> = 当前路的占用格，右侧调用栈一层管一个字母。' + (notes.length ? '（' + notes.join('；') + '）' : ''),
+      do: draw({mat:snapB(), st:{}, wst:wst(0), wm:wm(0), pTxt:pTxt(0), stk:[], vars:{i:'—', j:'—', k:0}})});
+
+    for(let i = 0; i < m && !winOrder; i++){
+      for(let j = 0; j < n && !winOrder; j++){
+        const hit0 = board[i][j] === word[0];
+        F.push({hl:[14,15,16], ok: hit0 ? 16 : undefined, no: hit0 ? undefined : 16,
+          tag: hit0 ? '选中起点' : '换起点', cls: hit0 ? 't-green' : 't-ink',
+          msg: hit0
+            ? '起点扫描到 (' + i + ',' + j + ')：字母 <code>' + LCesc(board[i][j]) + '</code> 正好是单词开头 <code>' + LCesc(word[0]) + '</code> → 值得进场，调 <code>dfs(' + i + ',' + j + ',0)</code> 出发！起点必须遍历整个网格，因为答案路的第一个字母可能藏在任何角落。'
+            : '起点扫描到 (' + i + ',' + j + ')：字母是 <code>' + LCesc(board[i][j] || '∅') + '</code>，不是单词开头 <code>' + LCesc(word[0]) + '</code> → 第一个字母都对不上，后面无法接龙，直接跳过看下一格。这也是剪枝：起点层一次 O(1) 判断，省掉一整棵递归树。',
+          do: draw({mat:snapB(), st:{[i + ',' + j]:'peek'}, wst:wst(0), wm:wm(0), pTxt:pTxt(0), stk:[], vars:{i:i, j:j, k:0}})});
+        if(hit0){
+          tried++;
+          if(dfs(i, j, 0)){
+            F.push({hl:[16,17], ok:17, tag:'找到答案', cls:'t-green',
+              msg:'<code>dfs(' + i + ',' + j + ',0)</code> 返回 <b>True</b> → 第 17 行 <code>return True</code> ✅ 绿色路线就是答案：<b>' + winOrder.map(k => '(' + k + ')').join('→') + '</b>。路上盖的章已逐一擦净，棋盘和进来时一模一样；外层双重循环立即收工，后面的起点看都不看。',
+              do: draw({mat:snapB(), st:winSt(), wst:wst(word.length), wm:[], pTxt:pTxt(word.length), stk:[], vars:{i:'—', j:'—', k:word.length}, res:true})});
+          }
+        }
+      }
+    }
+
+    F.push({hl:[17,18], ok: winOrder ? 17 : undefined, no: winOrder ? undefined : 18,
+      tag:'总结', cls:'t-dark',
+      msg: winOrder
+        ? '🎉 正式尝试了 ' + tried + ' 个起点，第一个成功的就让 <code>exist</code> 返回 True——起点顺序只决定谁先被找到，不影响成败。回溯三步曲最后背一遍：<b>盖章 # → 四方向递归 → 擦章恢复</b>。复杂度 O(mn·3^L)：起点 mn 个，路上每步至多 3 个新方向（来路盖着 #，注定走不通）。第 18 行 <code>return False</code> 是全部起点失败的兜底，这局轮不到它。'
+        : '全部 ' + (m * n) + ' 个起点试完（正式递归 ' + tried + ' 次），没有任何一条路拼得出 <code>' + LCesc(word) + '</code> → 第 18 行 <code>return False</code>。这是穷举完所有可能后的诚实结论，不是运气差：字母要靠相邻格子接力，缺一环都不行。',
+      do: draw({mat:snapB(), st:winOrder ? winSt() : {}, wst:wst(winOrder ? word.length : 0), wm:[], pTxt:pTxt(winOrder ? word.length : 0), stk:[], vars:{i:'—', j:'—', k:winOrder ? word.length : 0}, res:!!winOrder})});
+
+    return F;
+  }
+});
+</script>
+</body>
+</html>
