@@ -67,17 +67,18 @@
             groups[key].append(s)       # 飞进自己的组
         return list(groups.values())    # 每串名单就是一组答案
 </pre><p class="cx">时间 O(n·k log k)（n 个单词，词长 k）　·　空间 O(n·k)（哈希表存全部单词）</p><p class="lnk"><a href="pages/p002.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/group-anagrams/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P003 · LC128</span> 最长连续序列 <span class="df d2">中等</span></h3><p class="ap">解法: 哈希集合，只从序列起点向右数</p><p class="idea">💡 连续段必有“没人差它一”的头：只让头向右数到底，其余数原地待命——每个数最多被摸两次，O(n) 拿下。</p><pre class="code">class Solution:
-    def longestConsecutive(self, nums):
-        numSet = set(nums)              # 全部丢进哈希集合, 查询 O(1)
-        best = 0                        # 目前最长的连续长度
-        for x in numSet:                # 每个数都试着当一次起点
-            if x - 1 in numSet:         # x-1 也在集合里?
-                continue                # 是 -&gt; x 不是头, 让位
-            length = 1                  # x 就是头, 链条至少长 1
-            while x + length in numSet: # 右邻 x+length 也在?
-                length += 1             # 在! 链条再加一节
-            best = max(best, length)    # 这段数完, 刷新纪录
-        return best
+    def longestConsecutive(self, nums: list[int]) -&gt; int:
+        ns=set(nums)
+        longest=0
+        for i in ns:
+            if i-1 not in ns:
+                cur=i
+                lenth=1
+                while cur+1 in ns:
+                    cur+=1
+                    lenth+=1
+                longest=max(lenth,longest)
+        return longest
 </pre><p class="cx">时间 O(n)（每个数最多被查常数次）　·　空间 O(n)（哈希集合）</p><p class="lnk"><a href="pages/p003.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/longest-consecutive-sequence/" target="_blank">力扣原题 ↗</a></p></section><h2 id="cat-双指针">👉 双指针</h2><section class="card d1"><h3><span class="pn">P004 · LC283</span> 移动零 <span class="df d1">简单</span></h3><p class="ap">解法: 快慢指针，非零数前移</p><p class="idea">💡 fast 只管找非零数，找到就换到 slow 手里；slow 是非零区的墙、只进不退——一遍扫完，0 全被挤到右边。</p><pre class="code">class Solution:
     def moveZeroes(self, nums):
         slow = 0                        # 墙: slow 左边全是排好的非零数
