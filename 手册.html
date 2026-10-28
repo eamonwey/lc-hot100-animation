@@ -52,11 +52,11 @@
 <h2 id="cat-哈希">🗂 哈希</h2><section class="card d1"><h3><span class="pn">P001 · LC1</span> 两数之和 <span class="df d1">简单</span></h3><p class="ap">解法: 一次遍历 + 哈希表（值→下标）</p><p class="idea">💡 别回头找搭档：把"我还需要谁"记进哈希表，让答案自己来撞上门——空间换时间。</p><pre class="code">class Solution:
     def twoSum(self, nums, target):
         seen = {}                     # 值 -&gt; 下标
-        for i, x in enumerate(nums):
-            y = target - x            # 需要的另一半
-            if y in seen:             # 之前出现过吗?
-                return [seen[y], i]
-            seen[x] = i               # 登记自己
+        for i in range(len(nums)):
+            need = target - nums[i]   # 需要的另一半
+            if need in seen:          # 之前出现过吗?
+                return [i, seen[need]]
+            seen[nums[i]] = i          # 登记自己
 </pre><p class="cx">时间 O(n)　·　空间 O(n)（哈希表最多存 n 个数）</p><p class="lnk"><a href="pages/p001.html">🎬 动画题解</a> · <a href="https://leetcode.cn/problems/two-sum/" target="_blank">力扣原题 ↗</a></p></section><section class="card d2"><h3><span class="pn">P002 · LC49</span> 字母异位词分组 <span class="df d2">中等</span></h3><p class="ap">解法: 排序作 key + 哈希分组</p><p class="idea">💡 给每个词发一张“排序后的身份证”：异位词身份证必然相同——哈希表按身份证分堆，一组不漏。</p><pre class="code">class Solution:
     def groupAnagrams(self, strs):
         groups = {}                     # 钥匙(排序后的词) -&gt; 组员名单
