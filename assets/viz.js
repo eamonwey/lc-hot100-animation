@@ -269,6 +269,9 @@ class Viz{
       const el = it.el;
       el.style.left = (i * (cw + gap)) + 'px';
       el.style.top = '0px';
+      // 柱底固定在 baseY：下方是下标 15px、槽位 22px 和两个 2px 间隔。
+      el.style.height = (baseY + 15 + 22 + 4) + 'px';
+      el.style.justifyContent = 'flex-end';
       el.style.width = cw + 'px';
       el.querySelector('.bval').textContent = v;
       const bar = el.querySelector('.bar');
