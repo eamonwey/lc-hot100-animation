@@ -106,7 +106,7 @@ LC.register({
     const nums = input.nums.slice();
     let slow = 0;
 
-    /* ★ 快照：states / marks 全部在 F.push 那一刻用当时的 slow、fast 算死 */
+    /* ★ 快照：数组、states / marks 都在生成帧时保存，回退也能恢复当时状态 */
     const statesAt = (slow0, fast0) => {
       const st = {};
       nums.forEach((val, k) => {
@@ -123,11 +123,14 @@ LC.register({
       return m;
     };
 
-    const draw = (o) => (v) => {
-      v.arr('nums', nums, {label:'数组 <code>nums</code>（原地修改）',
-        states:o.states || {}, markers:o.marks || []});
-      if(o.vars) v.vars('vars', o.vars, {label:'变量'});
-      if(o.result != null) v.result(o.result, {label:'返回结果'});
+    const draw = (o) => {
+      const snapshot = nums.slice();
+      return (v) => {
+        v.arr('nums', snapshot, {label:'数组 <code>nums</code>（原地修改）',
+          states:o.states || {}, markers:o.marks || []});
+        if(o.vars) v.vars('vars', o.vars, {label:'变量'});
+        if(o.result != null) v.result(o.result, {label:'返回结果'});
+      };
     };
 
     F.push({hl:[1,2,3], tag:'初始化', cls:'t-grey',
